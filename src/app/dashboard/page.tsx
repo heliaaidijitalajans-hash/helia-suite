@@ -1,17 +1,17 @@
 "use client";
 
-import { DollarSign, Percent, TrendingUp, Users } from "lucide-react";
+import { Percent, TrendingUp, UserCheck, Users } from "lucide-react";
 import { KpiCard } from "@/components/dashboard/KpiCard";
 
 export default function DashboardOverviewPage() {
   return (
-    <div className="mx-auto max-w-6xl space-y-8">
+    <div className="mx-auto w-full max-w-md space-y-8 xl:max-w-none">
       <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
         <KpiCard
-          label="Revenue"
-          value="$284,900"
-          hint="+12.4% this month"
-          icon={DollarSign}
+          label="Retention focus"
+          value="Strong"
+          hint="Experience-led journeys"
+          icon={UserCheck}
           delay={0}
         />
         <KpiCard

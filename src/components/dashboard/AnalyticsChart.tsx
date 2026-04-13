@@ -38,9 +38,9 @@ export function AnalyticsChart() {
     >
       <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h2 className="text-sm font-semibold text-white">Revenue trend</h2>
+          <h2 className="text-sm font-semibold text-white">Growth momentum</h2>
           <p className="mt-1 text-xs text-white/45">
-            Last 20 periods · illustrative data
+            Last 20 periods · illustrative trend
           </p>
         </div>
         <div className="text-right">

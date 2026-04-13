@@ -5,45 +5,45 @@ import { cn } from "@/lib/cn";
 
 const ROWS = [
   {
-    name: "Apex Logistics",
-    company: "Apex Group",
+    name: "Summit Logistics",
+    company: "Summit Group",
     status: "Active",
-    value: "$48,200",
+    plan: "Full stack",
     last: "2h ago",
   },
   {
-    name: "Northwind Retail",
-    company: "Northwind Co.",
+    name: "Harbor Retail",
+    company: "Harbor Co.",
     status: "Active",
-    value: "$31,900",
+    plan: "Growth",
     last: "5h ago",
   },
   {
-    name: "Meridian Health",
-    company: "Meridian Ltd",
+    name: "Clearway Health",
+    company: "Clearway Ltd",
     status: "Trial",
-    value: "$12,400",
+    plan: "Pilot",
     last: "1d ago",
   },
   {
-    name: "Velvet Studios",
-    company: "Velvet Inc",
+    name: "Studio Lane",
+    company: "Lane Inc",
     status: "Active",
-    value: "$67,800",
+    plan: "Enterprise",
     last: "3h ago",
   },
   {
-    name: "Kite Analytics",
-    company: "Kite SAS",
+    name: "Signal Labs",
+    company: "Signal SAS",
     status: "Paused",
-    value: "$8,950",
+    plan: "Growth",
     last: "4d ago",
   },
   {
-    name: "Orion Foods",
-    company: "Orion AG",
+    name: "Bright Foods",
+    company: "Bright AG",
     status: "Active",
-    value: "$22,100",
+    plan: "Full stack",
     last: "8h ago",
   },
 ];
@@ -69,7 +69,7 @@ export function CustomersTable() {
               <th className="px-6 py-3 font-medium">Name</th>
               <th className="px-6 py-3 font-medium">Company</th>
               <th className="px-6 py-3 font-medium">Status</th>
-              <th className="px-6 py-3 font-medium">ARR</th>
+              <th className="px-6 py-3 font-medium">Plan</th>
               <th className="px-6 py-3 font-medium">Last active</th>
             </tr>
           </thead>
@@ -101,8 +101,8 @@ export function CustomersTable() {
                     {row.status}
                   </span>
                 </td>
-                <td className="px-6 py-4 font-medium tabular-nums text-white/80">
-                  {row.value}
+                <td className="px-6 py-4 font-medium text-white/80">
+                  {row.plan}
                 </td>
                 <td className="px-6 py-4 text-white/40">{row.last}</td>
               </motion.tr>

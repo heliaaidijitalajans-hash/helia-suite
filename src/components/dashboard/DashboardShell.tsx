@@ -4,6 +4,11 @@ import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import { cn } from "@/lib/cn";
+import {
+  DashboardDemoCanvas,
+  DashboardDemoIntro,
+  DashboardDemoMarketing,
+} from "./dashboard-demo-content";
 import { dashboardTitleForPath } from "./dashboard-nav";
 import { DashboardSidebar } from "./DashboardSidebar";
 import { DashboardTopBar } from "./DashboardTopBar";
@@ -60,14 +65,18 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
           onMenuClick={() => setMobileOpen(true)}
         />
         <main className="relative flex-1 px-4 py-6 md:px-8 md:py-8">
-          <motion.div
-            key={pathname}
-            initial={{ opacity: 0, y: 14 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.38, ease: [0.22, 1, 0.36, 1] }}
-          >
-            {children}
-          </motion.div>
+          <div className="mx-auto max-w-6xl space-y-10 pb-20 md:space-y-12 md:pb-28">
+            <DashboardDemoIntro />
+            <motion.div
+              key={pathname}
+              initial={{ opacity: 0, y: 14 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.38, ease: [0.22, 1, 0.36, 1] }}
+            >
+              <DashboardDemoCanvas>{children}</DashboardDemoCanvas>
+            </motion.div>
+            <DashboardDemoMarketing />
+          </div>
         </main>
       </div>
     </div>

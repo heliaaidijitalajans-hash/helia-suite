@@ -67,7 +67,7 @@ export function DashboardSidebar({
       </nav>
       <div className="border-t border-white/[0.06] p-4">
         <p className="text-center text-[11px] leading-relaxed text-white/30">
-          Demo interface — no live data
+          Example workspace — tailored for you on delivery
         </p>
       </div>
     </div>
