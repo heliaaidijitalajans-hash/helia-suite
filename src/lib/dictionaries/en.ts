@@ -12,6 +12,7 @@ export const en: Dictionary = {
     about: "About",
     support: "Support",
     faq: "FAQ",
+    demo: "Demo",
     contact: "Contact Us",
   },
   header: {

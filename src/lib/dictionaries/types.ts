@@ -9,6 +9,7 @@ export type Dictionary = {
     about: string;
     support: string;
     faq: string;
+    demo: string;
     contact: string;
   };
   header: {

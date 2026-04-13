@@ -12,6 +12,7 @@ export const tr: Dictionary = {
     about: "Hakkımızda",
     support: "Destek",
     faq: "SSS",
+    demo: "Örnek demo",
     contact: "İletişime Geç",
   },
   header: {

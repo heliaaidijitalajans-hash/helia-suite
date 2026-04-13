@@ -52,6 +52,12 @@ export function Header({
               {dict.nav[key]}
             </Link>
           ))}
+          <Link
+            href="/dashboard"
+            className="shrink-0 text-white/45 transition-colors hover:text-foreground"
+          >
+            {dict.nav.demo}
+          </Link>
         </nav>
         <div className="flex shrink-0 items-center gap-2 sm:gap-3">
           <LanguageSwitcher />
