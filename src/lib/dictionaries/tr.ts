@@ -39,8 +39,10 @@ export const tr: Dictionary = {
       "Mobil uygulamalar, CRM ve otomasyon — büyüme için tasarlandı.",
     heroCta: "Demo Talep Et",
     heroTrustLine: "Büyüyen işletmeler tarafından tercih ediliyor",
-    socialProofTitle: "İşletmelerin güvendiği ekip",
-    socialProofBrands: ["Apex", "Northwind", "Meridian", "Velvet", "Kite"],
+    socialProofTitle: "Modern işletmeler için tasarlandı",
+    socialProofSubtitle:
+      "Yerel şirketlerden ölçeklenen markalara kadar — gerçek iş büyümesi için size özel sistemler tasarlıyoruz.",
+    socialProofTagline: "İlk başarı hikayelerimizden biri olun.",
     servicesTitle: "Neler üretiyoruz",
     servicesSubtitle:
       "Odaklı bir ürün seti—netlik, hız ve ölçülebilir sonuçlar için tasarlandı.",

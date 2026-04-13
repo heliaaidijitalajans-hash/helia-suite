@@ -38,8 +38,10 @@ export const en: Dictionary = {
       "Mobile apps, CRM, and automation — built for growth.",
     heroCta: "Get Your App Demo",
     heroTrustLine: "Used by growing businesses",
-    socialProofTitle: "Trusted by businesses",
-    socialProofBrands: ["Apex", "Northwind", "Meridian", "Velvet", "Kite"],
+    socialProofTitle: "Built for modern businesses",
+    socialProofSubtitle:
+      "We design systems tailored for real business growth — from local companies to scaling brands.",
+    socialProofTagline: "Be one of our first success stories.",
     servicesTitle: "What we build",
     servicesSubtitle:
       "A focused product suite—designed for clarity, speed, and measurable outcomes.",
