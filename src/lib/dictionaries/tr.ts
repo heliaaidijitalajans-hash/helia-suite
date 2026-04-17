@@ -88,6 +88,14 @@ export const tr: Dictionary = {
     ctaSubtitle:
       "Müşterilerinizin hissettiği, ekibinizin sürtünmesiz yürüttüğü bir ürün çıkarın.",
     ctaWhatsApp: "WhatsApp",
+    pricingEstimatorTitle: "Yapay Zekâ Uygulamanız İçin Yatırım Tahmini",
+    pricingEstimatorSubtitle:
+      "Ne inşa etmek istediğinizi seçin; size özel proje aralığını görün.",
+    pricingEstimatorPickLabel: "Uygulama türü",
+    pricingEstimatorResultTitle: "Tahmini Proje Aralığı",
+    pricingEstimatorDisclaimer:
+      "Bu, işletmeniz için özelleştirilmiş bir sistemdir. Nihai fiyat; özellikler, entegrasyonlar ve ölçeğe bağlıdır.",
+    pricingEstimatorCta: "Projenize Başlayın",
   },
   pricing: {
     title: "İşletmenize Özel Fiyatlandırma",

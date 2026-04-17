@@ -55,6 +55,12 @@ export type Dictionary = {
     ctaTitle: string;
     ctaSubtitle: string;
     ctaWhatsApp: string;
+    pricingEstimatorTitle: string;
+    pricingEstimatorSubtitle: string;
+    pricingEstimatorPickLabel: string;
+    pricingEstimatorResultTitle: string;
+    pricingEstimatorDisclaimer: string;
+    pricingEstimatorCta: string;
   };
   pricing: {
     title: string;

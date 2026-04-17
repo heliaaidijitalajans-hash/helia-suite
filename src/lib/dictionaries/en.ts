@@ -87,6 +87,14 @@ export const en: Dictionary = {
     ctaSubtitle:
       "Ship a product your customers feel—and your team can run without friction.",
     ctaWhatsApp: "WhatsApp",
+    pricingEstimatorTitle: "Estimate Your AI App Investment",
+    pricingEstimatorSubtitle:
+      "Choose what you want to build and get a tailored project range.",
+    pricingEstimatorPickLabel: "App type",
+    pricingEstimatorResultTitle: "Estimated Project Range",
+    pricingEstimatorDisclaimer:
+      "This is a tailored system built for your business. Final pricing depends on features, integrations, and scale.",
+    pricingEstimatorCta: "Start Your Project",
   },
   pricing: {
     title: "Custom Pricing for Your Business",

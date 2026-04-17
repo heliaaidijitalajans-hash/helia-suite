@@ -3,6 +3,7 @@ import { LeadForm } from "@/components/LeadForm";
 import { CTASection } from "@/sections/CTASection";
 import { Hero } from "@/sections/Hero";
 import { HowItWorks } from "@/sections/HowItWorks";
+import { PricingEstimatorSection } from "@/sections/PricingEstimatorSection";
 import { PricingPreview } from "@/sections/PricingPreview";
 import { ServicesBento } from "@/sections/ServicesBento";
 import { SocialProof } from "@/sections/SocialProof";
@@ -39,6 +40,7 @@ export default async function HomePage({ params }: Props) {
       <SocialProof dict={dict} />
       <ServicesBento dict={dict} />
       <HowItWorks dict={dict} />
+      <PricingEstimatorSection locale={locale} dict={dict} />
       <PricingPreview locale={locale} dict={dict} />
       <CTASection locale={locale} dict={dict} />
       <section
