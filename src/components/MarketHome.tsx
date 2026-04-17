@@ -1,0 +1,315 @@
+"use client";
+
+import { ProductCard, type RailBadge } from "@/components/ProductCard";
+import type { Product } from "@/data/products";
+import { useLastViewedProductId } from "@/hooks/use-last-viewed-product-id";
+import { useMarketBasePath, withMarketBasePath } from "@/lib/market-base-path";
+import { motion } from "framer-motion";
+import { useReducedMotionHydrationSafe } from "@/hooks/use-reduced-motion-hydration-safe";
+import { Sparkles } from "lucide-react";
+import Link from "next/link";
+import { useCatalog } from "@/providers/catalog-provider";
+import { useMemo } from "react";
+
+const sectionEase = [0.16, 1, 0.3, 1] as const;
+
+const sectionReveal = {
+  hidden: { opacity: 0, y: 16 },
+  show: {
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.55, ease: sectionEase },
+  },
+} as const;
+
+function ProductRailSection({
+  title,
+  subtitle,
+  items,
+  badge,
+  motionBase,
+  delay,
+  reduce,
+}: {
+  title: string;
+  subtitle: string;
+  items: Product[];
+  badge: RailBadge;
+  motionBase: number;
+  delay: number;
+  reduce: boolean | null | undefined;
+}) {
+  return (
+    <motion.section
+      variants={sectionReveal}
+      initial="hidden"
+      animate="show"
+      transition={{ delay: reduce ? 0 : delay }}
+      className="shrink-0 space-y-4 px-6 pb-10"
+    >
+      <div className="space-y-1">
+        <h2 className="line-clamp-2 text-[0.9375rem] font-semibold tracking-tight text-zinc-900">
+          {title}
+        </h2>
+        <p className="text-[12px] leading-relaxed text-zinc-500">{subtitle}</p>
+      </div>
+      <div className="-mx-2 flex snap-x snap-mandatory gap-4 overflow-x-auto px-2 pb-2 pt-1 scrollbar-hide">
+        {items.map((product, index) => (
+          <ProductCard
+            key={product.id}
+            product={product}
+            motionIndex={motionBase + index}
+            variant="rail"
+            railBadge={badge}
+          />
+        ))}
+      </div>
+    </motion.section>
+  );
+}
+
+function RecommendedForYouSection({
+  items,
+  motionBase,
+  delay,
+  reduce,
+}: {
+  items: Product[];
+  motionBase: number;
+  delay: number;
+  reduce: boolean | null | undefined;
+}) {
+  if (!items.length) return null;
+
+  return (
+    <motion.section
+      variants={sectionReveal}
+      initial="hidden"
+      animate="show"
+      transition={{ delay: reduce ? 0 : delay }}
+      className="shrink-0 px-5 pb-12 sm:px-6"
+    >
+      <div className="relative overflow-hidden rounded-[1.4rem] border border-zinc-200/90 bg-gradient-to-br from-white via-zinc-50/80 to-violet-50/50 p-[1px] shadow-[0_24px_60px_-32px_rgba(15,23,42,0.18),0_0_0_1px_rgba(255,255,255,0.8)_inset]">
+        <div
+          aria-hidden
+          className="pointer-events-none absolute -left-20 top-0 h-40 w-40 rounded-full bg-violet-400/[0.14] blur-3xl"
+        />
+        <div
+          aria-hidden
+          className="pointer-events-none absolute -right-16 bottom-0 h-36 w-36 rounded-full bg-fuchsia-400/[0.1] blur-3xl"
+        />
+        <div className="relative rounded-[1.32rem] bg-white/85 px-4 pb-6 pt-5 backdrop-blur-[2px] sm:px-6 sm:pb-7 sm:pt-6">
+          <div className="space-y-6">
+            <div className="flex flex-wrap items-center gap-2 sm:gap-2.5">
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-zinc-900 to-zinc-800 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-white shadow-sm ring-1 ring-white/15">
+                <Sparkles
+                  className="h-3.5 w-3.5 shrink-0 text-violet-200"
+                  strokeWidth={2}
+                  aria-hidden
+                />
+                Helia Sense
+              </span>
+              <span className="rounded-full border border-violet-200/90 bg-violet-50/95 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-violet-800 shadow-[0_6px_20px_-10px_rgba(124,58,237,0.35)]">
+                Personalized
+              </span>
+              <span className="rounded-full border border-zinc-200/95 bg-zinc-50/95 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.1em] text-zinc-600">
+                Curated picks
+              </span>
+            </div>
+
+            <div className="space-y-2.5">
+              <h2 className="text-balance text-[1.125rem] font-semibold leading-snug tracking-[-0.02em] text-zinc-950 sm:text-[1.25rem]">
+                Recommended for you
+              </h2>
+              <p className="max-w-[22rem] text-[13px] leading-[1.55] text-zinc-500 sm:text-sm sm:leading-relaxed">
+                Ranked from your taste profile and catalog signals (demo)
+              </p>
+            </div>
+
+            <div className="-mx-1 -mb-1 flex snap-x snap-mandatory gap-5 overflow-x-auto px-1 pb-2 pt-1 scrollbar-hide sm:gap-6">
+              {items.map((product, index) => (
+                <ProductCard
+                  key={product.id}
+                  product={product}
+                  motionIndex={motionBase + index}
+                  variant="rail"
+                  railBadge="recommended"
+                />
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    </motion.section>
+  );
+}
+
+export function MarketHome() {
+  const reduce = useReducedMotionHydrationSafe();
+  const { products, getSimilarProducts, getProductById } = useCatalog();
+  const lastViewedId = useLastViewedProductId();
+  const basePath = useMarketBasePath();
+
+  const trendingProducts = useMemo(
+    () => products.filter((p) => p.isTrending),
+    [products],
+  );
+  const bestSellerProducts = useMemo(
+    () => products.filter((p) => p.isBestSeller),
+    [products],
+  );
+  const recommendedForYou = useMemo(
+    () => products.filter((p) => p.isRecommended).slice(0, 8),
+    [products],
+  );
+  const lastViewedProduct = useMemo(
+    () => (lastViewedId ? getProductById(lastViewedId) : undefined),
+    [getProductById, lastViewedId],
+  );
+  const becauseProducts = useMemo(() => {
+    if (!lastViewedProduct) return [];
+    return getSimilarProducts(lastViewedProduct.id, 8);
+  }, [getSimilarProducts, lastViewedProduct]);
+
+  const railBeforeAllCount =
+    recommendedForYou.length +
+    trendingProducts.length +
+    bestSellerProducts.length +
+    becauseProducts.length;
+
+  return (
+    <div className="flex min-h-0 flex-1 flex-col">
+        <motion.header
+          initial={reduce ? false : { opacity: 0, y: -8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={
+            reduce ? { duration: 0 } : { type: "spring", stiffness: 280, damping: 32 }
+          }
+          className="shrink-0 px-6 pb-2 pt-[3.35rem]"
+        >
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="text-[11px] font-medium uppercase tracking-[0.22em] text-zinc-500">
+                AI-Powered App Systems
+              </p>
+              <h1 className="mt-2 text-[1.65rem] font-semibold leading-tight tracking-[-0.02em] text-zinc-950">
+                Helia Market
+              </h1>
+            </div>
+            <Link
+              href={withMarketBasePath(basePath, "/stores")}
+              className="mt-7 rounded-full bg-white/90 px-3 py-1.5 text-[11px] font-semibold text-zinc-800 shadow-[0_8px_24px_-14px_rgba(0,0,0,0.25)] ring-1 ring-zinc-900/10 transition hover:bg-white active:scale-[0.98]"
+            >
+              Stores
+            </Link>
+          </div>
+        </motion.header>
+
+        <motion.div
+          variants={sectionReveal}
+          initial="hidden"
+          animate="show"
+          className="shrink-0 px-6 pb-6 pt-4"
+        >
+          <motion.div
+            initial={reduce ? false : { opacity: 0, scale: 0.985 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={
+              reduce
+                ? { duration: 0 }
+                : { type: "spring", stiffness: 260, damping: 30, delay: 0.06 }
+            }
+            className="rounded-2xl bg-gradient-to-br from-zinc-900 via-zinc-800 to-zinc-900 p-px shadow-[0_24px_56px_-28px_rgba(0,0,0,0.45),0_0_0_1px_rgba(255,255,255,0.06)_inset]"
+          >
+            <div className="relative overflow-hidden rounded-[15px] px-5 py-6">
+              <div
+                aria-hidden
+                className="pointer-events-none absolute -right-16 -top-20 h-48 w-48 rounded-full bg-white/[0.07] blur-3xl"
+              />
+              <div
+                aria-hidden
+                className="pointer-events-none absolute -bottom-24 left-0 h-56 w-56 rounded-full bg-orange-400/[0.09] blur-3xl"
+              />
+              <p className="relative text-[11px] font-semibold uppercase tracking-[0.2em] text-zinc-400">
+                Helia Sense
+              </p>
+              <p className="relative mt-3 max-w-[17rem] text-lg font-semibold leading-snug tracking-tight text-white">
+                AI-Powered App Systems
+              </p>
+              <p className="relative mt-3 max-w-[18rem] text-[13px] leading-relaxed text-zinc-400">
+                Recommended rails, &quot;because you viewed&quot; hints, and Sense badges — static
+                catalog, no backend.
+              </p>
+            </div>
+          </motion.div>
+        </motion.div>
+
+        <RecommendedForYouSection
+          items={recommendedForYou}
+          motionBase={0}
+          delay={0.06}
+          reduce={reduce}
+        />
+
+        <ProductRailSection
+          title="Trending Now"
+          subtitle="What shoppers are viewing this week (demo)"
+          items={trendingProducts}
+          badge="trending"
+          motionBase={recommendedForYou.length}
+          delay={0.1}
+          reduce={reduce}
+        />
+
+        <ProductRailSection
+          title="Best Sellers"
+          subtitle="Top conversion items across Helia Market (simulated)"
+          items={bestSellerProducts}
+          badge="bestseller"
+          motionBase={recommendedForYou.length + trendingProducts.length}
+          delay={0.14}
+          reduce={reduce}
+        />
+
+        {lastViewedProduct && becauseProducts.length >= 2 ? (
+          <ProductRailSection
+            title={`Because you viewed ${lastViewedProduct.name}`}
+            subtitle="Helia Sense matched these from your last product page (demo)"
+            items={becauseProducts}
+            badge="similar"
+            motionBase={
+              recommendedForYou.length +
+              trendingProducts.length +
+              bestSellerProducts.length
+            }
+            delay={0.18}
+            reduce={reduce}
+          />
+        ) : null}
+
+        <motion.section
+          variants={sectionReveal}
+          initial="hidden"
+          animate="show"
+          transition={{ delay: reduce ? 0 : 0.2 }}
+          className="min-h-0 flex-1 space-y-4 px-6 pb-10"
+        >
+          <div className="space-y-1">
+            <h2 className="text-[0.9375rem] font-semibold tracking-tight text-zinc-900">
+              All products
+            </h2>
+            <p className="text-[12px] text-zinc-500">Browse the full demo catalog</p>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            {products.map((product, index) => (
+              <ProductCard
+                key={product.id}
+                product={product}
+                motionIndex={index + railBeforeAllCount}
+              />
+            ))}
+          </div>
+        </motion.section>
+      </div>
+  );
+}
