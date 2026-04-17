@@ -55,7 +55,7 @@ npm run dev
 ```
 
 - Liste: `http://localhost:3000/tr/demos` veya `/en/demos`
-- Örnek demo: `ornek` klasörü ve `customer-demos.json` içindeki ilk kayıt
+- Kayıt yokken galeri boş mesajı gösterir; `customer-demos.json` ve `public/customer-demos/<slug>/` ekledikten sonra kartlar görünür
 
 ---
 
