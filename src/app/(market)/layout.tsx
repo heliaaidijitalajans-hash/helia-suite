@@ -1,3 +1,4 @@
+import { AppProviders } from "@/components/providers";
 import { MarketShell } from "@/components/MarketShell";
 
 export default function MarketLayout({
@@ -5,5 +6,9 @@ export default function MarketLayout({
 }: {
   children: React.ReactNode;
 }) {
-  return <MarketShell>{children}</MarketShell>;
+  return (
+    <AppProviders>
+      <MarketShell>{children}</MarketShell>
+    </AppProviders>
+  );
 }

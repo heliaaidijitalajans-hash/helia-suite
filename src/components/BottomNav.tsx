@@ -22,7 +22,7 @@ export function BottomNav() {
   return (
     <nav className="shrink-0 border-t border-zinc-200/90 bg-white/90 px-1 pb-[calc(0.35rem+env(safe-area-inset-bottom,0px))] pt-1.5 backdrop-blur-xl supports-[backdrop-filter]:bg-white/75">
       <div className="mx-auto flex max-w-md items-stretch justify-between gap-0.5">
-        {items.map(({ href, label, Icon }) => {
+        {items.map(({ href, label, icon: Icon }) => {
           const active =
             href === homeHref
               ? scopedPathname === "/" ||
