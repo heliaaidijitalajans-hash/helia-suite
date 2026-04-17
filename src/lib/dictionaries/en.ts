@@ -155,6 +155,9 @@ export const en: Dictionary = {
     emptyTitle: "No demos yet",
     emptyBody:
       "Add rows to src/data/customer-demos.json and upload each project to public/customer-demos/<slug>/index.html — see public/customer-demos/README.md.",
+    interactiveBadge: "Live preview",
+    fullDemoHubHint: "Want the full-screen demo hub (no site chrome)?",
+    fullDemoHubLink: "Open /demo",
   },
   legal: {
     lastUpdated: "Last updated: 2026",

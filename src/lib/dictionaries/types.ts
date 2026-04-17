@@ -96,6 +96,9 @@ export type Dictionary = {
     iframeHelp: string;
     emptyTitle: string;
     emptyBody: string;
+    interactiveBadge: string;
+    fullDemoHubHint: string;
+    fullDemoHubLink: string;
   };
   legal: {
     lastUpdated: string;

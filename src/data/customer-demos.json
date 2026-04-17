@@ -1,1 +1,34 @@
-[]
+[
+  {
+    "slug": "helia-ai",
+    "title": "Helia AI",
+    "titleTr": "Helia AI",
+    "description": "Assistant-style chat, tools, shop, cart, and admin — mobile-first static preview.",
+    "descriptionTr": "Asistan sohbeti, araçlar, vitrin, sepet ve yönetim — mobil öncelikli statik önizleme.",
+    "embedUrl": "/demo/ai"
+  },
+  {
+    "slug": "helia-market",
+    "title": "Helia Market",
+    "titleTr": "Helia Market",
+    "description": "Catalog, AI rails, stores, cart, and admin console — commerce demo.",
+    "descriptionTr": "Katalog, AI şeritleri, mağazalar, sepet ve yönetim — ticaret demosu.",
+    "embedUrl": "/demo/market"
+  },
+  {
+    "slug": "helia-learn",
+    "title": "Helia Learn",
+    "titleTr": "Helia Learn",
+    "description": "Courses, categories, cart, and admin — education app preview.",
+    "descriptionTr": "Kurslar, kategoriler, sepet ve yönetim — eğitim uygulaması önizlemesi.",
+    "embedUrl": "/demo/learn"
+  },
+  {
+    "slug": "helia-health",
+    "title": "Helia Health",
+    "titleTr": "Helia Health",
+    "description": "Workouts, categories, shop, and coaching hub — fitness & wellness demo.",
+    "descriptionTr": "Antrenmanlar, kategoriler, mağaza ve koçluk merkezi — fitness ve wellness demosu.",
+    "embedUrl": "/demo/health"
+  }
+]

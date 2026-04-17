@@ -27,7 +27,7 @@ Aynı `slug` değerini projede şu dosyaya ekleyin:
 
 **`src/data/customer-demos.json`**
 
-Örnek:
+Örnek (statik dosya):
 
 ```json
 {
@@ -39,7 +39,9 @@ Aynı `slug` değerini projede şu dosyaya ekleyin:
 }
 ```
 
-- `slug` = `public/customer-demos/` altındaki klasör adı ile **aynı** olmalıdır.
+**Yerleşik Helia demoları** (statik klasör gerekmez): `embedUrl` alanına `/demo/ai`, `/demo/market`, `/demo/learn` veya `/demo/health` yazın. Varsayılan kayıtlar bu dörtlüyü içerir.
+
+- Statik demo için: `slug`, `public/customer-demos/` altındaki klasör adı ile **aynı** olmalıdır (`embedUrl` yoksa).
 - `title` / `description` → İngilizce sayfa (`/en/demos`)
 - `titleTr` / `descriptionTr` → Türkçe sayfa (`/tr/demos`)
 

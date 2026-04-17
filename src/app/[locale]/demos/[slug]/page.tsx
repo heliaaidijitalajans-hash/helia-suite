@@ -5,7 +5,7 @@ import { MotionSection } from "@/components/MotionSection";
 import { isLocale } from "@/config/i18n";
 import type { Locale } from "@/config/i18n";
 import {
-  customerDemoIndexUrl,
+  customerDemoPreviewSrc,
   demoLocalizedDescription,
   demoLocalizedTitle,
   getCustomerDemo,
@@ -45,7 +45,7 @@ export default async function DemoPreviewPage({ params }: Props) {
   const L = locale as Locale;
   const d = dict.demos;
   const p = `/${locale}`;
-  const src = customerDemoIndexUrl(entry.slug);
+  const src = customerDemoPreviewSrc(entry);
   const title = demoLocalizedTitle(entry, L);
 
   return (

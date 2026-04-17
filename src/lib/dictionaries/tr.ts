@@ -156,6 +156,9 @@ export const tr: Dictionary = {
     emptyTitle: "Henüz demo yok",
     emptyBody:
       "src/data/customer-demos.json dosyasına kayıt ekleyin ve her projeyi public/customer-demos/<slug>/index.html altına yükleyin — ayrıntı için public/customer-demos/README.md dosyasına bakın.",
+    interactiveBadge: "Canlı önizleme",
+    fullDemoHubHint: "Tam ekran demo merkezi (site üst/alt bilgi olmadan) ister misiniz?",
+    fullDemoHubLink: "/demo sayfasını aç",
   },
   legal: {
     lastUpdated: "Son güncelleme: 2026",
