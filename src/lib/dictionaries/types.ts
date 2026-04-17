@@ -10,6 +10,7 @@ export type Dictionary = {
     support: string;
     faq: string;
     demo: string;
+    demos: string;
     contact: string;
   };
   header: {
@@ -83,6 +84,18 @@ export type Dictionary = {
     title: string;
     subtitle: string;
     items: { q: string; a: string }[];
+  };
+  demos: {
+    pageTitle: string;
+    pageSubtitle: string;
+    viewDemo: string;
+    openInNewTab: string;
+    backToList: string;
+    notFoundTitle: string;
+    notFoundBody: string;
+    iframeHelp: string;
+    emptyTitle: string;
+    emptyBody: string;
   };
   legal: {
     lastUpdated: string;

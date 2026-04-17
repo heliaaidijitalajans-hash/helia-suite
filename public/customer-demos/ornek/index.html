@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="tr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Örnek müşteri demo — Helia Suite</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: #0a0a0b;
+        --card: #161618;
+        --accent: #d4af37;
+        --muted: rgba(255, 255, 255, 0.55);
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        font-family:
+          ui-sans-serif,
+          system-ui,
+          -apple-system,
+          Segoe UI,
+          Roboto,
+          sans-serif;
+        background: radial-gradient(
+            120% 80% at 50% -10%,
+            rgba(212, 175, 55, 0.12),
+            transparent 55%
+          ),
+          var(--bg);
+        color: #fff;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 2rem 1.25rem;
+      }
+      .card {
+        max-width: 26rem;
+        width: 100%;
+        background: linear-gradient(
+          180deg,
+          rgba(255, 255, 255, 0.05),
+          transparent
+        );
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 1.25rem;
+        padding: 2rem 1.75rem;
+        box-shadow: 0 24px 60px -28px rgba(0, 0, 0, 0.85);
+      }
+      .badge {
+        display: inline-block;
+        font-size: 0.65rem;
+        font-weight: 600;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+        color: var(--accent);
+        margin-bottom: 1rem;
+      }
+      h1 {
+        font-size: 1.35rem;
+        font-weight: 600;
+        letter-spacing: -0.02em;
+        margin: 0 0 0.75rem;
+        line-height: 1.25;
+      }
+      p {
+        margin: 0;
+        font-size: 0.9rem;
+        line-height: 1.65;
+        color: var(--muted);
+      }
+      .line {
+        margin-top: 1.5rem;
+        padding-top: 1.5rem;
+        border-top: 1px solid rgba(255, 255, 255, 0.08);
+        font-size: 0.8rem;
+        color: rgba(255, 255, 255, 0.38);
+      }
+    </style>
+  </head>
+  <body>
+    <article class="card">
+      <span class="badge">Helia Suite · örnek</span>
+      <h1>Buraya kendi demo HTML’inizi koyun</h1>
+      <p>
+        Bu sayfa yalnızca yer tutucudur. Kendi projenizi
+        <strong style="color: rgba(255, 255, 255, 0.85)">public/customer-demos/</strong>
+        altına yükleyip <strong style="color: rgba(255, 255, 255, 0.85)">customer-demos.json</strong>
+        dosyasına kayıt eklediğinizde, müşteriler sitenizden aynı şekilde önizleyebilir.
+      </p>
+      <p class="line">
+        Statik dosyalar: CSS, JS ve görselleri bu klasörün içinde tutabilirsiniz.
+      </p>
+    </article>
+  </body>
+</html>

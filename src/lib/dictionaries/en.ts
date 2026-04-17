@@ -13,6 +13,7 @@ export const en: Dictionary = {
     support: "Support",
     faq: "FAQ",
     demo: "Demo",
+    demos: "Demos",
     contact: "Contact Us",
   },
   header: {
@@ -138,6 +139,22 @@ export const en: Dictionary = {
         a: "Core delivery is project-based. Hosting, third-party tools, or ongoing optimization can be monthly—only if you choose them.",
       },
     ],
+  },
+  demos: {
+    pageTitle: "Project demos",
+    pageSubtitle:
+      "Browse static demos we host for you. Each card opens an embedded preview — your customers explore them without leaving Helia Suite.",
+    viewDemo: "Open preview",
+    openInNewTab: "Open in new tab",
+    backToList: "All demos",
+    notFoundTitle: "Demo not found",
+    notFoundBody:
+      "This project is not registered in customer-demos.json, or files are missing under public/customer-demos/.",
+    iframeHelp:
+      "The preview runs in a frame. If layout looks clipped, use “Open in new tab”.",
+    emptyTitle: "No demos yet",
+    emptyBody:
+      "Add rows to src/data/customer-demos.json and upload each project to public/customer-demos/<slug>/index.html — see public/customer-demos/README.md.",
   },
   legal: {
     lastUpdated: "Last updated: 2026",

@@ -1,0 +1,9 @@
+[
+  {
+    "slug": "ornek",
+    "title": "Sample demo",
+    "titleTr": "Örnek demo",
+    "description": "Shows how uploaded demos appear on the site. Replace this entry and folder with your real projects.",
+    "descriptionTr": "Yüklediğiniz demoların sitede nasıl göründüğünü gösterir. Kendi projenizle bu kaydı ve klasörü değiştirin."
+  }
+]

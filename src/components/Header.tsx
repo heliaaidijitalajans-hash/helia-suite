@@ -12,6 +12,7 @@ const links = [
   { key: "about" as const, path: "about" },
   { key: "support" as const, path: "support" },
   { key: "faq" as const, path: "faq" },
+  { key: "demos" as const, path: "demos" },
 ];
 
 export function Header({

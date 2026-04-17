@@ -13,6 +13,7 @@ export const tr: Dictionary = {
     support: "Destek",
     faq: "SSS",
     demo: "Örnek demo",
+    demos: "Demolar",
     contact: "İletişime Geç",
   },
   header: {
@@ -139,6 +140,22 @@ export const tr: Dictionary = {
         a: "Çekirdek teslim proje bazlıdır. Barındırma, üçüncü parti araçlar veya sürekli optimizasyon—yalnızca seçerseniz aylık olabilir.",
       },
     ],
+  },
+  demos: {
+    pageTitle: "Proje demoları",
+    pageSubtitle:
+      "Sizin için barındırdığımız statik demoları buradan inceleyin. Her kart, Helia Suite sitesinden ayrılmadan gömülü önizleme açar.",
+    viewDemo: "Önizlemeyi aç",
+    openInNewTab: "Yeni sekmede aç",
+    backToList: "Tüm demolar",
+    notFoundTitle: "Demo bulunamadı",
+    notFoundBody:
+      "Bu proje customer-demos.json içinde kayıtlı değil veya public/customer-demos/ altında dosyalar eksik.",
+    iframeHelp:
+      "Önizleme çerçeve içinde çalışır. Düzen kırpılmış görünürse “Yeni sekmede aç”ı kullanın.",
+    emptyTitle: "Henüz demo yok",
+    emptyBody:
+      "src/data/customer-demos.json dosyasına kayıt ekleyin ve her projeyi public/customer-demos/<slug>/index.html altına yükleyin — ayrıntı için public/customer-demos/README.md dosyasına bakın.",
   },
   legal: {
     lastUpdated: "Son güncelleme: 2026",

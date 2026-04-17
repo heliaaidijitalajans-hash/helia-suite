@@ -7,6 +7,7 @@ export const localizedPaths: string[] = [
   "/about",
   "/support",
   "/faq",
+  "/demos",
   "/legal/privacy",
   "/legal/terms",
   "/legal/cookies",

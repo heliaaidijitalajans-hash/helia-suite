@@ -27,6 +27,7 @@ export function Footer({
     { href: `${p}/about`, label: dict.nav.about },
     { href: `${p}/support`, label: dict.nav.support },
     { href: `${p}/faq`, label: dict.nav.faq },
+    { href: `${p}/demos`, label: dict.nav.demos },
     { href: "/dashboard", label: dict.nav.demo },
   ];
 
