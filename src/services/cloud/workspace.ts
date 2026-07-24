@@ -1,6 +1,7 @@
 /**
- * Ensure the signed-in user has at least one organization + project.
- * API Keys and Helia Chat depend on this workspace context.
+ * Hidden workspace bootstrap for API Keys / Helia Chat.
+ * End users never create or manage Projects — a default project is
+ * created or reused automatically when needed by the backend.
  */
 
 import {
@@ -13,10 +14,19 @@ import { createOrganization, listOrganizations } from "./organizations";
 import { createProject, listProjects } from "./projects";
 import type { CloudOrganization, CloudProject } from "./types";
 
+/** Internal-only project name — never shown as a user-facing Projects feature. */
+export const HIDDEN_DEFAULT_PROJECT_NAME = "Default";
+
 export type WorkspaceContext = {
   organization: CloudOrganization;
   project: CloudProject;
 };
+
+function pickDefaultProject(projects: CloudProject[]): CloudProject | undefined {
+  return (
+    projects.find((p) => p.name === HIDDEN_DEFAULT_PROJECT_NAME) || projects[0]
+  );
+}
 
 export async function ensureWorkspace(): Promise<WorkspaceContext> {
   let organizations = await listOrganizations();
@@ -31,21 +41,22 @@ export async function ensureWorkspace(): Promise<WorkspaceContext> {
   setActiveOrganizationId(organization.id);
 
   let projects = await listProjects(organization.id);
-  if (projects.length === 0) {
-    const created = await createProject({
+  let project = pickDefaultProject(projects);
+
+  if (!project) {
+    project = await createProject({
       organizationId: organization.id,
-      name: "Default",
+      name: HIDDEN_DEFAULT_PROJECT_NAME,
       environment: "development",
     });
-    projects = [created];
+    projects = [project];
   }
 
   const storedProject = getActiveProjectId();
-  const project =
-    (storedProject && projects.find((p) => p.id === storedProject)) ||
-    projects.find((p) => p.organizationId === organization.id) ||
-    projects[0]!;
-  setActiveProjectId(project.id);
+  if (storedProject && projects.some((p) => p.id === storedProject)) {
+    project = projects.find((p) => p.id === storedProject) || project;
+  }
 
+  setActiveProjectId(project.id);
   return { organization, project };
 }

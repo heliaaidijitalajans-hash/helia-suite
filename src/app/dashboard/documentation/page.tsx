@@ -19,8 +19,8 @@ const SECTIONS = [
     body: "Same-origin Suite routes expose Cloud and Brain surfaces for your workspace.",
     points: [
       "POST /api/auth/login · POST /api/auth/register",
-      "GET/POST /api/organizations · GET/POST /api/projects",
-      "GET/POST /api/apikeys · POST /api/brain/ask",
+      "GET/POST /api/organizations · GET/POST /api/apikeys",
+      "POST /api/brain/ask",
     ],
   },
   {
@@ -39,14 +39,14 @@ const SECTIONS = [
     body: "Webhook delivery is capability-gated. Issue keys with the Webhooks capability, then register your HTTPS endpoint from Integrations once your app is connected.",
     points: [
       "Require HTTPS endpoints",
-      "Verify signatures when enabled for your project",
+      "Verify signatures when enabled for your workspace",
       "Retry on non-2xx with exponential backoff on your side",
     ],
   },
   {
     id: "examples",
     title: "Examples",
-    body: "Start with Create Project → Create API Key → call whoami / track / brain from your server.",
+    body: "Start with Generate API Key → call whoami / track / brain from your server.",
     points: [
       "Internal Platform key with full capabilities",
       "Next.js Route Handler: server-side Bearer calls",
@@ -56,7 +56,7 @@ const SECTIONS = [
   {
     id: "rate-limits",
     title: "Rate Limits",
-    body: "Usage is metered per organization and project. Watch Usage for requests, Brain requests, monitoring, and errors. Plan limits apply when quotas are exceeded.",
+    body: "Usage is metered per organization. Watch Usage for requests, Brain requests, monitoring, and errors. Plan limits apply when quotas are exceeded.",
     points: [
       "Monitor monthly buckets under Usage",
       "Separate live and test keys by environment",

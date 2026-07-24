@@ -40,17 +40,19 @@ async function ensureUserWorkspace(userId: string): Promise<{
     organization.id,
     userId
   );
-  if (projects.length === 0) {
-    const created = await container.projects.create({
+  const HIDDEN_DEFAULT_PROJECT_NAME = "Default";
+  let project =
+    projects.find((p) => p.name === HIDDEN_DEFAULT_PROJECT_NAME) || projects[0];
+
+  if (!project) {
+    project = await container.projects.create({
       userId,
       organizationId: organization.id,
-      name: "Default",
+      name: HIDDEN_DEFAULT_PROJECT_NAME,
       environment: "development",
     });
-    projects = [created];
   }
 
-  const project = projects[0]!;
   return {
     organization: {
       id: organization.id,

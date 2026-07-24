@@ -16,8 +16,8 @@ export default function DashboardSettingsPage() {
         </div>
         <div className="space-y-3 px-6 py-5 text-sm text-white/60">
           <p>
-            Manage organizations, projects, and API keys from the sidebar. Helia
-            does not invent placeholder workspace data.
+            Manage organizations and API keys from the sidebar. Helia does not
+            invent placeholder workspace data.
           </p>
           <ul className="space-y-2">
             <li>
@@ -28,15 +28,6 @@ export default function DashboardSettingsPage() {
                 Organizations
               </Link>{" "}
               — create or select your tenant
-            </li>
-            <li>
-              <Link
-                href="/dashboard/projects"
-                className="text-accent hover:underline"
-              >
-                Projects
-              </Link>{" "}
-              — scope applications and environments
             </li>
             <li>
               <Link

@@ -62,7 +62,7 @@ export async function askBrainEmbedded(
     `This Suite deployment runs Helia Cloud + Brain routes in-process on your Vercel domain ` +
     `(no separate :4090/:4091 services). ` +
     `Operational telemetry from Inspector subsystems is limited in this embedded mode; ` +
-    `connect product context via Organizations, Projects, and API Keys in the dashboard.`;
+    `connect product context via Organizations and API Keys in the dashboard.`;
 
   const answer: BrainAnswer = {
     id: answerId,
@@ -85,7 +85,7 @@ export async function askBrainEmbedded(
     ],
     confidence: 0.55,
     recommendedAction:
-      "Use Organizations, Projects, and API Keys for tenant context; ask follow-ups in this thread.",
+      "Use Organizations and API Keys for tenant context; ask follow-ups in this thread.",
     businessImpact: "Chat remains available on a single Vercel deployment domain.",
     technicalImpact:
       "No localhost Cloud/Inspector ports; browser calls same-origin /api/brain/* only.",
@@ -93,7 +93,7 @@ export async function askBrainEmbedded(
     suggestedFollowUps: [
       "What organizations do I have?",
       "How do I create an API key?",
-      "Show my current project environment.",
+      "Show my current usage.",
     ],
     personality: "professional_calm_sre",
   };

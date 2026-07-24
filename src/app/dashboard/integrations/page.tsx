@@ -8,10 +8,10 @@ const INTEGRATIONS = [
     name: "Internal Platform",
     stack: "Full-access application",
     install: [
-      "Create a project for your internal application.",
       "Generate an API key with Application Type = Internal Platform (full capabilities).",
       "Store the secret in your server env as HELIA_API_KEY.",
       "Call Helia REST endpoints with Authorization: Bearer $HELIA_API_KEY.",
+      "Rotate or disable keys from the API Keys page when needed.",
     ],
   },
   {
@@ -49,7 +49,7 @@ const INTEGRATIONS = [
     stack: "Mobile",
     install: [
       "Do not embed Helia API keys in the app binary.",
-      "Call your backend; backend calls Helia with the project key.",
+      "Call your backend; backend calls Helia with the API key.",
       "Surface Helia Chat or monitoring via your own API responses.",
       "Use test keys during development.",
     ],
@@ -68,7 +68,7 @@ const INTEGRATIONS = [
     name: "Custom REST",
     stack: "Any HTTPS client",
     install: [
-      "Create Project → Create API Key with the capabilities you need.",
+      "Generate an API Key with the capabilities you need.",
       "Base URL: your Helia Suite deployment origin.",
       "Header: Authorization: Bearer <key>.",
       "Follow Documentation for auth, rate limits, and Brain ask.",
@@ -85,10 +85,10 @@ export default function IntegrationsPage() {
         </h2>
         <p className="mt-2 text-sm leading-relaxed text-white/50">
           Installation guides for connecting applications to Helia. Start with{" "}
-          <Link href="/dashboard/projects" className="text-accent hover:underline">
-            Create Project
+          <Link href="/dashboard/api-keys" className="text-accent hover:underline">
+            Generate API Key
           </Link>{" "}
-          and an API key before wiring code.
+          before wiring code.
         </p>
       </div>
 

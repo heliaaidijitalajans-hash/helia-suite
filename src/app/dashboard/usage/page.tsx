@@ -194,7 +194,7 @@ export default function UsagePage() {
 
       <CloudPanel
         title="Project buckets"
-        description="Per-project usage for the selected organization and month."
+        description="Usage buckets for your organization this month."
       >
         {loading ? (
           <p className="text-sm text-white/45">Loading usage…</p>
@@ -205,7 +205,7 @@ export default function UsagePage() {
             <table className="w-full min-w-[640px] text-left text-sm">
               <thead>
                 <tr className="border-b border-white/[0.06] text-xs font-medium uppercase tracking-[0.1em] text-white/35">
-                  <th className="px-2 py-3 font-medium">Project</th>
+                  <th className="px-2 py-3 font-medium">Scope</th>
                   <th className="px-2 py-3 font-medium">Requests</th>
                   <th className="px-2 py-3 font-medium">Brain</th>
                   <th className="px-2 py-3 font-medium">Monitoring</th>

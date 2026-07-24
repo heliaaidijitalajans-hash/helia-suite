@@ -23,26 +23,26 @@ const PILLARS = [
 const ONBOARDING = [
   {
     step: "1",
-    title: "Create API Key",
+    title: "Generate API Key",
     body: "Issue a capability-scoped key for your workspace.",
     href: "/dashboard/api-keys",
   },
   {
     step: "2",
-    title: "Integration Guide",
-    body: "Follow Documentation for auth, REST, SDK, and webhooks.",
+    title: "Read Documentation",
+    body: "Learn auth, REST, SDK, webhooks, and rate limits.",
     href: "/dashboard/documentation",
   },
   {
     step: "3",
-    title: "Connect Application",
-    body: "Install Helia into Next.js, Node, Flutter, and more.",
+    title: "Integrate",
+    body: "Connect Helia to Next.js, Node, Flutter, and more.",
     href: "/dashboard/integrations",
   },
   {
     step: "4",
-    title: "Start Monitoring",
-    body: "Track usage and talk to Helia Chat from your workspace.",
+    title: "Monitor Usage",
+    body: "Track requests and talk to Helia Chat from your workspace.",
     href: "/dashboard/usage",
   },
 ] as const;
@@ -83,7 +83,7 @@ export default function DashboardOverviewPage() {
             href="/dashboard/api-keys"
             className="min-h-11 px-6 text-sm font-semibold"
           >
-            Create API Key
+            Generate API Key
           </Button>
           <Button
             href="/dashboard/documentation"
@@ -107,7 +107,7 @@ export default function DashboardOverviewPage() {
           <div>
             <h3 className="text-sm font-semibold text-white">Get started</h3>
             <p className="mt-1 text-xs text-white/40">
-              Create API Key → Integrate → Monitor
+              Generate API Key → Read Documentation → Integrate → Monitor Usage
             </p>
           </div>
         </div>

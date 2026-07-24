@@ -62,7 +62,6 @@ function toggleValue<T extends string>(list: T[], value: T): T[] {
 
 export default function ApiKeysPage() {
   const [projectId, setProjectId] = useState("");
-  const [projectLabel, setProjectLabel] = useState("");
   const [keys, setKeys] = useState<CloudApiKey[]>([]);
   const [name, setName] = useState("");
   const [keyEnvironment, setKeyEnvironment] =
@@ -98,7 +97,6 @@ export default function ApiKeysPage() {
     try {
       const { project } = await ensureWorkspace();
       setProjectId(project.id);
-      setProjectLabel(`${project.name} (${project.environment})`);
       setActiveProjectId(project.id);
       const items = await listApiKeys(project.id);
       setKeys(items);
@@ -131,7 +129,6 @@ export default function ApiKeysPage() {
     try {
       const { project } = await ensureWorkspace();
       setProjectId(project.id);
-      setProjectLabel(`${project.name} (${project.environment})`);
       setActiveProjectId(project.id);
 
       const result = await createApiKey({
@@ -262,18 +259,10 @@ export default function ApiKeysPage() {
 
       <CloudPanel
         title="Create API key"
-        description="Create a capability-aware key for your workspace. Manage projects separately under Projects."
+        description="Create a capability-aware key for your workspace. A default project is provisioned automatically when needed."
       >
         <form onSubmit={(e) => void handleCreate(e)} className="grid gap-5">
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-            <CloudField label="Workspace project">
-              <input
-                className={cloudInputClass}
-                value={loading ? "Loading…" : projectLabel || "Default"}
-                readOnly
-                aria-readonly
-              />
-            </CloudField>
             <CloudField label="Key name">
               <input
                 className={cloudInputClass}
