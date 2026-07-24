@@ -11,44 +11,38 @@ const options: { code: Locale; label: string }[] = [
 ];
 
 /**
- * Builds a language-switch href without breaking dashboard routes.
- * /dashboard/api-keys → /tr/dashboard/api-keys
- * /en/dashboard/profile → /tr/dashboard/profile
- * /en/pricing → /tr/pricing
- * Never produces /tr/api-keys or /en/profile.
+ * Language switch without breaking dashboard routes.
+ * Dashboard stays on /dashboard/* (no /en/api-keys or /tr/profile).
+ * Public pages switch /en/pricing ↔ /tr/pricing.
  */
 export function languageSwitchHref(
   pathname: string,
   targetLocale: Locale
 ): string {
   const segments = pathname.split("/").filter(Boolean);
+
+  // Keep platform routes unlocalized — prevents 404s from missing locale pages.
+  if (segments[0] === "dashboard") {
+    return pathname.startsWith("/") ? pathname : `/${pathname}`;
+  }
+
   const currentLocale =
     segments[0] && isLocale(segments[0]) ? segments[0] : null;
   const rest = currentLocale ? segments.slice(1) : segments;
-
-  if (rest[0] === "dashboard") {
-    return `/${targetLocale}/${rest.join("/")}`;
-  }
-
-  if (currentLocale) {
-    const tail = rest.join("/");
-    return tail ? `/${targetLocale}/${tail}` : `/${targetLocale}`;
-  }
-
-  const tail = segments.join("/");
+  const tail = rest.join("/");
   return tail ? `/${targetLocale}/${tail}` : `/${targetLocale}`;
 }
 
 function activeLocaleFromPath(pathname: string): Locale {
   const segments = pathname.split("/").filter(Boolean);
   if (segments[0] && isLocale(segments[0])) return segments[0];
-  // Bare /dashboard/* is treated as default locale until redirected.
   return defaultLocale;
 }
 
 export function LanguageSwitcher({ className }: { className?: string }) {
   const pathname = usePathname();
   const active = activeLocaleFromPath(pathname);
+  const onDashboard = pathname === "/dashboard" || pathname.startsWith("/dashboard/");
 
   return (
     <div
@@ -67,9 +61,10 @@ export function LanguageSwitcher({ className }: { className?: string }) {
             href={href}
             className={cn(
               "rounded-full px-2.5 py-1 transition-colors",
-              active === code
+              (!onDashboard && active === code) || (onDashboard && code === defaultLocale)
                 ? "bg-white/10 text-foreground"
-                : "text-white/50 hover:text-white/80"
+                : "text-white/50 hover:text-white/80",
+              onDashboard && code !== defaultLocale ? "opacity-60" : ""
             )}
             hrefLang={code}
           >

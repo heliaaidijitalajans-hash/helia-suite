@@ -4,12 +4,7 @@ import Link from "next/link";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/cn";
 import { SITE_NAME } from "@/config/site";
-import {
-  dashboardNav,
-  dashboardPathname,
-  localeFromPathname,
-  localizedDashboardHref,
-} from "./dashboard-nav";
+import { dashboardNav } from "./dashboard-nav";
 
 export function DashboardSidebar({
   pathname,
@@ -18,9 +13,6 @@ export function DashboardSidebar({
   pathname: string;
   onNavigate?: () => void;
 }) {
-  const locale = localeFromPathname(pathname);
-  const path = dashboardPathname(pathname);
-
   return (
     <div className="flex h-full flex-col border-r border-white/[0.08] bg-[#0d0d0f]/95 backdrop-blur-xl">
       <div className="flex h-16 items-center gap-2 border-b border-white/[0.06] px-5">
@@ -38,11 +30,10 @@ export function DashboardSidebar({
       </div>
       <nav className="flex-1 space-y-1 p-3" aria-label="Dashboard">
         {dashboardNav.map((item, i) => {
-          const href = localizedDashboardHref(locale, item.href);
           const active =
             item.href === "/dashboard"
-              ? path === "/dashboard"
-              : path === item.href || path.startsWith(`${item.href}/`);
+              ? pathname === "/dashboard"
+              : pathname === item.href || pathname.startsWith(`${item.href}/`);
           const Icon = item.icon;
           return (
             <motion.div
@@ -52,7 +43,7 @@ export function DashboardSidebar({
               transition={{ delay: i * 0.04, duration: 0.25 }}
             >
               <Link
-                href={href}
+                href={item.href}
                 onClick={onNavigate}
                 className={cn(
                   "group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors duration-200",

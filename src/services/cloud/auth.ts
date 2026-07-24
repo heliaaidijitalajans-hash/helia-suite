@@ -135,7 +135,7 @@ export async function logoutHeliaCloud(): Promise<void> {
 
 export function safeAuthNextPath(
   next: string | null | undefined,
-  fallback = "/en/dashboard"
+  fallback = "/dashboard"
 ): string {
   if (!next || !next.startsWith("/") || next.startsWith("//")) {
     return fallback;
@@ -143,18 +143,43 @@ export function safeAuthNextPath(
   if (next.startsWith("/login") || next.startsWith("/register")) {
     return fallback;
   }
-  // Repair legacy next targets like /api-keys → /en/dashboard/api-keys
+
   const parts = next.split("/").filter(Boolean);
+
+  // /en/dashboard/api-keys → /dashboard/api-keys
+  if (parts[0] === "en" || parts[0] === "tr") {
+    if (parts[1] === "dashboard") {
+      return "/" + parts.slice(1).join("/");
+    }
+    if (
+      parts.length === 2 &&
+      [
+        "api-keys",
+        "profile",
+        "usage",
+        "documentation",
+        "integrations",
+        "settings",
+      ].includes(parts[1]!)
+    ) {
+      return `/dashboard/${parts[1]}`;
+    }
+  }
+
+  // /api-keys → /dashboard/api-keys
   if (
     parts.length === 1 &&
-    ["api-keys", "profile", "usage", "documentation", "integrations", "settings"].includes(
-      parts[0]!
-    )
+    [
+      "api-keys",
+      "profile",
+      "usage",
+      "documentation",
+      "integrations",
+      "settings",
+    ].includes(parts[0]!)
   ) {
-    return `/en/dashboard/${parts[0]}`;
+    return `/dashboard/${parts[0]}`;
   }
-  if (next === "/dashboard" || next.startsWith("/dashboard/")) {
-    return `/en${next}`;
-  }
+
   return next;
 }

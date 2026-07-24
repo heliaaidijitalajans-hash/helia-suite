@@ -4,7 +4,7 @@ import { defaultLocale, isLocale, locales } from "@/config/i18n";
 
 const AUTH_COOKIE = "helia_access_token";
 
-/** Paths under /dashboard that must never appear as /{locale}/{segment} alone. */
+/** Segments that belong under /dashboard, not /{locale}/{segment}. */
 const DASHBOARD_SEGMENTS = new Set([
   "api-keys",
   "profile",
@@ -57,49 +57,40 @@ export function middleware(request: NextRequest) {
       const target =
         next && next.startsWith("/") && !next.startsWith("//")
           ? next
-          : `/${defaultLocale}/dashboard`;
+          : "/dashboard";
       const url = request.nextUrl.clone();
-      url.pathname = target.startsWith("/login")
-        ? `/${defaultLocale}/dashboard`
-        : target;
+      url.pathname = target.startsWith("/login") ? "/dashboard" : target;
       url.search = "";
       return NextResponse.redirect(url);
     }
     return NextResponse.next();
   }
 
-  // Repair invalid links like /en/api-keys → /en/dashboard/api-keys
+  // /en/api-keys or /tr/profile → /dashboard/api-keys or /dashboard/profile
   if (locale && rest) {
     const segment = rest.replace(/^\//, "").split("/")[0] ?? "";
     if (DASHBOARD_SEGMENTS.has(segment) && !rest.startsWith("/dashboard")) {
       const url = request.nextUrl.clone();
-      url.pathname = `/${locale}/dashboard${rest}`;
+      url.pathname = `/dashboard${rest}`;
       return NextResponse.redirect(url);
     }
   }
 
-  const isBareDashboard =
-    pathname === "/dashboard" || pathname.startsWith("/dashboard/");
-  const isLocalizedDashboard =
-    Boolean(locale) &&
-    (rest === "/dashboard" || rest.startsWith("/dashboard/"));
+  // /en/dashboard/* → /dashboard/* (real App Router pages live here)
+  if (
+    locale &&
+    (rest === "/dashboard" || rest.startsWith("/dashboard/"))
+  ) {
+    const url = request.nextUrl.clone();
+    url.pathname = rest;
+    return NextResponse.redirect(url);
+  }
 
-  if (isBareDashboard || isLocalizedDashboard) {
+  if (pathname === "/dashboard" || pathname.startsWith("/dashboard/")) {
     if (!authed) {
       return loginRedirect(request, pathname);
     }
-
-    // Canonicalize bare /dashboard → /{locale}/dashboard
-    if (isBareDashboard) {
-      const url = request.nextUrl.clone();
-      url.pathname = `/${defaultLocale}${pathname}`;
-      return NextResponse.redirect(url);
-    }
-
-    // Rewrite /{locale}/dashboard/* → /dashboard/* (App Router files)
-    const url = request.nextUrl.clone();
-    url.pathname = rest || "/dashboard";
-    return NextResponse.rewrite(url);
+    return NextResponse.next();
   }
 
   if (pathname === "/demo" || pathname.startsWith("/demo/")) {
