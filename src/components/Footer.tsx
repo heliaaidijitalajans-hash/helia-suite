@@ -28,7 +28,7 @@ export function Footer({
     { href: `${p}/support`, label: dict.nav.support },
     { href: `${p}/faq`, label: dict.nav.faq },
     { href: `${p}/demos`, label: dict.nav.demos },
-    { href: "/dashboard", label: dict.nav.demo },
+    { href: "/login", label: dict.nav.login },
   ];
 
   const legal = [

@@ -4,6 +4,7 @@ import type { Dictionary } from "@/lib/dictionaries/types";
 import type { Locale } from "@/config/i18n";
 import { cn } from "@/lib/cn";
 import { Button } from "@/components/ui/Button";
+import { AuthNavButton } from "@/components/AuthNavButton";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 
 const links = [
@@ -53,15 +54,13 @@ export function Header({
               {dict.nav[key]}
             </Link>
           ))}
-          <Link
-            href="/dashboard"
-            className="shrink-0 text-white/45 transition-colors hover:text-foreground"
-          >
-            {dict.nav.demo}
-          </Link>
         </nav>
         <div className="flex shrink-0 items-center gap-2 sm:gap-3">
           <LanguageSwitcher />
+          <AuthNavButton
+            loginLabel={dict.nav.login}
+            dashboardLabel={dict.nav.dashboard}
+          />
           <Button
             href={WHATSAPP_URL}
             target="_blank"

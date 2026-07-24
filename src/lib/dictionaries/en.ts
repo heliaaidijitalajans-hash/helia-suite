@@ -15,6 +15,8 @@ export const en: Dictionary = {
     demo: "Demo",
     demos: "Demos",
     contact: "Contact Us",
+    login: "Login",
+    dashboard: "Dashboard",
   },
   header: {
     whatsappCta: "WhatsApp",
