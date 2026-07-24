@@ -1,3 +1,4 @@
+import { toApplicationTypeEnum } from "@/lib/api-keys";
 import { cloudRequest } from "./http";
 import type { ApiKeyEnvironment, CloudApiKey } from "./types";
 
@@ -20,9 +21,25 @@ export async function createApiKey(input: {
   capabilities?: string[];
   permissions?: string[];
 }): Promise<{ apiKey: CloudApiKey; secret: string; warning?: string }> {
+  // Always send backend enums — never UI labels.
+  const applicationType =
+    input.applicationType !== undefined
+      ? toApplicationTypeEnum(input.applicationType)
+      : undefined;
+
   return cloudRequest("/api/apikeys", {
     method: "POST",
-    body: JSON.stringify(input),
+    body: JSON.stringify({
+      projectId: input.projectId,
+      name: input.name,
+      ...(input.keyEnvironment
+        ? { keyEnvironment: input.keyEnvironment }
+        : {}),
+      ...(input.expiresAt ? { expiresAt: input.expiresAt } : {}),
+      ...(applicationType ? { applicationType } : {}),
+      ...(input.capabilities ? { capabilities: input.capabilities } : {}),
+      ...(input.permissions ? { permissions: input.permissions } : {}),
+    }),
   });
 }
 

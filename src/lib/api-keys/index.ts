@@ -5,6 +5,7 @@ export {
   API_PERMISSION_LABELS,
   APPLICATION_TYPES,
   APPLICATION_TYPE_LABELS,
+  APPLICATION_TYPE_OPTIONS,
   buildAccessPolicy,
   hasCapability,
   hasPermission,
@@ -14,8 +15,16 @@ export {
   isInternalPlatform,
   resolveCapabilities,
   resolvePermissions,
+  toApplicationTypeEnum,
   type ApiCapability,
   type ApiKeyAccessPolicy,
   type ApiPermission,
   type ApplicationType,
 } from "./catalog";
+
+export {
+  ApplicationTypeSchema,
+  CreateApiKeyBodySchema,
+  parseCreateApiKeyBody,
+  type CreateApiKeyBody,
+} from "./schema";

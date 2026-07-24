@@ -15,8 +15,10 @@ import {
   API_PERMISSIONS,
   API_PERMISSION_LABELS,
   APPLICATION_TYPE_LABELS,
-  APPLICATION_TYPES,
+  APPLICATION_TYPE_OPTIONS,
+  isApplicationType,
   isInternalPlatform,
+  toApplicationTypeEnum,
   type ApiCapability,
   type ApiPermission,
   type ApplicationType,
@@ -157,7 +159,8 @@ export default function ApiKeysPage() {
         projectId,
         name: name.trim(),
         keyEnvironment,
-        applicationType,
+        // Enum only — never APPLICATION_TYPE_LABELS display text.
+        applicationType: toApplicationTypeEnum(applicationType),
         capabilities: effectiveCapabilities,
         permissions: effectivePermissions,
         ...(expiresAt ? { expiresAt: new Date(expiresAt).toISOString() } : {}),
@@ -328,13 +331,14 @@ export default function ApiKeysPage() {
               <select
                 className={cloudInputClass}
                 value={applicationType}
-                onChange={(e) =>
-                  setApplicationType(e.target.value as ApplicationType)
-                }
+                onChange={(e) => {
+                  const next = e.target.value;
+                  if (isApplicationType(next)) setApplicationType(next);
+                }}
               >
-                {APPLICATION_TYPES.map((type) => (
-                  <option key={type} value={type}>
-                    {APPLICATION_TYPE_LABELS[type]}
+                {APPLICATION_TYPE_OPTIONS.map(({ value, label }) => (
+                  <option key={value} value={value}>
+                    {label}
                   </option>
                 ))}
               </select>

@@ -80,12 +80,39 @@ export const APPLICATION_TYPES = [
 
 export type ApplicationType = (typeof APPLICATION_TYPES)[number];
 
+/** UI-only display labels. Never send these to the API. */
 export const APPLICATION_TYPE_LABELS: Record<ApplicationType, string> = {
   web: "Web",
   mobile: "Mobile",
   backend: "Backend",
   saas: "SaaS",
   internal_platform: "Internal Platform",
+};
+
+/** Select options: `value` is the backend enum, `label` is UI-only. */
+export const APPLICATION_TYPE_OPTIONS: ReadonlyArray<{
+  value: ApplicationType;
+  label: string;
+}> = APPLICATION_TYPES.map((value) => ({
+  value,
+  label: APPLICATION_TYPE_LABELS[value],
+}));
+
+/**
+ * Display-label → enum aliases (legacy / mistaken payloads).
+ * Canonical API values remain APPLICATION_TYPES only.
+ */
+const APPLICATION_TYPE_LABEL_ALIASES: Record<string, ApplicationType> = {
+  Web: "web",
+  Mobile: "mobile",
+  Backend: "backend",
+  SaaS: "saas",
+  saas: "saas",
+  "Internal Platform": "internal_platform",
+  "internal platform": "internal_platform",
+  InternalPlatform: "internal_platform",
+  internalPlatform: "internal_platform",
+  "internal-platform": "internal_platform",
 };
 
 export function isApiCapability(value: string): value is ApiCapability {
@@ -98,6 +125,29 @@ export function isApiPermission(value: string): value is ApiPermission {
 
 export function isApplicationType(value: string): value is ApplicationType {
   return (APPLICATION_TYPES as readonly string[]).includes(value);
+}
+
+/**
+ * Normalize any form/API input to a backend applicationType enum.
+ * Accepts enum values; maps known UI labels; rejects everything else.
+ */
+export function toApplicationTypeEnum(value: string): ApplicationType {
+  const trimmed = value.trim();
+  if (isApplicationType(trimmed)) return trimmed;
+
+  const aliased =
+    APPLICATION_TYPE_LABEL_ALIASES[trimmed] ??
+    APPLICATION_TYPE_LABEL_ALIASES[trimmed.toLowerCase()];
+  if (aliased) return aliased;
+
+  const byLabel = (
+    Object.entries(APPLICATION_TYPE_LABELS) as Array<[ApplicationType, string]>
+  ).find(([, label]) => label.toLowerCase() === trimmed.toLowerCase());
+  if (byLabel) return byLabel[0];
+
+  throw new Error(
+    `Invalid applicationType "${value}". Expected one of: ${APPLICATION_TYPES.join(", ")}`
+  );
 }
 
 export function isInternalPlatform(type: ApplicationType): boolean {
@@ -170,9 +220,10 @@ export function buildAccessPolicy(input: {
   capabilities?: readonly string[];
   permissions?: readonly string[];
 }): ApiKeyAccessPolicy {
-  const applicationType = isApplicationType(input.applicationType ?? "")
-    ? input.applicationType!
-    : "backend";
+  const applicationType =
+    input.applicationType && input.applicationType.trim()
+      ? toApplicationTypeEnum(input.applicationType)
+      : "backend";
   return {
     applicationType,
     capabilities: resolveCapabilities(

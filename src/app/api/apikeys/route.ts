@@ -6,6 +6,7 @@ import {
   requireCloudUser,
 } from "@/server/helia/http";
 import { ValidationError } from "@/server/helia/utils/errors";
+import { parseCreateApiKeyBody } from "@/lib/api-keys";
 
 export const runtime = "nodejs";
 
@@ -25,37 +26,28 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const { container, user } = await requireCloudUser(request);
-    const body = await readJsonBody<{
-      projectId?: string;
-      name?: string;
-      keyEnvironment?: string;
-      expiresAt?: string;
-      applicationType?: string;
-      capabilities?: string[];
-      permissions?: string[];
-    }>(request);
-    const projectId = typeof body.projectId === "string" ? body.projectId : "";
-    const name = typeof body.name === "string" ? body.name : "";
-    if (!projectId) throw new ValidationError("projectId is required");
+    const raw = await readJsonBody(request);
+
+    let body;
+    try {
+      body = parseCreateApiKeyBody(raw);
+    } catch (error) {
+      throw new ValidationError(
+        error instanceof Error ? error.message : "Invalid API key payload"
+      );
+    }
+
     const created = await container.apiKeys.create({
       userId: user.id,
-      projectId,
-      name,
-      ...(typeof body.keyEnvironment === "string"
-        ? { keyEnvironment: body.keyEnvironment as "live" | "test" }
-        : {}),
-      ...(typeof body.expiresAt === "string"
-        ? { expiresAt: body.expiresAt }
-        : {}),
-      ...(typeof body.applicationType === "string"
+      projectId: body.projectId,
+      name: body.name,
+      ...(body.keyEnvironment ? { keyEnvironment: body.keyEnvironment } : {}),
+      ...(body.expiresAt ? { expiresAt: body.expiresAt } : {}),
+      ...(body.applicationType
         ? { applicationType: body.applicationType }
         : {}),
-      ...(Array.isArray(body.capabilities)
-        ? { capabilities: body.capabilities.filter((c) => typeof c === "string") }
-        : {}),
-      ...(Array.isArray(body.permissions)
-        ? { permissions: body.permissions.filter((p) => typeof p === "string") }
-        : {}),
+      ...(body.capabilities ? { capabilities: [...body.capabilities] } : {}),
+      ...(body.permissions ? { permissions: [...body.permissions] } : {}),
     });
     return jsonOk(
       {
