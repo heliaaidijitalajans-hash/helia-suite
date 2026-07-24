@@ -5,6 +5,7 @@ import {
   LayoutDashboard,
   Plug,
   Settings,
+  UserRound,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
@@ -21,6 +22,7 @@ export const dashboardNav: DashboardNavItem[] = [
   { href: "/dashboard/usage", label: "Usage", icon: ChartNoAxesCombined },
   { href: "/dashboard/documentation", label: "Documentation", icon: BookOpen },
   { href: "/dashboard/integrations", label: "Integrations", icon: Plug },
+  { href: "/dashboard/profile", label: "Kişisel Bilgiler", icon: UserRound },
   { href: "/dashboard/settings", label: "Settings", icon: Settings },
 ];
 

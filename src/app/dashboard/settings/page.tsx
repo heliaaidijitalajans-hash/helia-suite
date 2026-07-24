@@ -12,23 +12,21 @@ export default function DashboardSettingsPage() {
         className="overflow-hidden rounded-xl border border-white/[0.08] bg-[#161618]/90"
       >
         <div className="border-b border-white/[0.06] px-6 py-4">
-          <h2 className="text-sm font-semibold text-white">Account</h2>
+          <h2 className="text-sm font-semibold text-white">Platform preferences</h2>
         </div>
         <div className="space-y-3 px-6 py-5 text-sm text-white/60">
           <p>
-            Manage organizations and API keys from the sidebar. Helia does not
-            invent placeholder workspace data.
+            Settings covers workspace and platform preferences. Personal account
+            details live under{" "}
+            <Link
+              href="/dashboard/profile"
+              className="text-accent hover:underline"
+            >
+              Kişisel Bilgiler
+            </Link>
+            .
           </p>
           <ul className="space-y-2">
-            <li>
-              <Link
-                href="/dashboard/organizations"
-                className="text-accent hover:underline"
-              >
-                Organizations
-              </Link>{" "}
-              — create or select your tenant
-            </li>
             <li>
               <Link
                 href="/dashboard/api-keys"
@@ -36,7 +34,16 @@ export default function DashboardSettingsPage() {
               >
                 API Keys
               </Link>{" "}
-              — issue capability-aware credentials
+              — issue and rotate credentials
+            </li>
+            <li>
+              <Link
+                href="/dashboard/usage"
+                className="text-accent hover:underline"
+              >
+                Usage
+              </Link>{" "}
+              — monitor requests and quotas
             </li>
           </ul>
         </div>
@@ -49,7 +56,7 @@ export default function DashboardSettingsPage() {
         className="overflow-hidden rounded-xl border border-white/[0.08] bg-[#161618]/90"
       >
         <div className="border-b border-white/[0.06] px-6 py-4">
-          <h2 className="text-sm font-semibold text-white">Preferences</h2>
+          <h2 className="text-sm font-semibold text-white">Notifications & billing</h2>
         </div>
         <p className="px-6 py-5 text-sm text-white/50">
           Notification and billing preference controls will appear here when
