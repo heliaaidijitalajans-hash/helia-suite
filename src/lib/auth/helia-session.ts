@@ -10,6 +10,7 @@ import {
   type HeliaCloudProject,
   type HeliaCloudUser,
 } from "@/lib/api/helia-cloud";
+import { ensureDefaultWorkspace } from "@/server/helia/cloud/services/workspaceBootstrap";
 import { getCloudContainer } from "@/server/helia/runtime";
 
 export type HeliaAuthContext = {
@@ -20,53 +21,6 @@ export type HeliaAuthContext = {
   apiKey: string;
   accessToken: string;
 };
-
-async function ensureUserWorkspace(userId: string): Promise<{
-  organization: HeliaCloudOrganization;
-  project: HeliaCloudProject;
-}> {
-  const container = await getCloudContainer();
-  let organizations = await container.organizations.listForUser(userId);
-  if (organizations.length === 0) {
-    const created = await container.organizations.create({
-      userId,
-      name: "My Workspace",
-    });
-    organizations = [created.organization];
-  }
-
-  const organization = organizations[0]!;
-  let projects = await container.projects.listForOrganization(
-    organization.id,
-    userId
-  );
-  const HIDDEN_DEFAULT_PROJECT_NAME = "Default";
-  let project =
-    projects.find((p) => p.name === HIDDEN_DEFAULT_PROJECT_NAME) || projects[0];
-
-  if (!project) {
-    project = await container.projects.create({
-      userId,
-      organizationId: organization.id,
-      name: HIDDEN_DEFAULT_PROJECT_NAME,
-      environment: "development",
-    });
-  }
-
-  return {
-    organization: {
-      id: organization.id,
-      name: organization.name,
-      planId: organization.planId,
-    },
-    project: {
-      id: project.id,
-      name: project.name,
-      organizationId: project.organizationId,
-      environment: project.environment,
-    },
-  };
-}
 
 export async function resolveHeliaAuthContext(
   requestHeaders?: Headers
@@ -132,7 +86,8 @@ export async function resolveHeliaAuthContext(
     me.projects[0];
 
   if (!organization || !project) {
-    const ensured = await ensureUserWorkspace(me.user.id);
+    const container = await getCloudContainer();
+    const ensured = await ensureDefaultWorkspace(container, me.user.id);
     organization = ensured.organization;
     project = ensured.project;
   }

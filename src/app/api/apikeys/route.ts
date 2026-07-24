@@ -7,16 +7,26 @@ import {
 } from "@/server/helia/http";
 import { ValidationError } from "@/server/helia/utils/errors";
 import { parseCreateApiKeyBody } from "@/lib/api-keys";
+import { ensureDefaultWorkspace } from "@/server/helia/cloud/services/workspaceBootstrap";
 
 export const runtime = "nodejs";
 
 export async function GET(request: Request) {
   try {
     const { container, user } = await requireCloudUser(request);
-    const projectId = new URL(request.url).searchParams.get("projectId");
-    const items = projectId
-      ? await container.apiKeys.listForProject(projectId, user.id)
-      : await container.apiKeys.listForUser(user.id);
+    const projectIdParam = new URL(request.url).searchParams.get("projectId");
+
+    if (projectIdParam) {
+      const items = await container.apiKeys.listForProject(
+        projectIdParam,
+        user.id
+      );
+      return jsonOk({ items: items.map(omitSecretHash) });
+    }
+
+    // Ensure workspace exists so the dashboard never depends on a manual project.
+    await ensureDefaultWorkspace(container, user.id);
+    const items = await container.apiKeys.listForUser(user.id);
     return jsonOk({ items: items.map(omitSecretHash) });
   } catch (error) {
     return jsonError(error);
@@ -37,9 +47,31 @@ export async function POST(request: Request) {
       );
     }
 
+    let projectId = body.projectId;
+    if (projectId) {
+      const existing = await container.db.projects.findById(projectId);
+      if (!existing) {
+        projectId = undefined;
+      } else {
+        try {
+          await container.organizations.requireMembership(
+            existing.organizationId,
+            user.id
+          );
+        } catch {
+          projectId = undefined;
+        }
+      }
+    }
+
+    if (!projectId) {
+      const workspace = await ensureDefaultWorkspace(container, user.id);
+      projectId = workspace.project.id;
+    }
+
     const created = await container.apiKeys.create({
       userId: user.id,
-      projectId: body.projectId,
+      projectId,
       name: body.name,
       ...(body.keyEnvironment ? { keyEnvironment: body.keyEnvironment } : {}),
       ...(body.expiresAt ? { expiresAt: body.expiresAt } : {}),
@@ -49,6 +81,7 @@ export async function POST(request: Request) {
       ...(body.capabilities ? { capabilities: [...body.capabilities] } : {}),
       ...(body.permissions ? { permissions: [...body.permissions] } : {}),
     });
+
     return jsonOk(
       {
         apiKey: omitSecretHash(created.record),

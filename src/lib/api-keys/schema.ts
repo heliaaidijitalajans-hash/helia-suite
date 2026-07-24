@@ -1,5 +1,6 @@
 /**
  * API Key create body validation — applicationType must be a backend enum.
+ * projectId is optional; the route provisions a default workspace when omitted.
  */
 
 import { z } from "zod";
@@ -9,10 +10,6 @@ import {
   type ApplicationType,
 } from "./catalog";
 
-/**
- * Accept enum values or known UI labels, always output a backend enum.
- * Labels are normalized here so the stored/forwarded value is never display text.
- */
 export const ApplicationTypeSchema = z.string().transform((value, ctx) => {
   try {
     return toApplicationTypeEnum(value) as ApplicationType;
@@ -29,7 +26,7 @@ export const ApplicationTypeSchema = z.string().transform((value, ctx) => {
 });
 
 export const CreateApiKeyBodySchema = z.object({
-  projectId: z.string().min(1, "projectId is required"),
+  projectId: z.string().min(1).optional(),
   name: z.string().min(1, "API key name is required"),
   keyEnvironment: z.enum(["live", "test"]).optional(),
   expiresAt: z.string().optional(),

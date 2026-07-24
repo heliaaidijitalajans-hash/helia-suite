@@ -95,11 +95,17 @@ export default function ApiKeysPage() {
     setLoading(true);
     setError(null);
     try {
-      const { project } = await ensureWorkspace();
-      setProjectId(project.id);
-      setActiveProjectId(project.id);
-      const items = await listApiKeys(project.id);
+      // Backend ensures default org/project; list all keys for this user.
+      const items = await listApiKeys();
       setKeys(items);
+      if (items[0]?.projectId) {
+        setProjectId(items[0].projectId);
+        setActiveProjectId(items[0].projectId);
+      } else {
+        const { project } = await ensureWorkspace();
+        setProjectId(project.id);
+        setActiveProjectId(project.id);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load API keys");
     } finally {
@@ -127,12 +133,8 @@ export default function ApiKeysPage() {
     setInfo(null);
     setCopied(false);
     try {
-      const { project } = await ensureWorkspace();
-      setProjectId(project.id);
-      setActiveProjectId(project.id);
-
+      // projectId optional — server creates/reuses the hidden default workspace.
       const result = await createApiKey({
-        projectId: project.id,
         name: name.trim(),
         keyEnvironment,
         applicationType: toApplicationTypeEnum(applicationType),
@@ -143,6 +145,10 @@ export default function ApiKeysPage() {
       setName("");
       setExpiresAt("");
       setRevealedSecret(result.secret);
+      if (result.apiKey.projectId) {
+        setProjectId(result.apiKey.projectId);
+        setActiveProjectId(result.apiKey.projectId);
+      }
       setInfo(
         result.warning ||
           (internal
@@ -403,7 +409,7 @@ export default function ApiKeysPage() {
 
           <button
             type="submit"
-            disabled={busy || !projectId}
+            disabled={busy || loading}
             className={cn(cloudBtnPrimaryClass, "w-fit")}
           >
             Create API key
