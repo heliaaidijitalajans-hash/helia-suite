@@ -2,19 +2,19 @@
  * API Key lifecycle — create, rotate, disable, delete, usage metadata.
  */
 
-import { createId } from '../../utils/id.js';
-import { AppError, NotFoundError, ValidationError } from '../../utils/errors.js';
-import type { CloudConfig } from '../config.js';
+import { createId } from '../../utils/id';
+import { AppError, NotFoundError, ValidationError } from '../../utils/errors';
+import type { CloudConfig } from '../config';
 import {
   generateApiKeyMaterial,
   hashApiKey,
   parseApiKeyEnvironment,
   verifyApiKeyHash,
-} from '../crypto/apiKey.js';
-import { getPlan } from '../plans/catalog.js';
-import type { CloudDatabase } from '../persistence/cloudDatabase.js';
-import type { ApiKeyEnvironment, ApiKeyRecord } from '../types.js';
-import type { OrganizationService } from './organizationService.js';
+} from '../crypto/apiKey';
+import { getPlan } from '../plans/catalog';
+import type { CloudDatabase } from '../persistence/cloudDatabase';
+import type { ApiKeyEnvironment, ApiKeyRecord } from '../types';
+import type { OrganizationService } from './organizationService';
 
 export interface ApiKeyCreated {
   record: ApiKeyRecord;

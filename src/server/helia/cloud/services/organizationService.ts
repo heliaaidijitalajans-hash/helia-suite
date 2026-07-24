@@ -2,18 +2,18 @@
  * Organizations — multi-org ownership with memberships and default Free subscription.
  */
 
-import { createId } from '../../utils/id.js';
-import { AppError, NotFoundError, UnauthorizedError, ValidationError } from '../../utils/errors.js';
-import { getPlan } from '../plans/catalog.js';
-import type { CloudDatabase } from '../persistence/cloudDatabase.js';
+import { createId } from '../../utils/id';
+import { AppError, NotFoundError, UnauthorizedError, ValidationError } from '../../utils/errors';
+import { getPlan } from '../plans/catalog';
+import type { CloudDatabase } from '../persistence/cloudDatabase';
 import type {
   Organization,
   OrganizationMembership,
   OrgRole,
   PlanId,
   SubscriptionRecord,
-} from '../types.js';
-import { addDaysIso, slugify } from '../utils.js';
+} from '../types';
+import { addDaysIso, slugify } from '../utils';
 
 export class OrganizationService {
   constructor(private readonly db: CloudDatabase) {}

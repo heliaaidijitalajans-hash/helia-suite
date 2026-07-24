@@ -2,25 +2,25 @@
  * Authentication service — register, login, verify, reset, JWT, sessions.
  */
 
-import { createId } from '../../utils/id.js';
+import { createId } from '../../utils/id';
 import {
   AppError,
   NotFoundError,
   UnauthorizedError,
   ValidationError,
-} from '../../utils/errors.js';
-import type { CloudConfig } from '../config.js';
-import { signJwt, verifyJwt } from '../crypto/jwt.js';
-import { hashPassword, verifyPassword } from '../crypto/password.js';
-import type { CloudDatabase } from '../persistence/cloudDatabase.js';
+} from '../../utils/errors';
+import type { CloudConfig } from '../config';
+import { signJwt, verifyJwt } from '../crypto/jwt';
+import { hashPassword, verifyPassword } from '../crypto/password';
+import type { CloudDatabase } from '../persistence/cloudDatabase';
 import type {
   AuthTokens,
   CloudSession,
   CloudUser,
   JwtAccessPayload,
   PublicUser,
-} from '../types.js';
-import { addDaysIso, hashToken, randomToken, toPublicUser } from '../utils.js';
+} from '../types';
+import { addDaysIso, hashToken, randomToken, toPublicUser } from '../utils';
 
 export class AuthService {
   constructor(

@@ -12,8 +12,8 @@ import type {
   Project,
   SubscriptionRecord,
   UsageBucket,
-} from '../types.js';
-import { CloudDocumentStore } from './documentStore.js';
+} from '../types';
+import { CloudDocumentStore } from './documentStore';
 
 export class CloudDatabase {
   readonly users: CloudDocumentStore<CloudUser>;

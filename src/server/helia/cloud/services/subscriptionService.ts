@@ -2,13 +2,13 @@
  * Subscription service — plan assignment architecture (no payment provider).
  */
 
-import { createId } from '../../utils/id.js';
-import { UnauthorizedError, ValidationError } from '../../utils/errors.js';
-import { getPlan, listPlans } from '../plans/catalog.js';
-import type { CloudDatabase } from '../persistence/cloudDatabase.js';
-import type { PlanId, SubscriptionRecord } from '../types.js';
-import { addDaysIso } from '../utils.js';
-import type { OrganizationService } from './organizationService.js';
+import { createId } from '../../utils/id';
+import { UnauthorizedError, ValidationError } from '../../utils/errors';
+import { getPlan, listPlans } from '../plans/catalog';
+import type { CloudDatabase } from '../persistence/cloudDatabase';
+import type { PlanId, SubscriptionRecord } from '../types';
+import { addDaysIso } from '../utils';
+import type { OrganizationService } from './organizationService';
 
 export class SubscriptionService {
   constructor(

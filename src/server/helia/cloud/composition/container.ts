@@ -2,15 +2,15 @@
  * Helia Cloud composition root — wires services for DI.
  */
 
-import type { CloudConfig } from '../config.js';
-import { CloudDatabase } from '../persistence/cloudDatabase.js';
-import { ApiKeyService } from '../services/apiKeyService.js';
-import { AuthService } from '../services/authService.js';
-import { GatewayService } from '../services/gatewayService.js';
-import { OrganizationService } from '../services/organizationService.js';
-import { ProjectService } from '../services/projectService.js';
-import { SubscriptionService } from '../services/subscriptionService.js';
-import { UsageService } from '../services/usageService.js';
+import type { CloudConfig } from '../config';
+import { CloudDatabase } from '../persistence/cloudDatabase';
+import { ApiKeyService } from '../services/apiKeyService';
+import { AuthService } from '../services/authService';
+import { GatewayService } from '../services/gatewayService';
+import { OrganizationService } from '../services/organizationService';
+import { ProjectService } from '../services/projectService';
+import { SubscriptionService } from '../services/subscriptionService';
+import { UsageService } from '../services/usageService';
 
 export interface CloudContainer {
   config: CloudConfig;

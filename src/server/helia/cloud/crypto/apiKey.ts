@@ -4,7 +4,7 @@
  */
 
 import { createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
-import type { ApiKeyEnvironment } from '../types.js';
+import type { ApiKeyEnvironment } from '../types';
 
 const ALPHABET = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
 

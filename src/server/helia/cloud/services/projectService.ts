@@ -2,13 +2,13 @@
  * Projects — unlimited per org subject to plan limits.
  */
 
-import { createId } from '../../utils/id.js';
-import { AppError, NotFoundError, ValidationError } from '../../utils/errors.js';
-import { getPlan } from '../plans/catalog.js';
-import type { CloudDatabase } from '../persistence/cloudDatabase.js';
-import type { Project, ProjectEnvironment } from '../types.js';
-import { slugify } from '../utils.js';
-import type { OrganizationService } from './organizationService.js';
+import { createId } from '../../utils/id';
+import { AppError, NotFoundError, ValidationError } from '../../utils/errors';
+import { getPlan } from '../plans/catalog';
+import type { CloudDatabase } from '../persistence/cloudDatabase';
+import type { Project, ProjectEnvironment } from '../types';
+import { slugify } from '../utils';
+import type { OrganizationService } from './organizationService';
 
 export class ProjectService {
   constructor(

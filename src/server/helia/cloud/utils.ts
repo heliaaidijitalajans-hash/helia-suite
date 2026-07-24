@@ -3,8 +3,8 @@
  */
 
 import { createHash, randomBytes } from 'node:crypto';
-import { createId } from '../utils/id.js';
-import type { CloudUser, PublicUser } from './types.js';
+import { createId } from '../utils/id';
+import type { CloudUser, PublicUser } from './types';
 
 export function slugify(input: string): string {
   const base = input

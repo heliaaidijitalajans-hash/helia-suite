@@ -2,12 +2,12 @@
  * Usage tracking — monthly buckets per organization/project.
  */
 
-import { createId } from '../../utils/id.js';
-import { AppError } from '../../utils/errors.js';
-import { getPlan } from '../plans/catalog.js';
-import type { CloudDatabase } from '../persistence/cloudDatabase.js';
-import type { PlanDefinition, UsageBucket, UsageMetric } from '../types.js';
-import { currentMonthKey } from '../utils.js';
+import { createId } from '../../utils/id';
+import { AppError } from '../../utils/errors';
+import { getPlan } from '../plans/catalog';
+import type { CloudDatabase } from '../persistence/cloudDatabase';
+import type { PlanDefinition, UsageBucket, UsageMetric } from '../types';
+import { currentMonthKey } from '../utils';
 
 export class UsageService {
   constructor(private readonly db: CloudDatabase) {}

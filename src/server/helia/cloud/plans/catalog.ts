@@ -2,7 +2,7 @@
  * Subscription plan catalog — billing-provider ready, no payment integration yet.
  */
 
-import type { PlanDefinition, PlanId } from '../types.js';
+import type { PlanDefinition, PlanId } from '../types';
 
 export const PLAN_CATALOG: Record<PlanId, PlanDefinition> = {
   free: {

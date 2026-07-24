@@ -2,13 +2,13 @@
  * Cloud gateway context — resolves API key → org/project/plan/usage.
  */
 
-import { NotFoundError } from '../../utils/errors.js';
-import { getPlan } from '../plans/catalog.js';
-import type { CloudDatabase } from '../persistence/cloudDatabase.js';
-import type { ApiKeyAuthContext } from '../types.js';
-import type { ApiKeyService } from './apiKeyService.js';
-import type { SubscriptionService } from './subscriptionService.js';
-import type { UsageService } from './usageService.js';
+import { NotFoundError } from '../../utils/errors';
+import { getPlan } from '../plans/catalog';
+import type { CloudDatabase } from '../persistence/cloudDatabase';
+import type { ApiKeyAuthContext } from '../types';
+import type { ApiKeyService } from './apiKeyService';
+import type { SubscriptionService } from './subscriptionService';
+import type { UsageService } from './usageService';
 
 export class GatewayService {
   constructor(
