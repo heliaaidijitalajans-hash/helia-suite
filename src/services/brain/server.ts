@@ -1,10 +1,10 @@
 /**
  * Helia Brain orchestration (server).
- * Flow: Cloud auth → project API key usage → Brain ask → persist.
+ * Flow: in-process Cloud auth → usage metering → embedded Brain ask → persist.
  */
 
 import { askBrain } from "@/lib/api/brain";
-import { trackBrainUsage } from "@/lib/api/helia-cloud";
+import { trackBrainUsageInProcess } from "@/lib/api/helia-cloud";
 import type { HeliaAuthContext } from "@/lib/auth/helia-session";
 import {
   createLocalId,
@@ -61,11 +61,13 @@ export async function askBrainForUser(
     ? await getScopedConversation(auth, input.conversationId)
     : null;
 
-  // Track usage against the project API key (never shown in the chat UI).
   try {
-    await trackBrainUsage(auth.apiKey);
+    await trackBrainUsageInProcess({
+      organizationId: auth.organization.id,
+      projectId: auth.project.id,
+    });
   } catch {
-    // Usage tracking must not block the ask when Cloud metering is unavailable.
+    // Usage tracking must not block the ask.
   }
 
   const brain = await askBrain({
@@ -101,9 +103,12 @@ export async function askBrainForUser(
         product: input.product ?? "helia-suite",
       };
 
-  // If Brain assigned a new id after a local placeholder, keep messages.
   if (existing && existing.id !== conversationId) {
-    conversation.messages = [...existing.messages, userMessage, assistantMessage];
+    conversation.messages = [
+      ...existing.messages,
+      userMessage,
+      assistantMessage,
+    ];
   }
 
   await savePersistedConversation(conversation);

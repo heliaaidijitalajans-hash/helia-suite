@@ -5,13 +5,15 @@
 
 import { promises as fs } from "node:fs";
 import path from "node:path";
+import os from "node:os";
 import type { BrainScope, PersistedConversation } from "./types";
 
 function rootDir(): string {
-  return (
-    process.env.HELIA_CHAT_DATA_DIR ||
-    path.join(process.cwd(), "data", "brain-conversations")
-  );
+  if (process.env.HELIA_CHAT_DATA_DIR) return process.env.HELIA_CHAT_DATA_DIR;
+  if (process.env.VERCEL) {
+    return path.join(os.tmpdir(), "helia-brain-conversations");
+  }
+  return path.join(process.cwd(), "data", "brain-conversations");
 }
 
 function scopeKey(scope: BrainScope): string {

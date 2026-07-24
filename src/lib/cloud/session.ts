@@ -1,17 +1,13 @@
 /**
- * Browser Helia Cloud session — JWT for dashboard management calls.
- * Prefers cookie / localStorage; optional public env for local development.
+ * Browser / shared Helia Cloud base URL.
+ * Same-origin only — no localhost / no external Cloud host.
  */
+export function getHeliaCloudBaseUrl(): string {
+  return "";
+}
 
 const STORAGE_KEY = "helia_access_token";
 const COOKIE_KEY = "helia_access_token";
-
-export function getHeliaCloudBaseUrl(): string {
-  return (
-    process.env.NEXT_PUBLIC_HELIA_CLOUD_URL?.replace(/\/$/, "") ||
-    "http://localhost:4091"
-  );
-}
 
 export function getHeliaAccessToken(): string | null {
   if (typeof window !== "undefined") {

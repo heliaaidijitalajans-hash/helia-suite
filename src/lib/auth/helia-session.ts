@@ -1,24 +1,22 @@
 /**
- * Helia Cloud session context for Suite ↔ Brain.
- * Does not introduce a login UI — uses the authenticated Cloud session
- * (cookie / Authorization) or server env credentials.
+ * Helia Cloud session context for Suite ↔ Brain (in-process, Vercel-ready).
  */
 
 import {
   fetchCloudMe,
-  fetchCloudWhoAmI,
   resolveCloudAccessToken,
   resolveCloudApiKey,
   type HeliaCloudOrganization,
   type HeliaCloudProject,
   type HeliaCloudUser,
 } from "@/lib/api/helia-cloud";
+import { getCloudContainer } from "@/server/helia/runtime";
 
 export type HeliaAuthContext = {
   user: HeliaCloudUser;
   organization: HeliaCloudOrganization;
   project: HeliaCloudProject;
-  /** Present server-side only; never expose to the browser. */
+  /** Present when an API key is configured; otherwise empty (in-process path). */
   apiKey: string;
   accessToken: string;
 };
@@ -27,65 +25,85 @@ export async function resolveHeliaAuthContext(
   requestHeaders?: Headers
 ): Promise<HeliaAuthContext> {
   const accessToken = resolveCloudAccessToken(requestHeaders);
-  const apiKey = resolveCloudApiKey();
-
   if (!accessToken) {
-    throw new Error(
-      "Helia Cloud session missing. Sign in or set HELIA_CLOUD_ACCESS_TOKEN."
-    );
-  }
-  if (!apiKey) {
-    throw new Error(
-      "Helia project API key missing. Set HELIA_CLOUD_API_KEY on the server."
-    );
+    throw new Error("Helia Cloud session missing. Please log in.");
   }
 
-  const [me, whoami] = await Promise.all([
-    fetchCloudMe(accessToken),
-    fetchCloudWhoAmI(apiKey),
-  ]);
+  const me = await fetchCloudMe(accessToken);
+  const apiKey = resolveCloudApiKey();
 
   const preferredOrgId = process.env.HELIA_CLOUD_ORGANIZATION_ID?.trim();
   const preferredProjectId = process.env.HELIA_CLOUD_PROJECT_ID?.trim();
 
-  // API key resolves the active project automatically (whoami).
-  // Optional env overrides must still match that key's org/project.
-  if (preferredOrgId && preferredOrgId !== whoami.organization.id) {
-    throw new Error(
-      "HELIA_CLOUD_ORGANIZATION_ID does not match the configured API key."
-    );
-  }
-  if (preferredProjectId && preferredProjectId !== whoami.project.id) {
-    throw new Error(
-      "HELIA_CLOUD_PROJECT_ID does not match the configured API key."
-    );
+  if (apiKey) {
+    const container = await getCloudContainer();
+    const ctx = await container.gateway.authenticateApiKey(apiKey);
+
+    if (preferredOrgId && preferredOrgId !== ctx.organization.id) {
+      throw new Error(
+        "HELIA_CLOUD_ORGANIZATION_ID does not match the configured API key."
+      );
+    }
+    if (preferredProjectId && preferredProjectId !== ctx.project.id) {
+      throw new Error(
+        "HELIA_CLOUD_PROJECT_ID does not match the configured API key."
+      );
+    }
+
+    const memberProject = me.projects.find((p) => p.id === ctx.project.id);
+    if (!memberProject) {
+      throw new Error(
+        "Authenticated user cannot access the project bound to HELIA_CLOUD_API_KEY."
+      );
+    }
+
+    return {
+      user: me.user,
+      organization: {
+        id: ctx.organization.id,
+        name: ctx.organization.name,
+        planId: ctx.organization.planId,
+      },
+      project: {
+        id: ctx.project.id,
+        name: ctx.project.name,
+        organizationId: ctx.organization.id,
+        environment: ctx.project.environment,
+      },
+      apiKey,
+      accessToken,
+    };
   }
 
-  const memberProject = me.projects.find((p) => p.id === whoami.project.id);
-  if (!memberProject) {
-    throw new Error(
-      "Authenticated user cannot access the project bound to HELIA_CLOUD_API_KEY."
-    );
+  const organization =
+    me.organizations.find((o) => o.id === preferredOrgId) ||
+    me.organizations[0];
+  if (!organization) {
+    throw new Error("No Helia Cloud organization available for this session.");
   }
 
-  const organization: HeliaCloudOrganization = {
-    id: whoami.organization.id,
-    name: whoami.organization.name,
-    planId: whoami.organization.planId,
-  };
-
-  const project: HeliaCloudProject = {
-    id: whoami.project.id,
-    name: whoami.project.name,
-    organizationId: whoami.organization.id,
-    environment: whoami.project.environment,
-  };
+  const project =
+    me.projects.find((p) => p.id === preferredProjectId) ||
+    me.projects.find((p) => p.organizationId === organization.id) ||
+    me.projects[0];
+  if (!project) {
+    throw new Error("No Helia Cloud project available for this session.");
+  }
 
   return {
     user: me.user,
-    organization,
-    project,
-    apiKey,
+    organization: {
+      id: organization.id,
+      name: organization.name,
+      planId: organization.planId,
+    },
+    project: {
+      id: project.id,
+      name: project.name,
+      organizationId: project.organizationId,
+      environment: project.environment,
+    },
+    apiKey: "",
     accessToken,
   };
 }

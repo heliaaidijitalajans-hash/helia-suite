@@ -8,7 +8,7 @@ export async function listProjects(
     ? `?organizationId=${encodeURIComponent(organizationId)}`
     : "";
   const data = await cloudRequest<{ ok: true; items: CloudProject[] }>(
-    `/projects${qs}`
+    `/api/projects${qs}`
   );
   return data.items;
 }
@@ -19,7 +19,7 @@ export async function createProject(input: {
   environment: ProjectEnvironment;
 }): Promise<CloudProject> {
   const data = await cloudRequest<{ ok: true; project: CloudProject }>(
-    "/projects",
+    "/api/projects",
     {
       method: "POST",
       body: JSON.stringify(input),

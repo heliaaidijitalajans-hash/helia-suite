@@ -1,7 +1,9 @@
 /**
- * Helia Cloud HTTP helpers (server-side).
- * Resolves authenticated user → organization → project → API key context.
+ * In-process Helia Cloud accessors for server modules (no HTTP / no localhost).
  */
+
+import { getCloudContainer } from "@/server/helia/runtime";
+import type { CloudUser } from "@/server/helia/cloud/types";
 
 export type HeliaCloudUser = {
   id: string;
@@ -28,60 +30,6 @@ export type HeliaCloudMeResponse = {
   organizations: HeliaCloudOrganization[];
   projects: HeliaCloudProject[];
 };
-
-export type HeliaCloudWhoAmI = {
-  ok: true;
-  organization: { id: string; name: string; planId: string };
-  project: { id: string; name: string; environment: string };
-  apiKey: {
-    id: string;
-    name: string;
-    prefix: string;
-    permissions: string[];
-    usageCount: number;
-  };
-  plan: { id: string; name: string; limits: Record<string, unknown> };
-  usage: Record<string, unknown>;
-};
-
-function cloudBaseUrl(): string {
-  return (
-    process.env.HELIA_CLOUD_URL?.replace(/\/$/, "") || "http://localhost:4091"
-  );
-}
-
-async function cloudFetch<T>(
-  path: string,
-  init?: RequestInit & { token?: string }
-): Promise<T> {
-  const { token, ...rest } = init ?? {};
-  const headers: HeadersInit = {
-    Accept: "application/json",
-    "Content-Type": "application/json",
-    ...(rest.headers ?? {}),
-  };
-  if (token) {
-    (headers as Record<string, string>).Authorization = `Bearer ${token}`;
-  }
-
-  const res = await fetch(`${cloudBaseUrl()}${path}`, {
-    ...rest,
-    headers,
-    cache: "no-store",
-  });
-
-  const data = (await res.json().catch(() => null)) as
-    | { ok?: boolean; error?: { message?: string } }
-    | null;
-
-  if (!res.ok || data?.ok === false) {
-    const message =
-      data?.error?.message || `Helia Cloud request failed (${res.status})`;
-    throw new Error(message);
-  }
-
-  return data as T;
-}
 
 export function resolveCloudAccessToken(
   requestHeaders?: Headers
@@ -118,19 +66,40 @@ export function resolveCloudApiKey(): string | null {
 export async function fetchCloudMe(
   accessToken: string
 ): Promise<HeliaCloudMeResponse> {
-  return cloudFetch<HeliaCloudMeResponse>("/me", { token: accessToken });
+  const container = await getCloudContainer();
+  const { user } = await container.auth.authenticateAccessToken(accessToken);
+  const organizations = await container.organizations.listForUser(user.id);
+  const projects = await container.projects.listForUser(user.id);
+  const publicUser = await container.auth.getUser(user.id);
+  return {
+    ok: true,
+    user: publicUser,
+    organizations,
+    projects,
+  };
 }
 
-export async function fetchCloudWhoAmI(
-  apiKey: string
-): Promise<HeliaCloudWhoAmI> {
-  return cloudFetch<HeliaCloudWhoAmI>("/v1/whoami", { token: apiKey });
-}
-
-export async function trackBrainUsage(apiKey: string): Promise<void> {
-  await cloudFetch("/v1/track/brain_requests", {
-    method: "POST",
-    token: apiKey,
-    body: JSON.stringify({}),
+export async function trackBrainUsageInProcess(input: {
+  organizationId: string;
+  projectId: string;
+}): Promise<void> {
+  const container = await getCloudContainer();
+  await container.usage.record({
+    organizationId: input.organizationId,
+    projectId: input.projectId,
+    metric: "brain_requests",
   });
+  await container.usage.record({
+    organizationId: input.organizationId,
+    projectId: input.projectId,
+    metric: "requests",
+  });
+}
+
+export async function resolveCloudUserFromToken(
+  accessToken: string
+): Promise<CloudUser> {
+  const container = await getCloudContainer();
+  const { user } = await container.auth.authenticateAccessToken(accessToken);
+  return user;
 }

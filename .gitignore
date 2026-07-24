@@ -39,5 +39,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 
-# helia chat persistence
+# helia persistence
 /data/brain-conversations
+/data/cloud

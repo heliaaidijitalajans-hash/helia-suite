@@ -1,11 +1,9 @@
 /**
- * Helia Cloud authentication — uses existing Cloud /auth endpoints
- * and the shared session helpers (no duplicate auth stack).
+ * Helia Cloud auth client — same-origin /api/auth/* only.
  */
 
 import {
   clearHeliaAccessToken,
-  getHeliaCloudBaseUrl,
   setHeliaAccessToken,
 } from "@/lib/cloud/session";
 
@@ -43,7 +41,7 @@ async function authRequest(
   path: string,
   body: Record<string, string>
 ): Promise<AuthSuccess> {
-  const res = await fetch(`${getHeliaCloudBaseUrl()}${path}`, {
+  const res = await fetch(path, {
     method: "POST",
     headers: {
       Accept: "application/json",
@@ -71,7 +69,7 @@ export async function loginWithHeliaCloud(input: {
   email: string;
   password: string;
 }): Promise<HeliaAuthUser> {
-  const data = await authRequest("/auth/login", {
+  const data = await authRequest("/api/auth/login", {
     email: input.email.trim(),
     password: input.password,
   });
@@ -87,7 +85,7 @@ export async function registerWithHeliaCloud(input: {
   password: string;
   displayName?: string;
 }): Promise<HeliaAuthUser> {
-  const data = await authRequest("/auth/register", {
+  const data = await authRequest("/api/auth/register", {
     email: input.email.trim(),
     password: input.password,
     displayName:
@@ -101,7 +99,6 @@ export async function registerWithHeliaCloud(input: {
     return data.user;
   }
 
-  // Some Cloud configs require a separate login after register.
   return loginWithHeliaCloud({
     email: input.email,
     password: input.password,
@@ -116,7 +113,7 @@ export async function logoutHeliaCloud(): Promise<void> {
 
   try {
     if (refreshToken) {
-      await fetch(`${getHeliaCloudBaseUrl()}/auth/logout`, {
+      await fetch("/api/auth/logout", {
         method: "POST",
         headers: {
           Accept: "application/json",
@@ -127,7 +124,7 @@ export async function logoutHeliaCloud(): Promise<void> {
       });
     }
   } catch {
-    // Local session clear still proceeds.
+    // Local clear still proceeds.
   }
 
   clearHeliaAccessToken();
@@ -136,7 +133,6 @@ export async function logoutHeliaCloud(): Promise<void> {
   }
 }
 
-/** Safe internal redirect target (open-redirect protection). */
 export function safeAuthNextPath(
   next: string | null | undefined,
   fallback = "/dashboard"

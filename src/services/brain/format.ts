@@ -1,5 +1,5 @@
 import type { ChatMessage } from "@/components/chat";
-import type { BrainAnswer } from "@/lib/api/brain";
+import type { BrainAnswer } from "@/lib/api/brain-types";
 
 export function createLocalId(prefix: string): string {
   if (typeof crypto !== "undefined" && "randomUUID" in crypto) {

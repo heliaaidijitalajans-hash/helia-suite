@@ -6,7 +6,7 @@ export async function listApiKeys(
 ): Promise<CloudApiKey[]> {
   const qs = projectId ? `?projectId=${encodeURIComponent(projectId)}` : "";
   const data = await cloudRequest<{ ok: true; items: CloudApiKey[] }>(
-    `/apikeys${qs}`
+    `/api/apikeys${qs}`
   );
   return data.items;
 }
@@ -17,7 +17,7 @@ export async function createApiKey(input: {
   keyEnvironment?: ApiKeyEnvironment;
   expiresAt?: string;
 }): Promise<{ apiKey: CloudApiKey; secret: string; warning?: string }> {
-  return cloudRequest("/apikeys", {
+  return cloudRequest("/api/apikeys", {
     method: "POST",
     body: JSON.stringify(input),
   });
@@ -26,7 +26,7 @@ export async function createApiKey(input: {
 export async function rotateApiKey(
   apiKeyId: string
 ): Promise<{ apiKey: CloudApiKey; secret: string; warning?: string }> {
-  return cloudRequest(`/apikeys/${encodeURIComponent(apiKeyId)}/rotate`, {
+  return cloudRequest(`/api/apikeys/${encodeURIComponent(apiKeyId)}/rotate`, {
     method: "POST",
     body: JSON.stringify({}),
   });
@@ -34,14 +34,14 @@ export async function rotateApiKey(
 
 export async function disableApiKey(apiKeyId: string): Promise<CloudApiKey> {
   const data = await cloudRequest<{ ok: true; apiKey: CloudApiKey }>(
-    `/apikeys/${encodeURIComponent(apiKeyId)}/disable`,
+    `/api/apikeys/${encodeURIComponent(apiKeyId)}/disable`,
     { method: "POST", body: JSON.stringify({}) }
   );
   return data.apiKey;
 }
 
 export async function deleteApiKey(apiKeyId: string): Promise<void> {
-  await cloudRequest(`/apikeys/${encodeURIComponent(apiKeyId)}`, {
+  await cloudRequest(`/api/apikeys/${encodeURIComponent(apiKeyId)}`, {
     method: "DELETE",
   });
 }

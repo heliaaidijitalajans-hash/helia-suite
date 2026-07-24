@@ -1,7 +1,4 @@
-import {
-  getHeliaAccessToken,
-  getHeliaCloudBaseUrl,
-} from "@/lib/cloud/session";
+import { getHeliaAccessToken } from "@/lib/cloud/session";
 
 type CloudErrorBody = {
   ok?: boolean;
@@ -20,6 +17,7 @@ export class HeliaCloudClientError extends Error {
   }
 }
 
+/** Same-origin Helia Cloud API (Next.js Route Handlers). */
 export async function cloudRequest<T>(
   path: string,
   init: RequestInit = {}
@@ -27,13 +25,13 @@ export async function cloudRequest<T>(
   const token = getHeliaAccessToken();
   if (!token) {
     throw new HeliaCloudClientError(
-      "Helia Cloud session missing. Set an access token (login or NEXT_PUBLIC_HELIA_CLOUD_ACCESS_TOKEN).",
+      "Helia Cloud session missing. Please log in.",
       401,
       "NO_SESSION"
     );
   }
 
-  const res = await fetch(`${getHeliaCloudBaseUrl()}${path}`, {
+  const res = await fetch(path.startsWith("/api/") ? path : `/api${path}`, {
     ...init,
     headers: {
       Accept: "application/json",

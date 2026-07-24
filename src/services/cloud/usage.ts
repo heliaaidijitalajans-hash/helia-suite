@@ -7,10 +7,12 @@ export async function fetchUsage(
   const qs = organizationId
     ? `?organizationId=${encodeURIComponent(organizationId)}`
     : "";
-  return cloudRequest<CloudUsageResponse>(`/usage${qs}`);
+  return cloudRequest<CloudUsageResponse>(`/api/organizations/usage${qs}`);
 }
 
 export async function listPlans(): Promise<CloudPlan[]> {
-  const data = await cloudRequest<{ ok: true; items: CloudPlan[] }>("/plans");
+  const data = await cloudRequest<{ ok: true; items: CloudPlan[] }>(
+    "/api/organizations/plans"
+  );
   return data.items;
 }
