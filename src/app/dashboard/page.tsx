@@ -5,7 +5,6 @@ import { motion } from "framer-motion";
 import {
   ArrowRight,
   BookOpen,
-  FolderKanban,
   KeyRound,
   MessageSquare,
   Plug,
@@ -18,37 +17,30 @@ const PILLARS = [
   { label: "API Keys", icon: KeyRound },
   { label: "AI Chat", icon: MessageSquare },
   { label: "Monitoring", icon: Radar },
-  { label: "Projects", icon: FolderKanban },
   { label: "Integrations", icon: Plug },
 ] as const;
 
 const ONBOARDING = [
   {
     step: "1",
-    title: "Create Project",
-    body: "Define the application that will call Helia.",
-    href: "/dashboard/projects",
-  },
-  {
-    step: "2",
-    title: "Generate API Key",
-    body: "Issue a capability-scoped key for that project.",
+    title: "Create API Key",
+    body: "Issue a capability-scoped key for your workspace.",
     href: "/dashboard/api-keys",
   },
   {
-    step: "3",
+    step: "2",
     title: "Integration Guide",
     body: "Follow Documentation for auth, REST, SDK, and webhooks.",
     href: "/dashboard/documentation",
   },
   {
-    step: "4",
+    step: "3",
     title: "Connect Application",
-    body: "Install Helia into SnapSell, Next.js, Node, Flutter, and more.",
+    body: "Install Helia into Next.js, Node, Flutter, and more.",
     href: "/dashboard/integrations",
   },
   {
-    step: "5",
+    step: "4",
     title: "Start Monitoring",
     body: "Track usage and talk to Helia Chat from your workspace.",
     href: "/dashboard/usage",
@@ -72,8 +64,8 @@ export default function DashboardOverviewPage() {
         </h2>
         <p className="mx-auto max-w-2xl text-sm leading-relaxed text-white/55 md:text-base">
           Helia is an AI platform for your products. Manage API keys, chat with
-          Helia Brain, monitor usage, organize projects, and connect
-          applications — from one customer portal.
+          Helia Brain, monitor usage, and connect applications — from one
+          customer portal.
         </p>
         <ul className="mx-auto flex max-w-2xl flex-wrap items-center justify-center gap-2 pt-1">
           {PILLARS.map(({ label, icon: Icon }) => (
@@ -88,24 +80,24 @@ export default function DashboardOverviewPage() {
         </ul>
         <div className="flex flex-col items-stretch justify-center gap-3 pt-2 sm:flex-row sm:items-center">
           <Button
-            href="/dashboard/projects"
-            className="min-h-11 px-6 text-sm font-semibold"
-          >
-            Create Project
-          </Button>
-          <Button
             href="/dashboard/api-keys"
-            variant="secondary"
-            className="min-h-11 border-white/12 px-6 text-sm font-semibold"
+            className="min-h-11 px-6 text-sm font-semibold"
           >
             Create API Key
           </Button>
           <Button
             href="/dashboard/documentation"
+            variant="secondary"
+            className="min-h-11 border-white/12 px-6 text-sm font-semibold"
+          >
+            Documentation
+          </Button>
+          <Button
+            href="/dashboard/helia-chat"
             variant="ghost"
             className="min-h-11 px-6 text-sm font-semibold"
           >
-            Documentation
+            Helia Chat
           </Button>
         </div>
       </motion.div>
@@ -115,11 +107,11 @@ export default function DashboardOverviewPage() {
           <div>
             <h3 className="text-sm font-semibold text-white">Get started</h3>
             <p className="mt-1 text-xs text-white/40">
-              Create Project → Generate API Key → Integrate → Monitor
+              Create API Key → Integrate → Monitor
             </p>
           </div>
         </div>
-        <ol className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
+        <ol className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
           {ONBOARDING.map((item, i) => (
             <motion.li
               key={item.step}
@@ -171,8 +163,7 @@ export default function DashboardOverviewPage() {
           <Plug className="h-5 w-5 text-accent" strokeWidth={1.5} />
           <p className="mt-3 text-sm font-semibold text-white">Integrations</p>
           <p className="mt-1 text-xs leading-relaxed text-white/45">
-            SnapSell, Next.js, Node.js, Express, Flutter, React Native, and
-            custom REST.
+            Next.js, Node.js, Express, Flutter, React Native, and custom REST.
           </p>
         </Link>
       </section>

@@ -152,7 +152,7 @@ export default function ProjectsPage() {
 
       <CloudPanel
         title="Create project"
-        description="POST /projects — environment: production, development, or staging."
+        description="Optional — API Keys use your default workspace automatically. Add projects here only when you need another app environment."
       >
         <form onSubmit={(e) => void handleCreate(e)} className="grid gap-4">
           <div className="grid gap-4 md:grid-cols-3">
@@ -179,7 +179,7 @@ export default function ProjectsPage() {
                 className={cloudInputClass}
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="SnapSell"
+                placeholder="My project"
                 required
               />
             </CloudField>

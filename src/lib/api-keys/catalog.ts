@@ -154,7 +154,7 @@ export function isInternalPlatform(type: ApplicationType): boolean {
   return type === "internal_platform";
 }
 
-/** Internal Platform (e.g. SnapSell) always receives every capability. */
+/** Internal Platform always receives every capability. */
 export function resolveCapabilities(
   applicationType: ApplicationType,
   selected: readonly string[] = []

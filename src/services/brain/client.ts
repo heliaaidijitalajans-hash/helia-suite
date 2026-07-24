@@ -3,6 +3,7 @@
  */
 
 import type { ChatConversationSummary, ChatMessage } from "@/components/chat";
+import { getHeliaAccessToken } from "@/lib/cloud/session";
 import type { AskBrainServiceResult, BrainClientError } from "./types";
 
 export type BrainAskClientPayload = {
@@ -10,6 +11,15 @@ export type BrainAskClientPayload = {
   conversationId: string | null;
   product?: "helia-suite" | "snapsell" | "crm" | "erp" | "mobile";
 };
+
+function brainHeaders(json = false): HeadersInit {
+  const token = getHeliaAccessToken();
+  return {
+    Accept: "application/json",
+    ...(json ? { "Content-Type": "application/json" } : {}),
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+  };
+}
 
 async function parseJson<T>(res: Response): Promise<T> {
   const data = (await res.json().catch(() => null)) as
@@ -29,7 +39,8 @@ async function parseJson<T>(res: Response): Promise<T> {
 export async function fetchConversations(): Promise<ChatConversationSummary[]> {
   const res = await fetch("/api/brain/conversations", {
     method: "GET",
-    headers: { Accept: "application/json" },
+    headers: brainHeaders(),
+    credentials: "same-origin",
     cache: "no-store",
   });
   const data = await parseJson<{
@@ -46,7 +57,8 @@ export async function fetchConversationMessages(
     `/api/brain/conversations/${encodeURIComponent(conversationId)}`,
     {
       method: "GET",
-      headers: { Accept: "application/json" },
+      headers: brainHeaders(),
+      credentials: "same-origin",
       cache: "no-store",
     }
   );
@@ -62,11 +74,10 @@ export async function sendBrainMessage(
 ): Promise<AskBrainServiceResult> {
   const res = await fetch("/api/brain/ask", {
     method: "POST",
-    headers: {
-      Accept: "application/json",
-      "Content-Type": "application/json",
-    },
+    headers: brainHeaders(true),
+    credentials: "same-origin",
     body: JSON.stringify(payload),
+    cache: "no-store",
   });
   const data = await parseJson<{ ok: true } & AskBrainServiceResult>(res);
   return {

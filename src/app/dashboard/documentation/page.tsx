@@ -48,7 +48,7 @@ const SECTIONS = [
     title: "Examples",
     body: "Start with Create Project → Create API Key → call whoami / track / brain from your server.",
     points: [
-      "SnapSell: Internal Platform key with full capabilities",
+      "Internal Platform key with full capabilities",
       "Next.js Route Handler: server-side Bearer calls",
       "Custom REST: any language that can send HTTPS JSON",
     ],

@@ -5,12 +5,12 @@ import Link from "next/link";
 
 const INTEGRATIONS = [
   {
-    name: "SnapSell",
-    stack: "Internal Platform",
+    name: "Internal Platform",
+    stack: "Full-access application",
     install: [
-      "Create a project for SnapSell.",
+      "Create a project for your internal application.",
       "Generate an API key with Application Type = Internal Platform (full capabilities).",
-      "Store the secret in SnapSell server env as HELIA_API_KEY.",
+      "Store the secret in your server env as HELIA_API_KEY.",
       "Call Helia REST endpoints with Authorization: Bearer $HELIA_API_KEY.",
     ],
   },

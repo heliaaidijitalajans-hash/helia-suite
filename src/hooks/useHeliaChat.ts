@@ -107,6 +107,8 @@ export function useHeliaChat(options: UseHeliaChatOptions = {}) {
     (async () => {
       setHydrating(true);
       try {
+        const { ensureWorkspace } = await import("@/services/cloud");
+        await ensureWorkspace();
         const items = await fetchConversations();
         if (!cancelled) setConversations(items);
       } catch (err) {

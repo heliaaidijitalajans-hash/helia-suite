@@ -23,8 +23,8 @@ export default function HeliaChatPage() {
   return (
     <div className="mx-auto w-full max-w-6xl space-y-4">
       <p className="text-sm leading-relaxed text-white/50">
-        Talk with Helia AI from your workspace. Messages are sent through Helia
-        Cloud authentication to Helia Brain for your active project.
+        Talk with Helia AI from your workspace. Messages use your logged-in
+        Helia session and Helia Brain.
       </p>
 
       {error ? (

@@ -3,11 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { Check, Copy } from "lucide-react";
-import {
-  getActiveOrganizationId,
-  getActiveProjectId,
-  setActiveProjectId,
-} from "@/lib/cloud/active-context";
+import { setActiveProjectId } from "@/lib/cloud/active-context";
 import { cn } from "@/lib/cn";
 import {
   API_CAPABILITIES,
@@ -27,13 +23,11 @@ import {
   createApiKey,
   deleteApiKey,
   disableApiKey,
+  ensureWorkspace,
   listApiKeys,
-  listOrganizations,
-  listProjects,
   rotateApiKey,
   type ApiKeyEnvironment,
   type CloudApiKey,
-  type CloudProject,
 } from "@/services/cloud";
 import {
   CloudAlert,
@@ -67,8 +61,8 @@ function toggleValue<T extends string>(list: T[], value: T): T[] {
 }
 
 export default function ApiKeysPage() {
-  const [projects, setProjects] = useState<CloudProject[]>([]);
   const [projectId, setProjectId] = useState("");
+  const [projectLabel, setProjectLabel] = useState("");
   const [keys, setKeys] = useState<CloudApiKey[]>([]);
   const [name, setName] = useState("");
   const [keyEnvironment, setKeyEnvironment] =
@@ -98,28 +92,15 @@ export default function ApiKeysPage() {
     [internal, permissions]
   );
 
-  const refresh = useCallback(async (selectedProject?: string) => {
+  const refresh = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const orgId = getActiveOrganizationId();
-      await listOrganizations();
-      const projectItems = orgId
-        ? await listProjects(orgId)
-        : await listProjects();
-      setProjects(projectItems);
-
-      const stored = selectedProject || getActiveProjectId();
-      const nextProject =
-        (stored && projectItems.some((p) => p.id === stored) && stored) ||
-        projectItems[0]?.id ||
-        "";
-      setProjectId(nextProject);
-      if (nextProject) setActiveProjectId(nextProject);
-
-      const items = nextProject
-        ? await listApiKeys(nextProject)
-        : await listApiKeys();
+      const { project } = await ensureWorkspace();
+      setProjectId(project.id);
+      setProjectLabel(`${project.name} (${project.environment})`);
+      setActiveProjectId(project.id);
+      const items = await listApiKeys(project.id);
       setKeys(items);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load API keys");
@@ -132,16 +113,9 @@ export default function ApiKeysPage() {
     void refresh();
   }, [refresh]);
 
-  async function handleProjectChange(next: string) {
-    setProjectId(next);
-    setActiveProjectId(next || null);
-    setRevealedSecret(null);
-    await refresh(next);
-  }
-
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
-    if (!projectId || !name.trim()) return;
+    if (!name.trim()) return;
     if (!internal && effectiveCapabilities.length === 0) {
       setError("Select at least one capability.");
       return;
@@ -155,11 +129,15 @@ export default function ApiKeysPage() {
     setInfo(null);
     setCopied(false);
     try {
+      const { project } = await ensureWorkspace();
+      setProjectId(project.id);
+      setProjectLabel(`${project.name} (${project.environment})`);
+      setActiveProjectId(project.id);
+
       const result = await createApiKey({
-        projectId,
+        projectId: project.id,
         name: name.trim(),
         keyEnvironment,
-        // Enum only — never APPLICATION_TYPE_LABELS display text.
         applicationType: toApplicationTypeEnum(applicationType),
         capabilities: effectiveCapabilities,
         permissions: effectivePermissions,
@@ -171,10 +149,10 @@ export default function ApiKeysPage() {
       setInfo(
         result.warning ||
           (internal
-            ? "Internal Platform key created with full capabilities (SnapSell-ready)."
+            ? "Internal Platform key created with full capabilities."
             : "API key created. Copy the secret now.")
       );
-      await refresh(projectId);
+      await refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Create failed");
     } finally {
@@ -198,7 +176,7 @@ export default function ApiKeysPage() {
       const result = await rotateApiKey(id);
       setRevealedSecret(result.secret);
       setInfo(result.warning || "API key rotated. Copy the new secret now.");
-      await refresh(projectId);
+      await refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Rotate failed");
     } finally {
@@ -212,7 +190,7 @@ export default function ApiKeysPage() {
     try {
       await disableApiKey(id);
       setInfo("API key disabled.");
-      await refresh(projectId);
+      await refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Disable failed");
     } finally {
@@ -228,7 +206,7 @@ export default function ApiKeysPage() {
       await deleteApiKey(id);
       setInfo("API key deleted.");
       if (revealedSecret) setRevealedSecret(null);
-      await refresh(projectId);
+      await refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Delete failed");
     } finally {
@@ -284,34 +262,24 @@ export default function ApiKeysPage() {
 
       <CloudPanel
         title="Create API key"
-        description="Capability-aware keys — Internal Platform grants full SnapSell access."
+        description="Create a capability-aware key for your workspace. Manage projects separately under Projects."
       >
         <form onSubmit={(e) => void handleCreate(e)} className="grid gap-5">
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-            <CloudField label="Project">
-              <select
+            <CloudField label="Workspace project">
+              <input
                 className={cloudInputClass}
-                value={projectId}
-                onChange={(e) => void handleProjectChange(e.target.value)}
-                required
-              >
-                {projects.length === 0 ? (
-                  <option value="">No projects</option>
-                ) : (
-                  projects.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.name} ({p.environment})
-                    </option>
-                  ))
-                )}
-              </select>
+                value={loading ? "Loading…" : projectLabel || "Default"}
+                readOnly
+                aria-readonly
+              />
             </CloudField>
             <CloudField label="Key name">
               <input
                 className={cloudInputClass}
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="SnapSell Production"
+                placeholder="Production key"
                 required
               />
             </CloudField>
@@ -401,8 +369,7 @@ export default function ApiKeysPage() {
               </p>
               {internal ? (
                 <p className="mt-2 text-xs text-accent/90">
-                  All capabilities enabled automatically for SnapSell / Internal
-                  Platform.
+                  All capabilities enabled automatically for Internal Platform.
                 </p>
               ) : (
                 <p className="mt-2 text-xs text-white/40">

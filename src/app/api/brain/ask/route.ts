@@ -32,9 +32,17 @@ export async function POST(request: Request) {
   } catch (error) {
     const message =
       error instanceof Error ? error.message : "Failed to reach Helia Brain";
+    const unauthorized =
+      /session missing|log in|unauthorized/i.test(message);
     return NextResponse.json(
-      { ok: false, error: { message, code: "BRAIN_ASK_FAILED" } },
-      { status: 502 }
+      {
+        ok: false,
+        error: {
+          message,
+          code: unauthorized ? "UNAUTHORIZED" : "BRAIN_ASK_FAILED",
+        },
+      },
+      { status: unauthorized ? 401 : 502 }
     );
   }
 }
