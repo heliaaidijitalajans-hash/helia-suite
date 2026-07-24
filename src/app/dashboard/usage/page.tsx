@@ -199,7 +199,7 @@ export default function UsagePage() {
         {loading ? (
           <p className="text-sm text-white/45">Loading usage…</p>
         ) : !usage?.buckets?.length ? (
-          <p className="text-sm text-white/45">No usage recorded this month.</p>
+          <p className="text-sm text-white/45">No usage yet.</p>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full min-w-[640px] text-left text-sm">

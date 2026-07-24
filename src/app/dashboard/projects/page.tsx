@@ -266,7 +266,7 @@ export default function ProjectsPage() {
         {loading ? (
           <p className="text-sm text-white/45">Loading projects…</p>
         ) : items.length === 0 ? (
-          <p className="text-sm text-white/45">No projects for this organization.</p>
+          <p className="text-sm text-white/45">No projects yet.</p>
         ) : (
           <ul className="divide-y divide-white/[0.05]">
             {items.map((project, i) => {

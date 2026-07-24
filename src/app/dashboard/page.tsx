@@ -1,41 +1,181 @@
 "use client";
 
-import { Percent, TrendingUp, UserCheck, Users } from "lucide-react";
-import { KpiCard } from "@/components/dashboard/KpiCard";
+import Link from "next/link";
+import { motion } from "framer-motion";
+import {
+  ArrowRight,
+  BookOpen,
+  FolderKanban,
+  KeyRound,
+  MessageSquare,
+  Plug,
+  Radar,
+} from "lucide-react";
+import { Button } from "@/components/ui/Button";
+import { cn } from "@/lib/cn";
+
+const PILLARS = [
+  { label: "API Keys", icon: KeyRound },
+  { label: "AI Chat", icon: MessageSquare },
+  { label: "Monitoring", icon: Radar },
+  { label: "Projects", icon: FolderKanban },
+  { label: "Integrations", icon: Plug },
+] as const;
+
+const ONBOARDING = [
+  {
+    step: "1",
+    title: "Create Project",
+    body: "Define the application that will call Helia.",
+    href: "/dashboard/projects",
+  },
+  {
+    step: "2",
+    title: "Generate API Key",
+    body: "Issue a capability-scoped key for that project.",
+    href: "/dashboard/api-keys",
+  },
+  {
+    step: "3",
+    title: "Integration Guide",
+    body: "Follow Documentation for auth, REST, SDK, and webhooks.",
+    href: "/dashboard/documentation",
+  },
+  {
+    step: "4",
+    title: "Connect Application",
+    body: "Install Helia into SnapSell, Next.js, Node, Flutter, and more.",
+    href: "/dashboard/integrations",
+  },
+  {
+    step: "5",
+    title: "Start Monitoring",
+    body: "Track usage and talk to Helia Chat from your workspace.",
+    href: "/dashboard/usage",
+  },
+] as const;
 
 export default function DashboardOverviewPage() {
   return (
-    <div className="mx-auto w-full max-w-md space-y-8 xl:max-w-none">
-      <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
-        <KpiCard
-          label="Retention focus"
-          value="Strong"
-          hint="Experience-led journeys"
-          icon={UserCheck}
-          delay={0}
-        />
-        <KpiCard
-          label="Active users"
-          value="12,480"
-          hint="Concurrent seats"
-          icon={Users}
-          delay={0.06}
-        />
-        <KpiCard
-          label="Leads"
-          value="1,842"
-          hint="Qualified pipeline"
-          icon={TrendingUp}
-          delay={0.12}
-        />
-        <KpiCard
-          label="Growth"
-          value="18.2%"
-          hint="QoQ velocity"
-          icon={Percent}
-          delay={0.18}
-        />
-      </div>
+    <div className="mx-auto w-full max-w-4xl space-y-12">
+      <motion.div
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4 }}
+        className="space-y-5 text-center"
+      >
+        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-accent/90">
+          Helia API Platform
+        </p>
+        <h2 className="text-3xl font-semibold tracking-tight text-white md:text-4xl">
+          Welcome to Helia
+        </h2>
+        <p className="mx-auto max-w-2xl text-sm leading-relaxed text-white/55 md:text-base">
+          Helia is an AI platform for your products. Manage API keys, chat with
+          Helia Brain, monitor usage, organize projects, and connect
+          applications — from one customer portal.
+        </p>
+        <ul className="mx-auto flex max-w-2xl flex-wrap items-center justify-center gap-2 pt-1">
+          {PILLARS.map(({ label, icon: Icon }) => (
+            <li
+              key={label}
+              className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 text-xs text-white/70"
+            >
+              <Icon className="h-3.5 w-3.5 text-accent" strokeWidth={1.75} />
+              {label}
+            </li>
+          ))}
+        </ul>
+        <div className="flex flex-col items-stretch justify-center gap-3 pt-2 sm:flex-row sm:items-center">
+          <Button
+            href="/dashboard/projects"
+            className="min-h-11 px-6 text-sm font-semibold"
+          >
+            Create Project
+          </Button>
+          <Button
+            href="/dashboard/api-keys"
+            variant="secondary"
+            className="min-h-11 border-white/12 px-6 text-sm font-semibold"
+          >
+            Create API Key
+          </Button>
+          <Button
+            href="/dashboard/documentation"
+            variant="ghost"
+            className="min-h-11 px-6 text-sm font-semibold"
+          >
+            Documentation
+          </Button>
+        </div>
+      </motion.div>
+
+      <section className="space-y-4">
+        <div className="flex items-end justify-between gap-3">
+          <div>
+            <h3 className="text-sm font-semibold text-white">Get started</h3>
+            <p className="mt-1 text-xs text-white/40">
+              Create Project → Generate API Key → Integrate → Monitor
+            </p>
+          </div>
+        </div>
+        <ol className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
+          {ONBOARDING.map((item, i) => (
+            <motion.li
+              key={item.step}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.05 * i, duration: 0.35 }}
+            >
+              <Link
+                href={item.href}
+                className={cn(
+                  "group flex h-full flex-col rounded-xl border border-white/[0.08] bg-[#161618]/90 p-4",
+                  "transition-colors hover:border-accent/25 hover:bg-white/[0.03]"
+                )}
+              >
+                <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-accent/80">
+                  Step {item.step}
+                </span>
+                <span className="mt-2 text-sm font-medium text-white">
+                  {item.title}
+                </span>
+                <span className="mt-1.5 flex-1 text-xs leading-relaxed text-white/45">
+                  {item.body}
+                </span>
+                <span className="mt-3 inline-flex items-center gap-1 text-[11px] font-medium text-white/50 group-hover:text-accent">
+                  Open
+                  <ArrowRight className="h-3 w-3" strokeWidth={2} />
+                </span>
+              </Link>
+            </motion.li>
+          ))}
+        </ol>
+      </section>
+
+      <section className="grid gap-3 sm:grid-cols-2">
+        <Link
+          href="/dashboard/documentation"
+          className="rounded-xl border border-white/[0.08] bg-[#161618]/90 p-5 transition-colors hover:border-accent/25"
+        >
+          <BookOpen className="h-5 w-5 text-accent" strokeWidth={1.5} />
+          <p className="mt-3 text-sm font-semibold text-white">Documentation</p>
+          <p className="mt-1 text-xs leading-relaxed text-white/45">
+            Authentication, REST API, SDK, webhooks, examples, and rate limits.
+          </p>
+        </Link>
+        <Link
+          href="/dashboard/integrations"
+          className="rounded-xl border border-white/[0.08] bg-[#161618]/90 p-5 transition-colors hover:border-accent/25"
+        >
+          <Plug className="h-5 w-5 text-accent" strokeWidth={1.5} />
+          <p className="mt-3 text-sm font-semibold text-white">Integrations</p>
+          <p className="mt-1 text-xs leading-relaxed text-white/45">
+            SnapSell, Next.js, Node.js, Express, Flutter, React Native, and
+            custom REST.
+          </p>
+        </Link>
+      </section>
     </div>
   );
 }

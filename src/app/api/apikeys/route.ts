@@ -30,6 +30,9 @@ export async function POST(request: Request) {
       name?: string;
       keyEnvironment?: string;
       expiresAt?: string;
+      applicationType?: string;
+      capabilities?: string[];
+      permissions?: string[];
     }>(request);
     const projectId = typeof body.projectId === "string" ? body.projectId : "";
     const name = typeof body.name === "string" ? body.name : "";
@@ -43,6 +46,15 @@ export async function POST(request: Request) {
         : {}),
       ...(typeof body.expiresAt === "string"
         ? { expiresAt: body.expiresAt }
+        : {}),
+      ...(typeof body.applicationType === "string"
+        ? { applicationType: body.applicationType }
+        : {}),
+      ...(Array.isArray(body.capabilities)
+        ? { capabilities: body.capabilities.filter((c) => typeof c === "string") }
+        : {}),
+      ...(Array.isArray(body.permissions)
+        ? { permissions: body.permissions.filter((p) => typeof p === "string") }
         : {}),
     });
     return jsonOk(

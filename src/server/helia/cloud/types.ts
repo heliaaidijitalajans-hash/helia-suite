@@ -94,7 +94,15 @@ export interface ApiKeyRecord {
   disabledAt?: string;
   lastUsedAt?: string;
   usageCount: number;
+  /**
+   * Permission verbs: read | write | execute | admin
+   * Legacy keys may still contain `*`.
+   */
   permissions: string[];
+  /** Application surface this key is issued for (optional on legacy keys). */
+  applicationType?: string;
+  /** Capability grants (optional on legacy keys; `*` permissions imply full set). */
+  capabilities?: string[];
 }
 
 export interface SubscriptionRecord {

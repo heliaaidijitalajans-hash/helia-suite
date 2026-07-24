@@ -1,9 +1,14 @@
 import type { Metadata } from "next";
+import { FloatingWhatsApp } from "@/components/FloatingWhatsApp";
+import { Footer } from "@/components/Footer";
+import { Header } from "@/components/Header";
 import { DashboardShell } from "@/components/dashboard/DashboardShell";
+import { defaultLocale } from "@/config/i18n";
+import { getDictionary } from "@/lib/i18n";
 
 export const metadata: Metadata = {
-  title: "Dashboard",
-  description: "Helia Suite — premium workspace preview",
+  title: "Helia Platform",
+  description: "Helia API Platform — projects, API keys, chat, and monitoring",
 };
 
 export default function DashboardLayout({
@@ -11,5 +16,14 @@ export default function DashboardLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  return <DashboardShell>{children}</DashboardShell>;
+  const dict = getDictionary(defaultLocale);
+
+  return (
+    <>
+      <Header locale={defaultLocale} dict={dict} />
+      <DashboardShell>{children}</DashboardShell>
+      <Footer locale={defaultLocale} dict={dict} />
+      <FloatingWhatsApp ariaLabel={dict.header.whatsappCta} />
+    </>
+  );
 }

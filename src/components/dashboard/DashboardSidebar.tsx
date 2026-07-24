@@ -24,7 +24,7 @@ export function DashboardSidebar({
             {SITE_NAME}
           </p>
           <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-white/35">
-            Console
+            Platform
           </p>
         </div>
       </div>
@@ -67,7 +67,7 @@ export function DashboardSidebar({
       </nav>
       <div className="border-t border-white/[0.06] p-4">
         <p className="text-center text-[11px] leading-relaxed text-white/30">
-          Example workspace — tailored for you on delivery
+          Helia API Platform
         </p>
       </div>
     </div>

@@ -16,6 +16,9 @@ export async function createApiKey(input: {
   name: string;
   keyEnvironment?: ApiKeyEnvironment;
   expiresAt?: string;
+  applicationType?: string;
+  capabilities?: string[];
+  permissions?: string[];
 }): Promise<{ apiKey: CloudApiKey; secret: string; warning?: string }> {
   return cloudRequest("/api/apikeys", {
     method: "POST",

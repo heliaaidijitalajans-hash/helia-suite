@@ -47,6 +47,8 @@ export type CloudApiKey = {
   lastUsedAt?: string;
   usageCount: number;
   permissions: string[];
+  applicationType?: string;
+  capabilities?: string[];
 };
 
 export type CloudPlan = {

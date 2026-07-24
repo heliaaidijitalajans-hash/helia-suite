@@ -1,14 +1,26 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
-import { Copy, Check } from "lucide-react";
+import { Check, Copy } from "lucide-react";
 import {
   getActiveOrganizationId,
   getActiveProjectId,
   setActiveProjectId,
 } from "@/lib/cloud/active-context";
 import { cn } from "@/lib/cn";
+import {
+  API_CAPABILITIES,
+  API_CAPABILITY_LABELS,
+  API_PERMISSIONS,
+  API_PERMISSION_LABELS,
+  APPLICATION_TYPE_LABELS,
+  APPLICATION_TYPES,
+  isInternalPlatform,
+  type ApiCapability,
+  type ApiPermission,
+  type ApplicationType,
+} from "@/lib/api-keys";
 import {
   createApiKey,
   deleteApiKey,
@@ -40,6 +52,18 @@ function formatDate(value?: string) {
   }
 }
 
+function summarizeList(items: string[] | undefined, limit = 3): string {
+  if (!items?.length) return "—";
+  if (items.length <= limit) return items.join(", ");
+  return `${items.slice(0, limit).join(", ")} +${items.length - limit}`;
+}
+
+function toggleValue<T extends string>(list: T[], value: T): T[] {
+  return list.includes(value)
+    ? list.filter((item) => item !== value)
+    : [...list, value];
+}
+
 export default function ApiKeysPage() {
   const [projects, setProjects] = useState<CloudProject[]>([]);
   const [projectId, setProjectId] = useState("");
@@ -47,6 +71,13 @@ export default function ApiKeysPage() {
   const [name, setName] = useState("");
   const [keyEnvironment, setKeyEnvironment] =
     useState<ApiKeyEnvironment>("test");
+  const [applicationType, setApplicationType] =
+    useState<ApplicationType>("backend");
+  const [capabilities, setCapabilities] = useState<ApiCapability[]>([
+    "monitoring",
+    "health",
+  ]);
+  const [permissions, setPermissions] = useState<ApiPermission[]>(["read"]);
   const [expiresAt, setExpiresAt] = useState("");
   const [revealedSecret, setRevealedSecret] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
@@ -54,6 +85,16 @@ export default function ApiKeysPage() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
+
+  const internal = isInternalPlatform(applicationType);
+  const effectiveCapabilities = useMemo(
+    () => (internal ? [...API_CAPABILITIES] : capabilities),
+    [internal, capabilities]
+  );
+  const effectivePermissions = useMemo(
+    () => (internal ? [...API_PERMISSIONS] : permissions),
+    [internal, permissions]
+  );
 
   const refresh = useCallback(async (selectedProject?: string) => {
     setLoading(true);
@@ -99,6 +140,14 @@ export default function ApiKeysPage() {
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
     if (!projectId || !name.trim()) return;
+    if (!internal && effectiveCapabilities.length === 0) {
+      setError("Select at least one capability.");
+      return;
+    }
+    if (!internal && effectivePermissions.length === 0) {
+      setError("Select at least one permission.");
+      return;
+    }
     setBusy(true);
     setError(null);
     setInfo(null);
@@ -108,12 +157,20 @@ export default function ApiKeysPage() {
         projectId,
         name: name.trim(),
         keyEnvironment,
+        applicationType,
+        capabilities: effectiveCapabilities,
+        permissions: effectivePermissions,
         ...(expiresAt ? { expiresAt: new Date(expiresAt).toISOString() } : {}),
       });
       setName("");
       setExpiresAt("");
       setRevealedSecret(result.secret);
-      setInfo(result.warning || "API key created. Copy the secret now.");
+      setInfo(
+        result.warning ||
+          (internal
+            ? "Internal Platform key created with full capabilities (SnapSell-ready)."
+            : "API key created. Copy the secret now.")
+      );
       await refresh(projectId);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Create failed");
@@ -123,7 +180,11 @@ export default function ApiKeysPage() {
   }
 
   async function handleRotate(id: string) {
-    if (!window.confirm("Rotate this API key? The previous secret stops working.")) {
+    if (
+      !window.confirm(
+        "Rotate this API key? The previous secret stops working."
+      )
+    ) {
       return;
     }
     setBusy(true);
@@ -209,17 +270,21 @@ export default function ApiKeysPage() {
           onClick={() => void copySecret()}
           className={cn(cloudBtnPrimaryClass, "inline-flex gap-2")}
         >
-          {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
+          {copied ? (
+            <Check className="h-3.5 w-3.5" />
+          ) : (
+            <Copy className="h-3.5 w-3.5" />
+          )}
           {copied ? "Copied" : "Copy API Key"}
         </button>
       ) : null}
 
       <CloudPanel
         title="Create API key"
-        description="POST /apikeys — secret is returned once at create/rotate."
+        description="Capability-aware keys — Internal Platform grants full SnapSell access."
       >
-        <form onSubmit={(e) => void handleCreate(e)} className="grid gap-4">
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <form onSubmit={(e) => void handleCreate(e)} className="grid gap-5">
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
             <CloudField label="Project">
               <select
                 className={cloudInputClass}
@@ -238,16 +303,16 @@ export default function ApiKeysPage() {
                 )}
               </select>
             </CloudField>
-            <CloudField label="Name">
+            <CloudField label="Key name">
               <input
                 className={cloudInputClass}
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="Production Key"
+                placeholder="SnapSell Production"
                 required
               />
             </CloudField>
-            <CloudField label="Key environment">
+            <CloudField label="Environment">
               <select
                 className={cloudInputClass}
                 value={keyEnvironment}
@@ -259,6 +324,21 @@ export default function ApiKeysPage() {
                 <option value="test">test</option>
               </select>
             </CloudField>
+            <CloudField label="Application type">
+              <select
+                className={cloudInputClass}
+                value={applicationType}
+                onChange={(e) =>
+                  setApplicationType(e.target.value as ApplicationType)
+                }
+              >
+                {APPLICATION_TYPES.map((type) => (
+                  <option key={type} value={type}>
+                    {APPLICATION_TYPE_LABELS[type]}
+                  </option>
+                ))}
+              </select>
+            </CloudField>
             <CloudField label="Expiration (optional)">
               <input
                 type="datetime-local"
@@ -268,6 +348,99 @@ export default function ApiKeysPage() {
               />
             </CloudField>
           </div>
+
+          <div className="grid gap-4 lg:grid-cols-2">
+            <div className="rounded-xl border border-white/[0.08] bg-[#121214]/80 p-4">
+              <p className="text-xs font-medium uppercase tracking-[0.12em] text-white/40">
+                Permissions
+              </p>
+              {internal ? (
+                <p className="mt-2 text-xs text-accent/90">
+                  Internal Platform enables Read, Write, Execute, and Admin.
+                </p>
+              ) : null}
+              <div className="mt-3 flex flex-wrap gap-2">
+                {API_PERMISSIONS.map((permission) => {
+                  const checked = effectivePermissions.includes(permission);
+                  return (
+                    <label
+                      key={permission}
+                      className={cn(
+                        "inline-flex cursor-pointer items-center gap-2 rounded-full border px-3 py-1.5 text-xs transition-colors",
+                        checked
+                          ? "border-accent/40 bg-accent/10 text-white"
+                          : "border-white/10 text-white/55 hover:border-white/20",
+                        internal && "pointer-events-none opacity-80"
+                      )}
+                    >
+                      <input
+                        type="checkbox"
+                        className="sr-only"
+                        checked={checked}
+                        disabled={internal}
+                        onChange={() =>
+                          setPermissions((prev) =>
+                            toggleValue(prev, permission)
+                          )
+                        }
+                      />
+                      {API_PERMISSION_LABELS[permission]}
+                    </label>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="rounded-xl border border-white/[0.08] bg-[#121214]/80 p-4">
+              <p className="text-xs font-medium uppercase tracking-[0.12em] text-white/40">
+                Capabilities
+              </p>
+              {internal ? (
+                <p className="mt-2 text-xs text-accent/90">
+                  All capabilities enabled automatically for SnapSell / Internal
+                  Platform.
+                </p>
+              ) : (
+                <p className="mt-2 text-xs text-white/40">
+                  Select the surfaces this key may access.
+                </p>
+              )}
+              <div className="mt-3 max-h-48 overflow-y-auto pr-1">
+                <div className="flex flex-wrap gap-2">
+                  {API_CAPABILITIES.map((capability) => {
+                    const checked =
+                      effectiveCapabilities.includes(capability);
+                    return (
+                      <label
+                        key={capability}
+                        className={cn(
+                          "inline-flex cursor-pointer items-center gap-2 rounded-full border px-3 py-1.5 text-xs transition-colors",
+                          checked
+                            ? "border-accent/40 bg-accent/10 text-white"
+                            : "border-white/10 text-white/55 hover:border-white/20",
+                          internal && "pointer-events-none opacity-80"
+                        )}
+                      >
+                        <input
+                          type="checkbox"
+                          className="sr-only"
+                          checked={checked}
+                          disabled={internal}
+                          onChange={() =>
+                            setCapabilities((prev) =>
+                              toggleValue(prev, capability)
+                            )
+                          }
+                        />
+                        {API_CAPABILITY_LABELS[capability]}
+                      </label>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          </div>
+
           <button
             type="submit"
             disabled={busy || !projectId}
@@ -289,14 +462,16 @@ export default function ApiKeysPage() {
         {loading ? (
           <p className="text-sm text-white/45">Loading API keys…</p>
         ) : keys.length === 0 ? (
-          <p className="text-sm text-white/45">No API keys for this project.</p>
+          <p className="text-sm text-white/45">No API Keys yet.</p>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[760px] text-left text-sm">
+            <table className="w-full min-w-[980px] text-left text-sm">
               <thead>
                 <tr className="border-b border-white/[0.06] text-xs font-medium uppercase tracking-[0.1em] text-white/35">
                   <th className="px-2 py-3 font-medium">Name</th>
-                  <th className="px-2 py-3 font-medium">Prefix</th>
+                  <th className="px-2 py-3 font-medium">App</th>
+                  <th className="px-2 py-3 font-medium">Capabilities</th>
+                  <th className="px-2 py-3 font-medium">Permissions</th>
                   <th className="px-2 py-3 font-medium">Usage</th>
                   <th className="px-2 py-3 font-medium">Last used</th>
                   <th className="px-2 py-3 font-medium">Expires</th>
@@ -315,21 +490,50 @@ export default function ApiKeysPage() {
                   >
                     <td className="px-2 py-3 text-white/90">
                       <div>{key.name}</div>
-                      <div className="text-[11px] text-white/35">
-                        {key.keyEnvironment} · …{key.lastFour}
-                      </div>
-                    </td>
-                    <td className="px-2 py-3 text-white/70">
                       <button
                         type="button"
-                        className="font-mono text-xs hover:text-accent"
+                        className="mt-0.5 font-mono text-[11px] text-white/35 hover:text-accent"
                         onClick={() => void copyPrefix(key.prefix)}
                         title="Copy prefix"
                       >
-                        {key.prefix}
+                        {key.prefix} · {key.keyEnvironment}
                       </button>
                     </td>
-                    <td className="px-2 py-3 text-white/70">{key.usageCount}</td>
+                    <td className="px-2 py-3 text-xs text-white/65">
+                      {key.applicationType
+                        ? APPLICATION_TYPE_LABELS[
+                            key.applicationType as ApplicationType
+                          ] ?? key.applicationType
+                        : "—"}
+                    </td>
+                    <td
+                      className="max-w-[14rem] px-2 py-3 text-xs text-white/55"
+                      title={(key.capabilities ?? [])
+                        .map(
+                          (c) =>
+                            API_CAPABILITY_LABELS[c as ApiCapability] ?? c
+                        )
+                        .join(", ")}
+                    >
+                      {summarizeList(
+                        (key.capabilities ?? []).map(
+                          (c) =>
+                            API_CAPABILITY_LABELS[c as ApiCapability] ?? c
+                        ),
+                        2
+                      )}
+                    </td>
+                    <td className="px-2 py-3 text-xs text-white/65">
+                      {summarizeList(
+                        (key.permissions ?? []).map(
+                          (p) => API_PERMISSION_LABELS[p as ApiPermission] ?? p
+                        ),
+                        4
+                      )}
+                    </td>
+                    <td className="px-2 py-3 text-white/70">
+                      {key.usageCount}
+                    </td>
                     <td className="px-2 py-3 text-white/55">
                       {formatDate(key.lastUsedAt)}
                     </td>
@@ -340,7 +544,9 @@ export default function ApiKeysPage() {
                       <span
                         className={cn(
                           "text-xs font-medium",
-                          key.enabled ? "text-emerald-300/90" : "text-white/40"
+                          key.enabled
+                            ? "text-emerald-300/90"
+                            : "text-white/40"
                         )}
                       >
                         {key.enabled ? "Enabled" : "Disabled"}

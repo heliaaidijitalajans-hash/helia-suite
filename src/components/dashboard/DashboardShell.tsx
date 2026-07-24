@@ -4,11 +4,6 @@ import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import { cn } from "@/lib/cn";
-import {
-  DashboardDemoCanvas,
-  DashboardDemoIntro,
-  DashboardDemoMarketing,
-} from "./dashboard-demo-content";
 import { dashboardTitleForPath } from "./dashboard-nav";
 import { DashboardSidebar } from "./DashboardSidebar";
 import { DashboardTopBar } from "./DashboardTopBar";
@@ -23,7 +18,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
   }, [pathname]);
 
   return (
-    <div className="relative min-h-screen bg-[#0A0A0B] text-white">
+    <div className="relative min-h-[calc(100vh-4rem)] bg-[#0A0A0B] text-white md:min-h-[calc(100vh-5rem)]">
       <div
         className="pointer-events-none fixed inset-0 overflow-hidden"
         aria-hidden
@@ -49,7 +44,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
 
       <aside
         className={cn(
-          "fixed inset-y-0 left-0 z-50 w-[min(17.5rem,88vw)] transition-transform duration-300 ease-out lg:translate-x-0",
+          "fixed bottom-0 left-0 top-16 z-50 w-[min(17.5rem,88vw)] transition-transform duration-300 ease-out md:top-20 lg:translate-x-0",
           mobileOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
         )}
       >
@@ -59,23 +54,22 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
         />
       </aside>
 
-      <div className="relative flex min-h-screen flex-col lg:pl-[17.5rem]">
+      <div className="relative flex min-h-[calc(100vh-4rem)] flex-col lg:pl-[17.5rem] md:min-h-[calc(100vh-5rem)]">
         <DashboardTopBar
           title={title}
           onMenuClick={() => setMobileOpen(true)}
         />
         <main className="relative flex-1 px-4 py-6 md:px-8 md:py-8">
-          <div className="mx-auto max-w-6xl space-y-10 pb-20 md:space-y-12 md:pb-28">
-            <DashboardDemoIntro />
+          <div className="mx-auto max-w-6xl pb-16 md:pb-20">
             <motion.div
               key={pathname}
               initial={{ opacity: 0, y: 14 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.38, ease: [0.22, 1, 0.36, 1] }}
+              className="relative w-full rounded-[1.75rem] border border-white/[0.08] bg-gradient-to-b from-white/[0.04] to-transparent p-4 shadow-[0_24px_80px_-40px_rgba(0,0,0,0.9),inset_0_1px_0_rgba(255,255,255,0.06)] md:rounded-[2rem] md:p-7"
             >
-              <DashboardDemoCanvas>{children}</DashboardDemoCanvas>
+              {children}
             </motion.div>
-            <DashboardDemoMarketing />
           </div>
         </main>
       </div>

@@ -31,7 +31,7 @@ export function DashboardTopBar({
             {title}
           </h1>
           <p className="hidden text-xs text-white/40 sm:block">
-            Helia Suite workspace
+            Helia API Platform
           </p>
         </motion.div>
       </div>
@@ -49,13 +49,12 @@ export function DashboardTopBar({
           aria-label="Notifications"
         >
           <Bell className="h-4 w-4" strokeWidth={1.5} />
-          <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-accent shadow-[0_0_8px_rgba(212,175,55,0.7)]" />
         </button>
         <div
           className="ml-1 flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-accent/90 to-amber-700/80 text-xs font-bold text-[#0A0A0B] shadow-[0_0_20px_-4px_rgba(212,175,55,0.55)] ring-2 ring-white/10"
-          title="User"
+          title="Helia"
         >
-          HS
+          H
         </div>
       </div>
     </header>

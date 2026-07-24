@@ -1,14 +1,13 @@
 import {
-  BarChart3,
+  BookOpen,
   Building2,
+  ChartNoAxesCombined,
   FolderKanban,
   KeyRound,
   LayoutDashboard,
   MessageSquare,
+  Plug,
   Settings,
-  Users,
-  Workflow,
-  ChartNoAxesCombined,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
@@ -25,15 +24,16 @@ export const dashboardNav: DashboardNavItem[] = [
   { href: "/dashboard/projects", label: "Projects", icon: FolderKanban },
   { href: "/dashboard/api-keys", label: "API Keys", icon: KeyRound },
   { href: "/dashboard/usage", label: "Usage", icon: ChartNoAxesCombined },
-  { href: "/dashboard/customers", label: "Customers", icon: Users },
-  { href: "/dashboard/automation", label: "Automation", icon: Workflow },
-  { href: "/dashboard/analytics", label: "Analytics", icon: BarChart3 },
+  { href: "/dashboard/documentation", label: "Documentation", icon: BookOpen },
+  { href: "/dashboard/integrations", label: "Integrations", icon: Plug },
   { href: "/dashboard/settings", label: "Settings", icon: Settings },
 ];
 
 export function dashboardTitleForPath(pathname: string): string {
   const item = dashboardNav.find(
-    (n) => n.href === pathname || (n.href !== "/dashboard" && pathname.startsWith(n.href))
+    (n) =>
+      n.href === pathname ||
+      (n.href !== "/dashboard" && pathname.startsWith(n.href))
   );
   if (item) return item.label;
   if (pathname === "/dashboard") return "Overview";
