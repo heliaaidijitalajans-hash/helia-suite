@@ -21,8 +21,11 @@ export default function DashboardLayout({
   return (
     <>
       <Header locale={defaultLocale} dict={dict} />
-      <DashboardShell>{children}</DashboardShell>
-      <Footer locale={defaultLocale} dict={dict} />
+      <DashboardShell
+        footer={<Footer locale={defaultLocale} dict={dict} />}
+      >
+        {children}
+      </DashboardShell>
       <FloatingWhatsApp ariaLabel={dict.header.whatsappCta} />
     </>
   );

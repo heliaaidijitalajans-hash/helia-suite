@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { usePathname } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import { cn } from "@/lib/cn";
@@ -8,7 +8,13 @@ import { dashboardTitleForPath } from "./dashboard-nav";
 import { DashboardSidebar } from "./DashboardSidebar";
 import { DashboardTopBar } from "./DashboardTopBar";
 
-export function DashboardShell({ children }: { children: React.ReactNode }) {
+export function DashboardShell({
+  children,
+  footer,
+}: {
+  children: ReactNode;
+  footer?: ReactNode;
+}) {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
   const title = dashboardTitleForPath(pathname);
@@ -42,6 +48,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
         ) : null}
       </AnimatePresence>
 
+      {/* Fixed sidebar — full height under site header; does not share row with footer */}
       <aside
         className={cn(
           "fixed bottom-0 left-0 top-16 z-50 w-[min(17.5rem,88vw)] transition-transform duration-300 ease-out md:top-20 lg:translate-x-0",
@@ -54,13 +61,14 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
         />
       </aside>
 
+      {/* Content column only — offset by sidebar on lg+; footer lives here */}
       <div className="relative flex min-h-[calc(100vh-4rem)] flex-col lg:pl-[17.5rem] md:min-h-[calc(100vh-5rem)]">
         <DashboardTopBar
           title={title}
           onMenuClick={() => setMobileOpen(true)}
         />
         <main className="relative flex-1 px-4 py-6 md:px-8 md:py-8">
-          <div className="mx-auto max-w-6xl pb-16 md:pb-20">
+          <div className="mx-auto max-w-6xl pb-8 md:pb-10">
             <motion.div
               key={pathname}
               initial={{ opacity: 0, y: 14 }}
@@ -72,6 +80,9 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
             </motion.div>
           </div>
         </main>
+        {footer ? (
+          <div className="relative mt-auto w-full shrink-0">{footer}</div>
+        ) : null}
       </div>
     </div>
   );
