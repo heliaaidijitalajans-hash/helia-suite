@@ -8,7 +8,7 @@ import { getDictionary } from "@/lib/i18n";
 
 export const metadata: Metadata = {
   title: "Helia Platform",
-  description: "Helia API Platform — API keys, chat, and monitoring",
+  description: "Helia API Platform — API keys, usage, and integrations",
 };
 
 export default function DashboardLayout({

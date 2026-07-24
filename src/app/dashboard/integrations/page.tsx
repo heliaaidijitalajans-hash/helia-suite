@@ -50,7 +50,7 @@ const INTEGRATIONS = [
     install: [
       "Do not embed Helia API keys in the app binary.",
       "Call your backend; backend calls Helia with the API key.",
-      "Surface Helia Chat or monitoring via your own API responses.",
+      "Surface monitoring via your own API responses.",
       "Use test keys during development.",
     ],
   },
@@ -60,7 +60,7 @@ const INTEGRATIONS = [
     install: [
       "Same pattern as Flutter: backend-held secrets.",
       "Authenticate end users with your app auth; Helia key stays server-side.",
-      "Optional: open Helia Chat inside the dashboard for operators only.",
+      "Call Helia only from your backend with the project API key.",
       "Promote live keys after staging validation.",
     ],
   },

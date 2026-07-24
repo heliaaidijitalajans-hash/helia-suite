@@ -1,10 +1,8 @@
 import {
   BookOpen,
-  Building2,
   ChartNoAxesCombined,
   KeyRound,
   LayoutDashboard,
-  MessageSquare,
   Plug,
   Settings,
 } from "lucide-react";
@@ -16,10 +14,9 @@ export type DashboardNavItem = {
   icon: LucideIcon;
 };
 
+/** Customer API dashboard nav — Helia Chat lives in Admin Console (future). */
 export const dashboardNav: DashboardNavItem[] = [
   { href: "/dashboard", label: "Overview", icon: LayoutDashboard },
-  { href: "/dashboard/helia-chat", label: "Helia Chat", icon: MessageSquare },
-  { href: "/dashboard/organizations", label: "Organizations", icon: Building2 },
   { href: "/dashboard/api-keys", label: "API Keys", icon: KeyRound },
   { href: "/dashboard/usage", label: "Usage", icon: ChartNoAxesCombined },
   { href: "/dashboard/documentation", label: "Documentation", icon: BookOpen },

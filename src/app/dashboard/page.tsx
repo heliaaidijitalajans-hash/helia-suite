@@ -6,7 +6,6 @@ import {
   ArrowRight,
   BookOpen,
   KeyRound,
-  MessageSquare,
   Plug,
   Radar,
 } from "lucide-react";
@@ -15,9 +14,9 @@ import { cn } from "@/lib/cn";
 
 const PILLARS = [
   { label: "API Keys", icon: KeyRound },
-  { label: "AI Chat", icon: MessageSquare },
   { label: "Monitoring", icon: Radar },
   { label: "Integrations", icon: Plug },
+  { label: "Documentation", icon: BookOpen },
 ] as const;
 
 const ONBOARDING = [
@@ -42,7 +41,7 @@ const ONBOARDING = [
   {
     step: "4",
     title: "Monitor Usage",
-    body: "Track requests and talk to Helia Chat from your workspace.",
+    body: "Track requests and usage for your workspace.",
     href: "/dashboard/usage",
   },
 ] as const;
@@ -63,9 +62,8 @@ export default function DashboardOverviewPage() {
           Welcome to Helia
         </h2>
         <p className="mx-auto max-w-2xl text-sm leading-relaxed text-white/55 md:text-base">
-          Helia is an AI platform for your products. Manage API keys, chat with
-          Helia Brain, monitor usage, and connect applications — from one
-          customer portal.
+          Helia is an AI platform for your products. Manage API keys, monitor
+          usage, and connect applications — from one customer portal.
         </p>
         <ul className="mx-auto flex max-w-2xl flex-wrap items-center justify-center gap-2 pt-1">
           {PILLARS.map(({ label, icon: Icon }) => (
@@ -93,11 +91,11 @@ export default function DashboardOverviewPage() {
             Documentation
           </Button>
           <Button
-            href="/dashboard/helia-chat"
+            href="/dashboard/integrations"
             variant="ghost"
             className="min-h-11 px-6 text-sm font-semibold"
           >
-            Helia Chat
+            Integrations
           </Button>
         </div>
       </motion.div>
