@@ -1,6 +1,7 @@
 import {
   BarChart3,
   LayoutDashboard,
+  MessageSquare,
   Settings,
   Users,
   Workflow,
@@ -15,6 +16,7 @@ export type DashboardNavItem = {
 
 export const dashboardNav: DashboardNavItem[] = [
   { href: "/dashboard", label: "Overview", icon: LayoutDashboard },
+  { href: "/dashboard/helia-chat", label: "Helia Chat", icon: MessageSquare },
   { href: "/dashboard/customers", label: "Customers", icon: Users },
   { href: "/dashboard/automation", label: "Automation", icon: Workflow },
   { href: "/dashboard/analytics", label: "Analytics", icon: BarChart3 },
