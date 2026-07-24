@@ -45,12 +45,42 @@ export function getBearerToken(request: Request): string | null {
   return header.slice("Bearer ".length).trim() || null;
 }
 
+/** JWT access token from Authorization header or helia_access_token cookie. */
+export function getAccessTokenFromRequest(request: Request): string | null {
+  const bearer = getBearerToken(request);
+  if (
+    bearer &&
+    !bearer.startsWith("hl_live_") &&
+    !bearer.startsWith("hl_test_")
+  ) {
+    return bearer;
+  }
+
+  const cookieHeader = request.headers.get("cookie") ?? "";
+  const match = cookieHeader.match(/(?:^|;\s*)helia_access_token=([^;]+)/);
+  if (!match?.[1]) return null;
+
+  try {
+    const value = decodeURIComponent(match[1]).trim();
+    if (!value || value.startsWith("hl_live_") || value.startsWith("hl_test_")) {
+      return null;
+    }
+    return value;
+  } catch {
+    const value = match[1].trim();
+    if (!value || value.startsWith("hl_live_") || value.startsWith("hl_test_")) {
+      return null;
+    }
+    return value;
+  }
+}
+
 export async function requireCloudUser(
   request: Request
 ): Promise<{ container: CloudContainer; user: CloudUser; accessToken: string }> {
   const container = await getCloudContainer();
-  const token = getBearerToken(request);
-  if (!token || token.startsWith("hl_live_") || token.startsWith("hl_test_")) {
+  const token = getAccessTokenFromRequest(request);
+  if (!token) {
     throw new AppError("Missing Bearer token", {
       statusCode: 401,
       code: "UNAUTHORIZED",

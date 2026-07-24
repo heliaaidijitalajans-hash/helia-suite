@@ -33,6 +33,7 @@ export async function cloudRequest<T>(
 
   const res = await fetch(path.startsWith("/api/") ? path : `/api${path}`, {
     ...init,
+    credentials: "same-origin",
     headers: {
       Accept: "application/json",
       "Content-Type": "application/json",
@@ -42,7 +43,9 @@ export async function cloudRequest<T>(
     cache: "no-store",
   });
 
-  const data = (await res.json().catch(() => null)) as (T & CloudErrorBody) | null;
+  const data = (await res.json().catch(() => null)) as
+    | (T & CloudErrorBody)
+    | null;
 
   if (!res.ok || data?.ok === false) {
     throw new HeliaCloudClientError(

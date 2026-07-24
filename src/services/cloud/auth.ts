@@ -135,13 +135,26 @@ export async function logoutHeliaCloud(): Promise<void> {
 
 export function safeAuthNextPath(
   next: string | null | undefined,
-  fallback = "/dashboard"
+  fallback = "/en/dashboard"
 ): string {
   if (!next || !next.startsWith("/") || next.startsWith("//")) {
     return fallback;
   }
   if (next.startsWith("/login") || next.startsWith("/register")) {
     return fallback;
+  }
+  // Repair legacy next targets like /api-keys → /en/dashboard/api-keys
+  const parts = next.split("/").filter(Boolean);
+  if (
+    parts.length === 1 &&
+    ["api-keys", "profile", "usage", "documentation", "integrations", "settings"].includes(
+      parts[0]!
+    )
+  ) {
+    return `/en/dashboard/${parts[0]}`;
+  }
+  if (next === "/dashboard" || next.startsWith("/dashboard/")) {
+    return `/en${next}`;
   }
   return next;
 }
