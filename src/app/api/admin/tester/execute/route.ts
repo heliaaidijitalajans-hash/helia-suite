@@ -99,11 +99,14 @@ export async function POST(request: Request) {
       json = null;
     }
 
+    // Do NOT set top-level `ok` to the upstream result — jsonOk already sets
+    // envelope `ok: true` when this proxy itself succeeded. Overwriting it with
+    // upstream `res.ok === false` made adminFetch throw "Request failed (200)".
     return jsonOk({
       status: res.status,
       latencyMs,
       sizeBytes,
-      ok: res.ok,
+      upstreamOk: res.ok,
       headers: Object.fromEntries(res.headers.entries()),
       body: json ?? text,
       rawText: text,

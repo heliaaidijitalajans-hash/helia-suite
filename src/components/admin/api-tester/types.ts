@@ -49,12 +49,25 @@ export type ExecuteResult = {
   status: number;
   latencyMs: number;
   sizeBytes: number;
-  ok: boolean;
+  /** Whether the proxied upstream HTTP response was 2xx. */
+  upstreamOk: boolean;
   body: unknown;
   rawText?: string;
   executedAt: string;
   request: { method: string; path: string };
 };
+
+/** True when response body has `ok: false` (Helia envelope). */
+export function bodyReportsFailure(body: unknown): boolean {
+  if (!body || typeof body !== "object") return false;
+  return (body as { ok?: unknown }).ok === false;
+}
+
+/** True when response body has `ok: true`. */
+export function bodyReportsSuccess(body: unknown): boolean {
+  if (!body || typeof body !== "object") return false;
+  return (body as { ok?: unknown }).ok === true;
+}
 
 export const HTTP_METHODS: HttpMethod[] = [
   "GET",

@@ -1,7 +1,7 @@
 "use client";
 
 import { cn } from "@/lib/cn";
-import { formatBytes } from "./types";
+import { bodyReportsFailure, formatBytes } from "./types";
 
 const ERROR_META: Record<
   number,
@@ -115,6 +115,7 @@ export function ErrorStatusCard({
         <p className="text-sm font-semibold">
           {status} · {title}
         </p>
+        <p className="text-xs font-medium opacity-80">Request failed</p>
       </div>
       <p className="mt-2 text-xs opacity-90">{message}</p>
       <p className="mt-2 text-[11px] uppercase tracking-[0.1em] opacity-55">
@@ -125,19 +126,50 @@ export function ErrorStatusCard({
   );
 }
 
+export function TransportErrorCard({ message }: { message: string }) {
+  return (
+    <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3">
+      <p className="text-sm font-semibold text-red-100">Transport error</p>
+      <p className="mt-2 text-xs text-red-100/85">{message}</p>
+      <p className="mt-2 text-[11px] uppercase tracking-[0.1em] text-red-200/50">
+        Recommendation
+      </p>
+      <p className="mt-1 text-xs text-red-100/75">
+        Check network connectivity, DNS, timeouts, or that the admin session is
+        still valid — this is not an upstream API status code.
+      </p>
+    </div>
+  );
+}
+
+/**
+ * Success: HTTP 2xx and body does not report `ok: false`.
+ * Failure: non-2xx OR JSON envelope `ok: false`.
+ * Never treat HTTP 200 alone as an error.
+ */
 export function ResultBanner({
   status,
   latencyMs,
   sizeBytes,
   body,
+  upstreamOk,
 }: {
   status: number | null;
   latencyMs: number | null;
   sizeBytes: number | null;
   body: unknown;
+  upstreamOk?: boolean | null;
 }) {
   if (status == null || latencyMs == null || sizeBytes == null) return null;
-  if (status >= 200 && status < 300) {
+
+  const httpOk = status >= 200 && status < 300;
+  const jsonFailed = bodyReportsFailure(body);
+  const succeeded =
+    httpOk &&
+    !jsonFailed &&
+    (upstreamOk === undefined || upstreamOk === null || upstreamOk === true);
+
+  if (succeeded) {
     return (
       <SuccessCard
         status={status}
@@ -146,8 +178,6 @@ export function ResultBanner({
       />
     );
   }
-  if ([400, 401, 403, 404, 429, 500].includes(status) || status >= 400) {
-    return <ErrorStatusCard status={status} body={body} />;
-  }
-  return null;
+
+  return <ErrorStatusCard status={status} body={body} />;
 }

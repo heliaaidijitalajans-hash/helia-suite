@@ -20,7 +20,7 @@ import { cn } from "@/lib/cn";
 import { EndpointCombobox } from "@/components/admin/api-tester/EndpointCombobox";
 import { QueryParamsEditor } from "@/components/admin/api-tester/QueryParamsEditor";
 import { CodeExportPanel } from "@/components/admin/api-tester/CodeExportPanel";
-import { ResultBanner } from "@/components/admin/api-tester/StatusCards";
+import { ResultBanner, TransportErrorCard } from "@/components/admin/api-tester/StatusCards";
 import { JsonHighlight } from "@/components/admin/api-tester/JsonHighlight";
 import type { CodegenInput } from "@/components/admin/api-tester/codegen";
 import {
@@ -64,7 +64,9 @@ export default function AdminApiTesterPage() {
   const [latencyMs, setLatencyMs] = useState<number | null>(null);
   const [sizeBytes, setSizeBytes] = useState<number | null>(null);
   const [executedAt, setExecutedAt] = useState<string | null>(null);
+  const [upstreamOk, setUpstreamOk] = useState<boolean | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [transportError, setTransportError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [busyAction, setBusyAction] = useState<"validate" | "execute" | null>(
     null
@@ -136,6 +138,7 @@ export default function AdminApiTesterPage() {
     setBusy(true);
     setBusyAction("validate");
     setError(null);
+    setTransportError(null);
     try {
       const res = await adminFetch<ValidateResult & { ok: true }>(
         "/api/admin/tester/validate",
@@ -147,7 +150,13 @@ export default function AdminApiTesterPage() {
       setValidation(res);
     } catch (err) {
       setValidation(null);
-      setError(err instanceof Error ? err.message : "Validation failed");
+      const message =
+        err instanceof Error ? err.message : "Validation failed";
+      if (/failed to fetch|network|timeout|dns|abort/i.test(message)) {
+        setTransportError(message);
+      } else {
+        setError(message);
+      }
     } finally {
       setBusy(false);
       setBusyAction(null);
@@ -158,6 +167,7 @@ export default function AdminApiTesterPage() {
     setBusy(true);
     setBusyAction("execute");
     setError(null);
+    setTransportError(null);
     setHeadersError(null);
     setBodyError(null);
     try {
@@ -181,7 +191,9 @@ export default function AdminApiTesterPage() {
       }
 
       const pathTemplate = path.trim();
-      const res = await adminFetch<ExecuteResult & { ok: boolean }>(
+      // Envelope ok is always true when the tester proxy itself succeeds.
+      // Upstream HTTP outcome lives in `status` + `upstreamOk` (not envelope ok).
+      const res = await adminFetch<ExecuteResult>(
         "/api/admin/tester/execute",
         {
           method: "POST",
@@ -198,6 +210,7 @@ export default function AdminApiTesterPage() {
       setStatus(res.status);
       setLatencyMs(res.latencyMs);
       setSizeBytes(res.sizeBytes);
+      setUpstreamOk(res.upstreamOk);
       setResponse(res.body);
       setExecutedAt(res.executedAt ?? new Date().toISOString());
 
@@ -222,7 +235,21 @@ export default function AdminApiTesterPage() {
         return next;
       });
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Request failed");
+      const message =
+        err instanceof Error ? err.message : "Request failed";
+      const isClientValidation =
+        /Headers must be valid JSON|Body must be valid JSON/i.test(message);
+      const isTransport =
+        !isClientValidation &&
+        (/failed to fetch|networkerror|network request failed|timeout|dns|abort|load failed|fetch failed/i.test(
+          message
+        ) ||
+          err instanceof TypeError);
+      if (isTransport) {
+        setTransportError(message);
+      } else {
+        setError(message);
+      }
     } finally {
       setBusy(false);
       setBusyAction(null);
@@ -238,8 +265,10 @@ export default function AdminApiTesterPage() {
     setStatus(item.status);
     setLatencyMs(item.latencyMs);
     setSizeBytes(item.sizeBytes);
+    setUpstreamOk(item.status >= 200 && item.status < 300);
     setExecutedAt(item.at);
     setError(null);
+    setTransportError(null);
   }
 
   async function copyResponse() {
@@ -302,9 +331,14 @@ export default function AdminApiTesterPage() {
         description="Postman-style Helia API console — validate keys, craft requests, inspect responses, and export code. Shortcuts: ⌘/Ctrl+Enter run · ⌘/Ctrl+Shift+V validate."
       >
         {error ? (
-          <p className="mb-4 rounded-xl border border-red-500/25 bg-red-500/10 px-4 py-3 text-sm text-red-100/90">
+          <p className="mb-4 rounded-xl border border-amber-500/25 bg-amber-500/10 px-4 py-3 text-sm text-amber-100/90">
             {error}
           </p>
+        ) : null}
+        {transportError ? (
+          <div className="mb-4">
+            <TransportErrorCard message={transportError} />
+          </div>
         ) : null}
 
         <div className="space-y-5">
@@ -567,6 +601,7 @@ export default function AdminApiTesterPage() {
               latencyMs={latencyMs}
               sizeBytes={sizeBytes}
               body={response}
+              upstreamOk={upstreamOk}
             />
             <div className="flex flex-wrap gap-4 text-xs text-white/50">
               <span>
