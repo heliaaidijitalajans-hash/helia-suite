@@ -1,7 +1,11 @@
 "use client";
 
-import { Bell, Menu, Search } from "lucide-react";
+import Link from "next/link";
+import { Bell, LogOut, Menu, Search } from "lucide-react";
 import { motion } from "framer-motion";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
+import { logoutHeliaCloud } from "@/services/cloud/auth";
 
 export function DashboardTopBar({
   title,
@@ -10,6 +14,21 @@ export function DashboardTopBar({
   title: string;
   onMenuClick: () => void;
 }) {
+  const router = useRouter();
+  const [busy, setBusy] = useState(false);
+
+  async function handleLogout() {
+    if (busy) return;
+    setBusy(true);
+    try {
+      await logoutHeliaCloud();
+      router.replace("/login");
+      router.refresh();
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
     <header className="sticky top-0 z-30 flex h-16 shrink-0 items-center justify-between gap-4 border-b border-white/[0.08] bg-[#0A0A0B]/80 px-4 backdrop-blur-xl md:px-8">
       <div className="flex items-center gap-3">
@@ -50,12 +69,24 @@ export function DashboardTopBar({
         >
           <Bell className="h-4 w-4" strokeWidth={1.5} />
         </button>
-        <div
-          className="ml-1 flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-accent/90 to-amber-700/80 text-xs font-bold text-[#0A0A0B] shadow-[0_0_20px_-4px_rgba(212,175,55,0.55)] ring-2 ring-white/10"
-          title="Helia"
+        <button
+          type="button"
+          onClick={() => void handleLogout()}
+          disabled={busy}
+          className="flex h-10 w-10 items-center justify-center rounded-xl border border-white/10 bg-white/[0.03] text-white/55 transition-all hover:border-red-400/35 hover:text-red-100/90 disabled:opacity-60"
+          aria-label="Logout"
+          title="Logout"
+        >
+          <LogOut className="h-4 w-4" strokeWidth={1.5} />
+        </button>
+        <Link
+          href="/dashboard/profile"
+          className="ml-1 flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-accent/90 to-amber-700/80 text-xs font-bold text-[#0A0A0B] shadow-[0_0_20px_-4px_rgba(212,175,55,0.55)] ring-2 ring-white/10 transition-opacity hover:opacity-90"
+          title="Kişisel Bilgiler"
+          aria-label="Open profile"
         >
           H
-        </div>
+        </Link>
       </div>
     </header>
   );

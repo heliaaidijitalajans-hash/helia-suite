@@ -60,6 +60,7 @@ export function Header({
           <AuthNavButton
             loginLabel={dict.nav.login}
             dashboardLabel={dict.nav.dashboard}
+            logoutLabel={dict.nav.logout}
           />
           <Button
             href={WHATSAPP_URL}

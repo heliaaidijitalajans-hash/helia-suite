@@ -17,6 +17,7 @@ export const en: Dictionary = {
     contact: "Contact Us",
     login: "Login",
     dashboard: "Dashboard",
+    logout: "Logout",
   },
   header: {
     whatsappCta: "WhatsApp",

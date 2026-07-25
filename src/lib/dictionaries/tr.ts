@@ -17,6 +17,7 @@ export const tr: Dictionary = {
     contact: "İletişime Geç",
     login: "Giriş",
     dashboard: "Panel",
+    logout: "Çıkış",
   },
   header: {
     whatsappCta: "WhatsApp",

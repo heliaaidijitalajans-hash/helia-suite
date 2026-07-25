@@ -1,7 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Camera, CheckCircle2, XCircle } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Camera, CheckCircle2, LogOut, XCircle } from "lucide-react";
 import {
   CloudAlert,
   CloudField,
@@ -15,6 +16,7 @@ import {
   DEFAULT_PROFILE_PREFS,
   fetchAuthMe,
   loadProfilePreferences,
+  logoutHeliaCloud,
   saveProfilePreferences,
   type HeliaPublicUser,
   type ProfilePreferences,
@@ -52,8 +54,10 @@ const TIME_ZONES = [
 ] as const;
 
 export default function ProfilePage() {
+  const router = useRouter();
   const fileRef = useRef<HTMLInputElement>(null);
   const [user, setUser] = useState<HeliaPublicUser | null>(null);
+  const [logoutBusy, setLogoutBusy] = useState(false);
   const [fullName, setFullName] = useState("");
   const [prefs, setPrefs] = useState<ProfilePreferences>({
     ...DEFAULT_PROFILE_PREFS,
@@ -145,6 +149,19 @@ export default function ProfilePage() {
       updatePref("photoDataUrl", result);
     };
     reader.readAsDataURL(file);
+  }
+
+  async function handleLogout() {
+    if (logoutBusy) return;
+    setLogoutBusy(true);
+    try {
+      await logoutHeliaCloud();
+      router.replace("/login");
+      router.refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not sign out");
+      setLogoutBusy(false);
+    }
   }
 
   async function handleChangePassword(e: React.FormEvent) {
@@ -416,6 +433,31 @@ export default function ProfilePage() {
             {passwordBusy ? "Updating…" : "Update password"}
           </button>
         </form>
+      </CloudPanel>
+
+      <CloudPanel
+        title="Oturum"
+        description="Sign out of this browser session and return to the login screen."
+      >
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-sm text-white/55">
+            {user?.email
+              ? `Signed in as ${user.email}`
+              : "End your Helia Platform session on this device."}
+          </p>
+          <button
+            type="button"
+            onClick={() => void handleLogout()}
+            disabled={logoutBusy}
+            className={cn(
+              cloudBtnSecondaryClass,
+              "inline-flex items-center justify-center gap-2 border-red-400/20 text-red-100/90 hover:border-red-400/40 hover:bg-red-500/10"
+            )}
+          >
+            <LogOut className="h-4 w-4" strokeWidth={1.75} />
+            {logoutBusy ? "Signing out…" : "Çıkış yap"}
+          </button>
+        </div>
       </CloudPanel>
     </div>
   );

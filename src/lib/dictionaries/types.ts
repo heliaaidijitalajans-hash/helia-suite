@@ -14,6 +14,7 @@ export type Dictionary = {
     contact: string;
     login: string;
     dashboard: string;
+    logout: string;
   };
   header: {
     whatsappCta: string;
