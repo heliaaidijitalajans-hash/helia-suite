@@ -101,7 +101,8 @@ function buildUpstreamHeaders(opts: {
   }
 
   const authApplied: string[] = [];
-  const key = opts.apiKey;
+  // Strip accidental "Bearer " paste so we never send "Bearer Bearer …"
+  const key = opts.apiKey.trim().replace(/^Bearer\s+/i, "").trim();
   if (opts.authMode === "bearer" || opts.authMode === "both") {
     headers.Authorization = `Bearer ${key}`;
     authApplied.push("Authorization: Bearer");
@@ -125,8 +126,9 @@ export async function POST(request: Request) {
       jsonBody?: unknown;
     }>(request);
 
-    const apiKey = body.apiKey?.trim();
-    const authMode: AuthMode =
+    const apiKeyRaw = body.apiKey?.trim() ?? "";
+    const apiKey = apiKeyRaw.replace(/^Bearer\s+/i, "").trim();
+    let authMode: AuthMode =
       body.authMode === "bearer" || body.authMode === "x-api-key"
         ? body.authMode
         : "both";
@@ -143,6 +145,11 @@ export async function POST(request: Request) {
 
     const catalog = discoverApiRoutes();
     const matched = findRouteInCatalog(catalog, pathOnly);
+    // api_key routes (e.g. whoami) only accept Authorization Bearer — never
+    // send X-API-Key-only upstream even if the client selected that mode.
+    if (matched?.authentication === "api_key" && authMode === "x-api-key") {
+      authMode = "both";
+    }
     if (!matched) {
       return jsonOk({
         status: 404,

@@ -1,5 +1,31 @@
 export type AuthMode = "bearer" | "x-api-key" | "both";
 
+/**
+ * Normalize pasted secrets: trim and strip a duplicated "Bearer " prefix
+ * so Authorization never becomes "Bearer Bearer hl_…".
+ */
+export function normalizeApiKeyInput(raw: string): string {
+  let key = raw.trim();
+  if (/^Bearer\s+/i.test(key)) {
+    key = key.replace(/^Bearer\s+/i, "").trim();
+  }
+  return key;
+}
+
+/**
+ * whoami (and other api_key routes) only read Authorization: Bearer.
+ * X-API-Key-only mode would 401 even with a valid key — upgrade to both.
+ */
+export function resolveAuthModeForRoute(
+  authMode: AuthMode,
+  routeAuth?: string | null
+): AuthMode {
+  if (routeAuth === "api_key" && authMode === "x-api-key") {
+    return "both";
+  }
+  return authMode;
+}
+
 /** Strip conflicting auth keys (any casing). */
 export function stripAuthHeaders(
   headers: Record<string, string>
@@ -26,7 +52,7 @@ export function buildAuthenticatedHeaders(opts: {
   headers: Record<string, string>;
   authHeadersApplied: Record<string, string>;
 } {
-  const key = opts.apiKey.trim();
+  const key = normalizeApiKeyInput(opts.apiKey);
   const base = stripAuthHeaders({
     Accept: "application/json",
     ...(opts.customHeaders ?? {}),

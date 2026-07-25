@@ -2,9 +2,10 @@
  * Helia AI Orchestrator
  *
  * User → Conversation Context → Intent Detection → Tool Router
- *   → Platform Service(s) → Context Builder → LLM → Response
+ *   → Platform Service(s) → Context Builder → Conversational LLM → Response
  *
- * The LLM never decides platform facts; it only formats tool JSON.
+ * Live facts come from tools. The LLM reasons and answers naturally
+ * (ChatGPT-style) while staying grounded in tool JSON.
  */
 
 import { createId } from "@/server/helia/utils/id";
@@ -91,6 +92,7 @@ export async function orchestrateBrainAnswer(input: {
     recentMessages: input.recentMessages,
   });
   const answeredAt = new Date().toISOString();
+  const tr = detectReplyLanguage(input.text) === "tr";
 
   return {
     id: input.answerId || createId("brainans"),
@@ -113,18 +115,17 @@ export async function orchestrateBrainAnswer(input: {
     businessImpact: "",
     technicalImpact: "",
     insufficientData: result.insufficientData,
-    suggestedFollowUps:
-      detectReplyLanguage(input.text) === "tr"
-        ? [
-            "Kaç API anahtarım var?",
-            "Bugünkü kullanımı göster",
-            "Platform sağlıklı mı?",
-          ]
-        : [
-            "How many API Keys do I have?",
-            "Show today's usage",
-            "Is the platform healthy?",
-          ],
+    suggestedFollowUps: tr
+      ? [
+          "Kaç API anahtarım var?",
+          "Bugünkü kullanımı göster",
+          "Platform sağlıklı mı?",
+        ]
+      : [
+          "How many API Keys do I have?",
+          "Show today's usage",
+          "Is the platform healthy?",
+        ],
     personality: "professional_calm_sre",
   };
 }

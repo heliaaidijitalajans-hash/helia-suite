@@ -1,59 +1,137 @@
 /**
- * LLM formatter layer.
- * Receives structured context ONLY — never queries platform services.
- * Reply language follows the user's message (tr / en).
+ * Conversational LLM layer for Helia Chat.
+ * Primary path: OpenAI chat completions with tool-grounded reasoning.
+ * Fallback: natural prose composed from tool JSON (no invented metrics).
  */
 
+import { HELIA_ADMINISTRATOR_SYSTEM_PROMPT } from "../system-prompt";
 import type { LlmContextPacket } from "./context-builder";
 import {
   detectReplyLanguage,
   securityBlockedMessage,
-  uiLabels,
   type ReplyLanguage,
 } from "./language";
 
-function formatSections(
-  lang: ReplyLanguage,
-  parts: {
-    status?: string;
-    summary: string;
-    recommendation?: string;
-    nextStep?: string;
-    extra?: Array<{ title: string; body: string }>;
-  }
-): string {
-  const L = uiLabels(lang);
-  const out: string[] = [];
-  if (parts.status) out.push(`${L.status}\n${parts.status}`);
-  out.push(`${L.summary}\n${parts.summary}`);
-  for (const e of parts.extra ?? []) {
-    if (e.body.trim()) out.push(`${e.title}\n${e.body}`);
-  }
-  if (parts.recommendation) {
-    out.push(`${L.recommendation}\n${parts.recommendation}`);
-  }
-  if (parts.nextStep) out.push(`${L.nextStep}\n${parts.nextStep}`);
-  return out.join("\n\n");
+type ChatMessage = { role: "system" | "user" | "assistant"; content: string };
+
+function langOf(packet: LlmContextPacket): ReplyLanguage {
+  return packet.replyLanguage ?? detectReplyLanguage(packet.userMessage);
 }
 
-function formatFromTools(packet: LlmContextPacket): string {
-  const lang = packet.replyLanguage ?? detectReplyLanguage(packet.userMessage);
-  const L = uiLabels(lang);
+/** Build OpenAI-style message list with history + live tool context. */
+function buildChatMessages(packet: LlmContextPacket): ChatMessage[] {
+  const lang = langOf(packet);
+  const langLine =
+    lang === "tr"
+      ? "Kullanıcıya tamamen Türkçe cevap ver."
+      : "Reply entirely in English.";
+
+  const messages: ChatMessage[] = [
+    {
+      role: "system",
+      content: `${HELIA_ADMINISTRATOR_SYSTEM_PROMPT}\n\n${langLine}\n\nRules:\n- ${packet.rules.join("\n- ")}`,
+    },
+  ];
+
+  // Prior turns (exclude the current user message which is sent separately)
+  const prior = packet.memory.recentTurns.slice(0, -1).slice(-10);
+  for (const turn of prior) {
+    if (turn.role === "user" || turn.role === "assistant") {
+      messages.push({ role: turn.role, content: turn.content });
+    }
+  }
+
+  const liveContext = {
+    intents: packet.intents,
+    newestApiKeyId: packet.memory.newestApiKeyId ?? null,
+    tools: packet.tools,
+  };
+
+  messages.push({
+    role: "user",
+    content: [
+      packet.userMessage,
+      "",
+      "LIVE_PLATFORM_CONTEXT (authoritative — do not invent beyond this):",
+      "```json",
+      JSON.stringify(liveContext, null, 2),
+      "```",
+      "",
+      "Think carefully, then answer helpfully in natural language.",
+    ].join("\n"),
+  });
+
+  return messages;
+}
+
+async function reasonWithOpenAi(
+  packet: LlmContextPacket
+): Promise<string | null> {
+  const apiKey =
+    process.env.HELIA_LLM_API_KEY?.trim() ||
+    process.env.OPENAI_API_KEY?.trim() ||
+    "";
+  if (!apiKey) return null;
+
+  const model =
+    process.env.HELIA_LLM_MODEL?.trim() ||
+    process.env.OPENAI_MODEL?.trim() ||
+    "gpt-4o-mini";
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 45_000);
+
+  try {
+    const res = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      signal: controller.signal,
+      body: JSON.stringify({
+        model,
+        temperature: 0.55,
+        max_tokens: 1800,
+        messages: buildChatMessages(packet),
+      }),
+    });
+
+    if (!res.ok) {
+      const errText = await res.text().catch(() => "");
+      console.error(
+        "[helia-brain] OpenAI error",
+        res.status,
+        errText.slice(0, 300)
+      );
+      return null;
+    }
+
+    const data = (await res.json().catch(() => null)) as {
+      choices?: Array<{ message?: { content?: string } }>;
+    } | null;
+    const text = data?.choices?.[0]?.message?.content?.trim();
+    return text || null;
+  } catch (error) {
+    console.error("[helia-brain] OpenAI request failed", error);
+    return null;
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+/** Natural prose fallback when no LLM key / API failure. */
+function composeNaturalAnswer(packet: LlmContextPacket): string {
+  const lang = langOf(packet);
   const tr = lang === "tr";
-  const blocks: string[] = [];
+  const parts: string[] = [];
 
   for (const tool of packet.tools) {
     if (!tool.ok) {
-      blocks.push(
-        formatSections(lang, {
-          status: L.toolError,
-          summary: tr
-            ? `${tool.tool} başarısız: ${tool.error || "bilinmeyen hata"}`
-            : `${tool.tool} failed: ${tool.error || "unknown"}`,
-          nextStep: tr
-            ? "Tekrar deneyin veya Admin → System Health’e bakın."
-            : "Retry or open Admin → System Health.",
-        })
+      parts.push(
+        tr
+          ? `${tool.tool} şu an yanıt veremedi (${tool.error || "bilinmeyen hata"}). Admin → System Health veya Logs’a bakmanı öneririm.`
+          : `${tool.tool} failed (${tool.error || "unknown error"}). Check Admin → System Health or Logs.`
       );
       continue;
     }
@@ -61,7 +139,7 @@ function formatFromTools(packet: LlmContextPacket): string {
     const d = tool.data;
 
     if (tool.intent === "SECURITY" && d.blocked) {
-      blocks.push(
+      parts.push(
         typeof d.message === "string" && d.message
           ? d.message
           : securityBlockedMessage(lang)
@@ -81,404 +159,235 @@ function formatFromTools(packet: LlmContextPacket): string {
             usageCount?: number;
           }) =>
             tr
-              ? `• ${k.name} — ${k.enabled ? "aktif" : "pasif"} — ${k.keyEnvironment} — kullanım ${k.usageCount ?? 0}`
-              : `• ${k.name} — ${k.enabled ? "active" : "disabled"} — ${k.keyEnvironment} — usage ${k.usageCount ?? 0}`
+              ? `• **${k.name}** — ${k.enabled ? "aktif" : "pasif"}, ${k.keyEnvironment}, ${k.usageCount ?? 0} kullanım`
+              : `• **${k.name}** — ${k.enabled ? "active" : "disabled"}, ${k.keyEnvironment}, ${k.usageCount ?? 0} uses`
         )
         .join("\n");
+      parts.push(
+        tr
+          ? `Şu an **${d.totalKeys ?? 0}** API anahtarı var (aktif: **${d.active ?? 0}**, live: **${d.production ?? 0}**, test: **${d.test ?? 0}**).`
+          : `You currently have **${d.totalKeys ?? 0}** API key(s) (active: **${d.active ?? 0}**, live: **${d.production ?? 0}**, test: **${d.test ?? 0}**).`
+      );
+      if (lines) parts.push(lines);
       const newest = d.newest as { id?: string; name?: string } | null;
-      blocks.push(
-        formatSections(lang, {
-          status: L.ok,
-          summary: tr
-            ? `API anahtarları: toplam ${d.totalKeys ?? 0}, aktif ${d.active ?? 0}, production (live) ${d.production ?? 0}, test ${d.test ?? 0}.`
-            : `API keys: ${d.totalKeys ?? 0} total, ${d.active ?? 0} active, ${d.production ?? 0} production (live), ${d.test ?? 0} test.`,
-          extra: [
-            ...(lines ? [{ title: L.keys, body: lines }] : []),
-            ...(newest?.id
-              ? [
-                  {
-                    title: L.newest,
-                    body: `${newest.name} (${newest.id})`,
-                  },
-                ]
-              : []),
-          ],
-          recommendation: tr
-            ? "Anahtarları Admin → API Keys üzerinden yönetin. Sohbette secret paylaşmayın."
-            : "Manage keys in Admin → API Keys. Never expose secrets in chat.",
-          nextStep:
-            packet.memory.newestApiKeyId &&
-            /newest|latest|rotate|that|it|yenisini|sonuncuyu|onu|bunu/i.test(
-              packet.userMessage
-            )
-              ? tr
-                ? `Bağlamdaki anahtar: ${packet.memory.newestApiKeyId}. Rotate/disable için Admin → Applications’ı kullanın.`
-                : `Referenced key from context: ${packet.memory.newestApiKeyId}. Confirm rotate/disable in Admin → Applications.`
-              : tr
-                ? "Kullanım veya belirli bir anahtar için rotate rehberi isteyin."
-                : "Ask about usage or rotate guidance for a specific key.",
-        })
+      if (newest?.name) {
+        parts.push(
+          tr
+            ? `En yeni anahtar: **${newest.name}** (${newest.id}).`
+            : `Newest key: **${newest.name}** (${newest.id}).`
+        );
+      }
+      parts.push(
+        tr
+          ? `Secret’ları sohbette paylaşma; yönetim için Admin → API Keys kullan.`
+          : `Never share secrets in chat; manage keys in Admin → API Keys.`
       );
       continue;
     }
 
     if (tool.intent === "PROJECTS") {
       const projects = Array.isArray(d.projects) ? d.projects : [];
-      const lines = projects
-        .slice(0, 12)
-        .map(
-          (p: { name?: string; environment?: string; id?: string }) =>
-            `• ${p.name} (${p.environment}) — ${p.id}`
-        )
-        .join("\n");
-      blocks.push(
-        formatSections(lang, {
-          status: L.ok,
-          summary: tr
-            ? `Projeler: ${d.totalProjects ?? 0}.`
-            : `Projects: ${d.totalProjects ?? 0}.`,
-          extra: lines ? [{ title: L.projects, body: lines }] : undefined,
-          recommendation: tr
-            ? "Proje detayı için Admin → Organizations’a bakın."
-            : "Open Admin → Organizations for project detail.",
-          nextStep: tr
-            ? "Ardından API anahtarları veya kullanımı sorun."
-            : "Ask about API keys or usage next.",
-        })
+      parts.push(
+        tr
+          ? `**${d.totalProjects ?? 0}** proje görünüyor:`
+          : `I see **${d.totalProjects ?? 0}** project(s):`
+      );
+      parts.push(
+        projects
+          .slice(0, 12)
+          .map(
+            (p: { name?: string; environment?: string; id?: string }) =>
+              `• **${p.name}** (${p.environment}) — \`${p.id}\``
+          )
+          .join("\n") || (tr ? "• (liste boş)" : "• (empty)")
       );
       continue;
     }
 
     if (tool.intent === "ORGANIZATIONS") {
       const orgs = Array.isArray(d.organizations) ? d.organizations : [];
-      const lines = orgs
-        .slice(0, 12)
-        .map(
-          (o: { name?: string; planId?: string; status?: string }) =>
-            `• ${o.name} — ${o.planId} — ${o.status}`
-        )
-        .join("\n");
-      blocks.push(
-        formatSections(lang, {
-          status: L.ok,
-          summary: tr
-            ? `Organizasyonlar: ${d.totalOrganizations ?? 0}.`
-            : `Organizations: ${d.totalOrganizations ?? 0}.`,
-          extra: lines ? [{ title: L.organizations, body: lines }] : undefined,
-          recommendation: tr
-            ? "Plan değişiklikleri için Admin → Organizations."
-            : "Open Admin → Organizations for plan changes.",
-          nextStep: tr
-            ? "Projeler veya kullanımı sorun."
-            : "Ask about projects or usage.",
-        })
+      parts.push(
+        tr
+          ? `**${d.totalOrganizations ?? 0}** organizasyon:`
+          : `**${d.totalOrganizations ?? 0}** organization(s):`
+      );
+      parts.push(
+        orgs
+          .slice(0, 12)
+          .map(
+            (o: { name?: string; planId?: string; status?: string }) =>
+              `• **${o.name}** — plan \`${o.planId}\`, ${o.status}`
+          )
+          .join("\n") || (tr ? "• (liste boş)" : "• (empty)")
       );
       continue;
     }
 
     if (tool.intent === "USAGE") {
       const totals = (d.totals || {}) as Record<string, number>;
-      blocks.push(
-        formatSections(lang, {
-          status: L.ok,
-          summary: tr
-            ? `Kullanım (${d.month ?? "güncel"}): ${totals.requests ?? 0} istek, ${totals.errors ?? 0} hata, ${totals.brainRequests ?? 0} brain, ${totals.monitoringRequests ?? 0} monitoring.${
-                typeof d.requestsToday === "number"
-                  ? ` Bugünkü istekler: ${d.requestsToday}.`
-                  : ""
-              }`
-            : `Usage (${d.month ?? "current"}): ${totals.requests ?? 0} requests, ${totals.errors ?? 0} errors, ${totals.brainRequests ?? 0} brain, ${totals.monitoringRequests ?? 0} monitoring.${
-                typeof d.requestsToday === "number"
-                  ? ` Requests today: ${d.requestsToday}.`
-                  : ""
-              }`,
-          recommendation: tr
-            ? "Trendler için Admin → Analytics."
-            : "Open Admin → Analytics for trends.",
-          nextStep: tr
-            ? "Olay araştırması için log veya sağlık sorun."
-            : "Ask for logs or health if investigating incidents.",
-        })
+      parts.push(
+        tr
+          ? `**${d.month ?? "bu ay"}** kullanımı: **${totals.requests ?? 0}** istek, **${totals.errors ?? 0}** hata, **${totals.brainRequests ?? 0}** brain, **${totals.monitoringRequests ?? 0}** monitoring.${
+              typeof d.requestsToday === "number"
+                ? ` Bugün: **${d.requestsToday}** istek.`
+                : ""
+            }`
+          : `Usage for **${d.month ?? "this month"}**: **${totals.requests ?? 0}** requests, **${totals.errors ?? 0}** errors, **${totals.brainRequests ?? 0}** brain, **${totals.monitoringRequests ?? 0}** monitoring.${
+              typeof d.requestsToday === "number"
+                ? ` Today: **${d.requestsToday}** requests.`
+                : ""
+            }`
       );
       continue;
     }
 
     if (tool.intent === "LOGS") {
       const recent = Array.isArray(d.recent) ? d.recent : [];
-      const lines = recent
-        .map(
-          (l: {
-            level?: string;
-            category?: string;
-            createdAt?: string;
-            message?: string;
-          }) =>
-            `• [${l.level}/${l.category}] ${l.createdAt}: ${l.message}`
-        )
-        .join("\n");
-      blocks.push(
-        formatSections(lang, {
-          status: (d.errorLike as number) > 0 ? L.attention : L.ok,
-          summary: tr
-            ? `Audit penceresi: ${d.totalInWindow ?? 0} kayıt, ${d.errorLike ?? 0} hata benzeri.`
-            : `Audit window: ${d.totalInWindow ?? 0} entries, ${d.errorLike ?? 0} error-like.`,
-          extra: [
-            {
-              title: L.recent,
-              body: lines || L.noLogs,
-            },
-          ],
-          recommendation: tr
-            ? "Filtreler için Admin → Logs."
-            : "Open Admin → Logs for filters.",
-          nextStep: tr
-            ? "Daha derin analiz için belirli bir hatayı yapıştırın."
-            : "Paste a specific error for deeper analysis.",
-        })
+      parts.push(
+        tr
+          ? `Audit penceresinde **${d.totalInWindow ?? 0}** kayıt var; **${d.errorLike ?? 0}** hata benzeri olay.`
+          : `Audit window shows **${d.totalInWindow ?? 0}** entries with **${d.errorLike ?? 0}** error-like events.`
       );
+      if (recent.length) {
+        parts.push(
+          recent
+            .slice(0, 8)
+            .map(
+              (l: {
+                level?: string;
+                category?: string;
+                createdAt?: string;
+                message?: string;
+              }) =>
+                `• [${l.level}/${l.category}] ${l.createdAt}: ${l.message}`
+            )
+            .join("\n")
+        );
+      }
       continue;
     }
 
     if (tool.intent === "HEALTH") {
-      const services = d.services
-        ? Object.entries(d.services as Record<string, string>)
-            .map(([k, v]) => `${k}=${v}`)
-            .join(", ")
-        : "";
-      blocks.push(
-        formatSections(lang, {
-          status:
-            d.status === "healthy"
-              ? L.healthy
-              : String(d.status || (tr ? "Bilinmiyor" : "Unknown")),
-          summary: tr
-            ? `Platform durumu: ${d.status}. Uptime: ${d.uptimeSeconds}s. Sürüm: ${d.platformVersion}.`
-            : `Platform status: ${d.status}. Uptime: ${d.uptimeSeconds}s. Version: ${d.platformVersion}.`,
-          extra: services ? [{ title: L.services, body: services }] : undefined,
-          recommendation:
-            d.status === "healthy"
-              ? tr
-                ? "Ek işlem gerekmiyor."
-                : "No action required."
-              : tr
-                ? "Admin → System Health ve Logs’u kontrol edin."
-                : "Inspect Admin → System Health and Logs.",
-          nextStep: tr
-            ? "Gerekirse kullanım veya son hataları sorun."
-            : "Ask about usage or recent errors if needed.",
-        })
+      parts.push(
+        tr
+          ? `Platform durumu **${d.status}**. Uptime **${d.uptimeSeconds}s**, sürüm **${d.platformVersion}**.`
+          : `Platform status is **${d.status}**. Uptime **${d.uptimeSeconds}s**, version **${d.platformVersion}**.`
       );
+      if (d.services && typeof d.services === "object") {
+        const services = Object.entries(d.services as Record<string, string>)
+          .map(([k, v]) => `${k}=${v}`)
+          .join(", ");
+        if (services) {
+          parts.push(tr ? `Servisler: ${services}` : `Services: ${services}`);
+        }
+      }
       continue;
     }
 
     if (tool.intent === "ANALYTICS") {
-      const top = Array.isArray(d.topKeys) ? d.topKeys : [];
-      const topLines = top
-        .slice(0, 5)
-        .map(
-          (k: { name?: string; usageCount?: number }) =>
-            `• ${k.name}: ${k.usageCount}`
-        )
-        .join("\n");
-      blocks.push(
-        formatSections(lang, {
-          status: L.ok,
-          summary: tr
-            ? `Analitik: bugün ${d.requestsToday ?? 0} istek, bu ay ${d.monthRequests ?? 0} istek, ${d.monthErrors ?? 0} hata (hata oranı %${d.errorRate ?? 0}), ${d.activeApiKeys ?? 0} aktif anahtar.`
-            : `Analytics: ${d.requestsToday ?? 0} requests today, ${d.monthRequests ?? 0} month requests, ${d.monthErrors ?? 0} month errors (${d.errorRate ?? 0}% error rate), ${d.activeApiKeys ?? 0} active keys.`,
-          extra: topLines ? [{ title: L.topKeys, body: topLines }] : undefined,
-          recommendation: tr
-            ? "Tam seri için Admin → Analytics."
-            : "Open Admin → Analytics for full series.",
-          nextStep: tr
-            ? "En çok istek üreten uygulamayı sorun."
-            : "Ask which application generated the most requests.",
-        })
+      parts.push(
+        tr
+          ? `Analitik özeti: bugün **${d.requestsToday ?? 0}** istek, bu ay **${d.monthRequests ?? 0}** istek / **${d.monthErrors ?? 0}** hata (oran %${d.errorRate ?? 0}), **${d.activeApiKeys ?? 0}** aktif anahtar.`
+          : `Analytics snapshot: **${d.requestsToday ?? 0}** requests today, **${d.monthRequests ?? 0}** month requests / **${d.monthErrors ?? 0}** errors (${d.errorRate ?? 0}% rate), **${d.activeApiKeys ?? 0}** active keys.`
       );
+      const top = Array.isArray(d.topKeys) ? d.topKeys : [];
+      if (top.length) {
+        parts.push(
+          top
+            .slice(0, 5)
+            .map(
+              (k: { name?: string; usageCount?: number }) =>
+                `• ${k.name}: ${k.usageCount}`
+            )
+            .join("\n")
+        );
+      }
       continue;
     }
 
     if (tool.intent === "DOCUMENTATION") {
       const articles = Array.isArray(d.articles) ? d.articles : [];
       if (!articles.length) {
-        blocks.push(
-          formatSections(lang, {
-            status: L.documentation,
-            summary: L.noDocs,
-            recommendation: tr
-              ? "Authentication, REST API, API Keys, Webhooks veya Rate Limits deneyin."
-              : "Try Authentication, REST API, API Keys, Webhooks, or Rate Limits.",
-            nextStep: tr
-              ? "Dil bazlı entegrasyon örneği isteyin."
-              : "Ask for a language-specific integration example.",
-          })
+        parts.push(
+          tr
+            ? `Bu soru için dokümantasyon kaydı bulamadım. Authentication, API Keys, REST API, Webhooks veya Rate Limits diye sorabilirsin.`
+            : `I couldn’t find matching docs. Try Authentication, API Keys, REST API, Webhooks, or Rate Limits.`
         );
       } else {
-        const body = articles
-          .map(
-            (a: { title?: string; body?: string }) =>
-              `### ${a.title}\n${a.body}`
-          )
-          .join("\n\n");
-        blocks.push(
-          formatSections(lang, {
-            status: L.documentation,
-            summary: tr
-              ? `${articles.length} Helia dokümantasyon kaydı eşleşti.`
-              : `Matched ${articles.length} Helia documentation article(s).`,
-            extra: [{ title: L.details, body }],
-            recommendation: tr
-              ? "Tam referans için Dashboard → Documentation."
-              : "Open Dashboard → Documentation for the full reference.",
-            nextStep: tr
-              ? "Entegrasyon için kod örneği isteyin."
-              : "Request a code example if you need an integration snippet.",
-          })
+        parts.push(
+          tr
+            ? `Helia dokümantasyonundan ${articles.length} eşleşme buldum:`
+            : `I found ${articles.length} matching Helia doc article(s):`
         );
+        for (const a of articles.slice(0, 3) as Array<{
+          title?: string;
+          body?: string;
+        }>) {
+          parts.push(`### ${a.title}\n${a.body}`);
+        }
       }
       continue;
     }
 
     if (tool.intent === "CODE_GENERATION" || tool.intent === "INTEGRATIONS") {
-      blocks.push(
-        formatSections(lang, {
-          status: L.codeGen,
-          summary: tr
-            ? `${d.endpoint || "Helia REST"} için production-ready ${d.language || "entegrasyon"} örneği.`
-            : `Production-ready ${d.language || "integration"} example for ${d.endpoint || "Helia REST"}.`,
-          extra: [
-            {
-              title: String(d.language || L.example),
-              body: "```\n" + String(d.code || "") + "\n```",
-            },
-          ],
-          recommendation: String(
-            d.authHeader ||
-              (tr
-                ? "HELIA_API_KEY’i sunucu ortamında tutun. Live key’i tarayıcıya koymayın."
-                : "Keep HELIA_API_KEY in server env. Never ship live keys to browsers.")
-          ),
-          nextStep: tr
-            ? "Önce hl_test_ anahtarıyla deneyin."
-            : "Test with a hl_test_ key before production.",
-        })
+      parts.push(
+        tr
+          ? `${d.endpoint || "Helia REST"} için **${d.language || "entegrasyon"}** örneği:`
+          : `Here’s a **${d.language || "integration"}** example for ${d.endpoint || "Helia REST"}:`
+      );
+      parts.push("```\n" + String(d.code || "") + "\n```");
+      parts.push(
+        String(
+          d.authHeader ||
+            (tr
+              ? "Header: `Authorization: Bearer <HELIA_API_KEY>` — key’i sadece sunucu ortamında tut."
+              : "Header: `Authorization: Bearer <HELIA_API_KEY>` — keep the key server-side only.")
+        )
       );
       continue;
     }
 
     if (tool.intent === "GENERAL") {
-      blocks.push(
-        formatSections(lang, {
-          status: L.adminTitle,
-          summary: tr
-            ? "Helia Suite’i canlı araçlarla yönetirim: API anahtarları, projeler, organizasyonlar, kullanım, sağlık, loglar, analitik, dokümantasyon ve entegrasyonlar."
-            : "I operate Helia Suite with live platform tools: API keys, projects, organizations, usage, health, logs, analytics, documentation, and integrations.",
-          recommendation: tr
-            ? "Bir platform sorusu sorun veya entegrasyon örneği isteyin."
-            : "Ask a platform question or request an integration example.",
-          nextStep: tr
-            ? "Örnek: Kaç API anahtarım var?"
-            : "Example: How many API Keys do I have?",
-        })
+      parts.push(
+        tr
+          ? `Merhaba — ben Helia Suite AI’yım. API anahtarları, projeler, organizasyonlar, kullanım, sağlık, loglar, analitik, dokümantasyon ve entegrasyon kodunda yardımcı olurum.\n\nÖrnek sorular: “Kaç API anahtarım var?”, “Platform sağlıklı mı?”, “whoami için Node örneği yaz.”`
+          : `Hi — I’m Helia Suite AI. I can help with API keys, projects, organizations, usage, health, logs, analytics, documentation, and integration code.\n\nTry: “How many API keys do I have?”, “Is the platform healthy?”, or “Write a Node whoami example.”`
       );
       continue;
     }
 
-    blocks.push(
-      formatSections(lang, {
-        status: L.ok,
-        summary: tr
-          ? `${tool.tool} yapılandırılmış veri döndürdü.`
-          : `Tool ${tool.tool} returned structured data.`,
-        extra: [
-          {
-            title: L.data,
-            body: "```json\n" + JSON.stringify(d, null, 2) + "\n```",
-          },
-        ],
-      })
+    parts.push(
+      tr
+        ? `${tool.tool} verisi alındı — detay için Admin paneline bakabilir veya daha spesifik sorabilirsin.`
+        : `${tool.tool} returned data — open the Admin panel or ask a more specific follow-up.`
     );
   }
 
-  if (!blocks.length) {
-    return formatSections(lang, {
-      status: tr ? "Dokümantasyon asistanı" : "Documentation assistant",
-      summary: tr
-        ? "Helia API’leri, anahtarlar, kullanım, sağlık, loglar ve entegrasyonlarda yardımcı olabilirim. Platform sorusu sorun, canlı servisleri sorgulayayım."
-        : "I can help with Helia APIs, keys, usage, health, logs, and integrations. Ask a platform question and I will query the live services.",
-      nextStep: tr
-        ? "Deneyin: Kaç projem var? veya Bugünkü kullanımı göster."
-        : "Try: How many projects? or Show today's usage.",
-    });
+  if (!parts.length) {
+    return tr
+      ? `Helia API’leri, anahtarlar, kullanım, sağlık, loglar ve entegrasyonlarda yardımcı olabilirim. Ne öğrenmek istiyorsun?`
+      : `I can help with Helia APIs, keys, usage, health, logs, and integrations. What would you like to know?`;
   }
 
-  return blocks.join("\n\n---\n\n");
-}
-
-async function formatWithOpenAi(
-  packet: LlmContextPacket
-): Promise<string | null> {
-  const apiKey =
-    process.env.HELIA_LLM_API_KEY?.trim() ||
-    process.env.OPENAI_API_KEY?.trim() ||
-    "";
-  if (!apiKey) return null;
-
-  const model =
-    process.env.HELIA_LLM_MODEL?.trim() ||
-    process.env.OPENAI_MODEL?.trim() ||
-    "gpt-4o-mini";
-
-  const lang = packet.replyLanguage ?? detectReplyLanguage(packet.userMessage);
-  const langRule =
-    lang === "tr"
-      ? "Reply entirely in Turkish (section labels Durum/Özet/Öneri/Sonraki adım)."
-      : "Reply entirely in English (section labels Status/Summary/Recommendation/Next Step).";
-
-  const res = await fetch("https://api.openai.com/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      model,
-      temperature: 0.2,
-      messages: [
-        {
-          role: "system",
-          content: `You are the Helia Suite response formatter. You receive structured tool JSON only. Never invent platform numbers. ${langRule} If security.blocked, use the localized security message.`,
-        },
-        {
-          role: "user",
-          content: JSON.stringify(packet),
-        },
-      ],
-    }),
-  });
-
-  if (!res.ok) return null;
-  const data = (await res.json().catch(() => null)) as {
-    choices?: Array<{ message?: { content?: string } }>;
-  } | null;
-  const text = data?.choices?.[0]?.message?.content?.trim();
-  return text || null;
+  return parts.join("\n\n");
 }
 
 export async function formatWithLlm(
   packet: LlmContextPacket
 ): Promise<{ text: string; mode: "openai" | "deterministic" }> {
   const { sanitizeAssistantOutput } = await import("./sanitize");
+
   try {
-    const ai = await formatWithOpenAi(packet);
+    const ai = await reasonWithOpenAi(packet);
     if (ai) {
       return { text: sanitizeAssistantOutput(ai), mode: "openai" };
     }
-  } catch {
-    // fall through
+  } catch (error) {
+    console.error("[helia-brain] conversational LLM failed", error);
   }
+
   return {
-    text: sanitizeAssistantOutput(formatFromTools(packet)),
+    text: sanitizeAssistantOutput(composeNaturalAnswer(packet)),
     mode: "deterministic",
   };
 }

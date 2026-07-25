@@ -30,13 +30,17 @@ import { CollapsibleJson } from "@/components/admin/api-tester/CollapsibleJson";
 import type { CodegenInput } from "@/components/admin/api-tester/codegen";
 import {
   loadHistory,
+  loadTesterAuth,
   pushRecentEndpoint,
   saveHistory,
+  saveTesterAuth,
 } from "@/components/admin/api-tester/storage";
 import { loadApiCatalog } from "@/components/admin/api-tester/loadCatalog";
 import {
   buildAuthenticatedHeaders,
+  normalizeApiKeyInput,
   redactHeadersForDisplay,
+  resolveAuthModeForRoute,
   type AuthMode,
 } from "@/components/admin/api-tester/authHeaders";
 import {
@@ -82,6 +86,7 @@ export default function AdminApiTesterPage() {
 
   const [apiKey, setApiKey] = useState("");
   const [authMode, setAuthMode] = useState<AuthMode>("both");
+  const [authHydrated, setAuthHydrated] = useState(false);
   const [method, setMethod] = useState<HttpMethod>("GET");
   const [pathTemplate, setPathTemplate] = useState("/api/apikeys/whoami");
   const [pathParams, setPathParams] = useState<PathParam[]>([]);
@@ -132,7 +137,16 @@ export default function AdminApiTesterPage() {
         pathParams: h.pathParams ?? [],
       }))
     );
+    const saved = loadTesterAuth();
+    if (saved.apiKey) setApiKey(saved.apiKey);
+    setAuthMode(saved.authMode);
+    setAuthHydrated(true);
   }, []);
+
+  useEffect(() => {
+    if (!authHydrated) return;
+    saveTesterAuth({ apiKey, authMode });
+  }, [apiKey, authMode, authHydrated]);
 
   useEffect(() => {
     let cancelled = false;
@@ -257,10 +271,15 @@ export default function AdminApiTesterPage() {
     }
   }, [bodyText, bodyValid, method]);
 
+  const effectiveAuthMode = useMemo(
+    () => resolveAuthModeForRoute(authMode, matchedRoute?.authentication),
+    [authMode, matchedRoute?.authentication]
+  );
+
   const effectiveHeaders = useMemo(() => {
     const { headers, authHeadersApplied } = buildAuthenticatedHeaders({
       apiKey,
-      authMode,
+      authMode: effectiveAuthMode,
       customHeaders: parsedHeaders,
       includeContentTypeJson: needsBody(method),
     });
@@ -269,7 +288,7 @@ export default function AdminApiTesterPage() {
       authHeadersApplied,
       display: redactHeadersForDisplay(headers),
     };
-  }, [apiKey, authMode, method, parsedHeaders]);
+  }, [apiKey, effectiveAuthMode, method, parsedHeaders]);
 
   const codegenInput: CodegenInput | null = useMemo(() => {
     if (typeof window === "undefined") return null;
@@ -292,7 +311,7 @@ export default function AdminApiTesterPage() {
         "/api/admin/tester/validate",
         {
           method: "POST",
-          body: JSON.stringify({ apiKey }),
+          body: JSON.stringify({ apiKey: normalizeApiKeyInput(apiKey) }),
         }
       );
       setValidation(res);
@@ -370,7 +389,7 @@ export default function AdminApiTesterPage() {
 
       const built = buildAuthenticatedHeaders({
         apiKey,
-        authMode,
+        authMode: effectiveAuthMode,
         customHeaders,
         includeContentTypeJson: needsBody(method),
       });
@@ -391,8 +410,8 @@ export default function AdminApiTesterPage() {
       const res = await adminFetch<ExecuteResult>("/api/admin/tester/execute", {
         method: "POST",
         body: JSON.stringify({
-          apiKey,
-          authMode,
+          apiKey: normalizeApiKeyInput(apiKey),
+          authMode: effectiveAuthMode,
           method,
           path: finalPath,
           headers: customHeaders,
@@ -472,7 +491,7 @@ export default function AdminApiTesterPage() {
     }
   }, [
     apiKey,
-    authMode,
+    effectiveAuthMode,
     bodyText,
     finalPath,
     headersText,
@@ -581,7 +600,7 @@ export default function AdminApiTesterPage() {
             <input
               className={adminInputClass}
               value={apiKey}
-              onChange={(e) => setApiKey(e.target.value)}
+              onChange={(e) => setApiKey(normalizeApiKeyInput(e.target.value))}
               placeholder="hl_live_… or hl_test_…"
               autoComplete="off"
             />
@@ -602,8 +621,21 @@ export default function AdminApiTesterPage() {
             </select>
             <p className="text-[11px] text-white/40">
               The API Key field automatically injects auth headers — no need to
-              edit Headers JSON for authentication.
+              edit Headers JSON for authentication. Key is kept for this browser
+              tab.
             </p>
+            {matchedRoute?.authentication === "api_key" &&
+            authMode === "x-api-key" ? (
+              <p className="text-[11px] text-amber-200/85">
+                This endpoint only accepts Authorization Bearer. Run will send
+                Bearer as well (auth mode upgraded to Both for this request).
+              </p>
+            ) : null}
+            {matchedRoute?.authentication === "api_key" ? (
+              <p className="text-[11px] text-white/35">
+                Note: X-API-Key alone is ignored by /api/apikeys/whoami.
+              </p>
+            ) : null}
           </label>
 
           <div className="rounded-xl border border-white/[0.08] bg-[#0d0d0f] px-3 py-3">

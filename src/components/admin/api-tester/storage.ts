@@ -1,13 +1,20 @@
 import type { HistoryEntry, HttpMethod } from "./types";
 import { endpointKey } from "./types";
+import type { AuthMode } from "./authHeaders";
 
 const RECENT_KEY = "helia_admin_api_tester_recent_endpoints";
 const HISTORY_KEY = "helia_admin_api_tester_history";
+const AUTH_KEY = "helia_admin_api_tester_auth";
 
 export type RecentEndpoint = {
   method: HttpMethod;
   path: string;
   at: string;
+};
+
+export type TesterAuthState = {
+  apiKey: string;
+  authMode: AuthMode;
 };
 
 function readJson<T>(key: string, fallback: T): T {
@@ -52,4 +59,37 @@ export function loadHistory(): HistoryEntry[] {
 
 export function saveHistory(items: HistoryEntry[]) {
   writeJson(HISTORY_KEY, items.slice(0, 50));
+}
+
+/** Persist pasted API key for the browser tab (sessionStorage — not localStorage). */
+export function loadTesterAuth(): TesterAuthState {
+  if (typeof window === "undefined") {
+    return { apiKey: "", authMode: "both" };
+  }
+  try {
+    const raw = window.sessionStorage.getItem(AUTH_KEY);
+    if (!raw) return { apiKey: "", authMode: "both" };
+    const parsed = JSON.parse(raw) as Partial<TesterAuthState>;
+    const authMode =
+      parsed.authMode === "bearer" ||
+      parsed.authMode === "x-api-key" ||
+      parsed.authMode === "both"
+        ? parsed.authMode
+        : "both";
+    return {
+      apiKey: typeof parsed.apiKey === "string" ? parsed.apiKey : "",
+      authMode,
+    };
+  } catch {
+    return { apiKey: "", authMode: "both" };
+  }
+}
+
+export function saveTesterAuth(state: TesterAuthState) {
+  if (typeof window === "undefined") return;
+  try {
+    window.sessionStorage.setItem(AUTH_KEY, JSON.stringify(state));
+  } catch {
+    // ignore quota
+  }
 }

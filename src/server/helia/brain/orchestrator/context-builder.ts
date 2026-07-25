@@ -1,6 +1,6 @@
 /**
- * Context Builder — packs tool JSON + memory for the LLM formatter.
- * The LLM must never invent fields missing from this payload.
+ * Context Builder — packs tool JSON + memory for the conversational LLM.
+ * The model must never invent fields missing from this payload.
  */
 
 import type { ConversationMemory, ToolResult } from "./types";
@@ -13,7 +13,7 @@ export type LlmContextPacket = {
   memory: {
     lastIntents: string[];
     newestApiKeyId?: string;
-    recentTurns: Array<{ role: string; content: string }>;
+    recentTurns: Array<{ role: "user" | "assistant"; content: string }>;
   };
   tools: Array<{
     tool: string;
@@ -41,9 +41,9 @@ export function buildLlmContext(input: {
       ...(input.memory.entities.newestApiKeyId
         ? { newestApiKeyId: input.memory.entities.newestApiKeyId }
         : {}),
-      recentTurns: input.memory.turns.slice(-8).map((t) => ({
+      recentTurns: input.memory.turns.slice(-12).map((t) => ({
         role: t.role,
-        content: t.content.slice(0, 500),
+        content: t.content.slice(0, 1200),
       })),
     },
     tools: input.toolResults.map((r) => ({
@@ -54,13 +54,14 @@ export function buildLlmContext(input: {
       ...(r.error ? { error: r.error } : {}),
     })),
     rules: [
-      "Use ONLY numbers and facts present in tools[].data.",
-      "Never invent platform metrics.",
-      "If a tool returns empty collections, report zero / empty — that is valid live data.",
-      "For follow-ups like 'the newest one' / 'yenisini', use memory.newestApiKeyId and tools API key lists.",
-      "Format professionally with Status/Summary (EN) or Durum/Özet (TR).",
+      "Answer like a capable ChatGPT-style assistant specialized in Helia Suite.",
+      "Use ONLY facts present in tools[].data for live metrics and inventory.",
+      "Never invent platform numbers, names, or statuses.",
+      "Empty collections mean zero live records — say so clearly.",
+      "Use conversation history for pronouns and follow-ups (e.g. 'the newest one' / 'yenisini').",
+      "Prefer natural prose; bullets only when helpful.",
       `Reply language must be: ${replyLanguage === "tr" ? "Turkish" : "English"}.`,
-      "If tools are documentation/general, answer as Helia documentation assistant.",
+      "Do not dump raw JSON unless the user explicitly asks for JSON.",
     ],
   };
 }

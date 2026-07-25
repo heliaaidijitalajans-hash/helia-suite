@@ -1,6 +1,5 @@
 /**
- * Helia AI Orchestrator — shared types.
- * Platform answers come ONLY from tool JSON; the LLM only formats.
+ * Platform answers are grounded in tool JSON; the LLM reasons conversationally.
  */
 
 export type HeliaIntent =

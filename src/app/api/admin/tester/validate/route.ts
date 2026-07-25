@@ -13,7 +13,7 @@ export async function POST(request: Request) {
   try {
     await requireAdminUser(request);
     const body = await readJsonBody<{ apiKey?: string }>(request);
-    const apiKey = body.apiKey?.trim();
+    const apiKey = body.apiKey?.trim().replace(/^Bearer\s+/i, "").trim();
     if (!apiKey) throw new ValidationError("API key is required");
 
     const { getCloudContainer } = await import("@/server/helia/runtime");
