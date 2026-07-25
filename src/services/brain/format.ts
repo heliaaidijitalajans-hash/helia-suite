@@ -20,12 +20,8 @@ export function formatBrainAnswerContent(answer: BrainAnswer): string {
   if (!summary) {
     return "No live data available.";
   }
-  // Administrator replies are already sectioned (Status / Summary / …).
+  // Pass through conversational / already-formatted assistant text as-is.
   if (
-    /^Status\n/m.test(summary) ||
-    /^Summary\n/m.test(summary) ||
-    /^Durum\n/m.test(summary) ||
-    /^Özet\n/m.test(summary) ||
     summary.includes("blocked by the Helia security policy") ||
     summary.includes("Helia güvenlik politikası") ||
     summary === "No documentation found." ||
@@ -37,11 +33,8 @@ export function formatBrainAnswerContent(answer: BrainAnswer): string {
   if (answer.insufficientData) {
     return summary;
   }
-  const parts = [summary];
-  if (answer.recommendedAction?.trim()) {
-    parts.push(`Recommendation\n${answer.recommendedAction.trim()}`);
-  }
-  return parts.join("\n\n");
+  // Do not re-wrap with Recommendation labels — answers are GPT-style prose.
+  return summary;
 }
 
 export function toAssistantMessage(answer: BrainAnswer): ChatMessage {

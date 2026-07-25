@@ -1,7 +1,7 @@
 /**
  * Conversational LLM layer for Helia Chat.
  * Primary path: OpenAI chat completions with tool-grounded reasoning.
- * Fallback: natural prose composed from tool JSON (no invented metrics).
+ * Fallback: natural GPT-style prose from tool JSON (never Durum/Özet templates).
  */
 
 import { HELIA_ADMINISTRATOR_SYSTEM_PROMPT } from "../system-prompt";
@@ -14,8 +14,17 @@ import {
 
 type ChatMessage = { role: "system" | "user" | "assistant"; content: string };
 
+type ToolRow = LlmContextPacket["tools"][number];
+
 function langOf(packet: LlmContextPacket): ReplyLanguage {
   return packet.replyLanguage ?? detectReplyLanguage(packet.userMessage);
+}
+
+function toolByIntent(
+  tools: ToolRow[],
+  intent: string
+): ToolRow | undefined {
+  return tools.find((t) => t.intent === intent && t.ok);
 }
 
 /** Build OpenAI-style message list with history + live tool context. */
@@ -23,8 +32,18 @@ function buildChatMessages(packet: LlmContextPacket): ChatMessage[] {
   const lang = langOf(packet);
   const langLine =
     lang === "tr"
-      ? "Kullanıcıya tamamen Türkçe cevap ver."
-      : "Reply entirely in English.";
+      ? [
+          "Kullanıcıya tamamen Türkçe cevap ver.",
+          "ASLA şu etiketleri kullanma (markdown dahil): Durum, Özet, Öneri, Sonraki adım, **Durum:**, **Özet:**.",
+          "Kötü örnek: **Durum:** Genel / **Özet:** Merhaba...",
+          "İyi örnek: Merhaba — ben Helia Suite AI. Şu an platformda X anahtar görüyorum...",
+        ].join(" ")
+      : [
+          "Reply entirely in English.",
+          "NEVER use labels (including markdown): Status, Summary, Recommendation, Next Step, **Status:**, **Summary:**.",
+          "Bad: **Status:** General / **Summary:** Hello...",
+          "Good: Hi — I'm Helia Suite AI. I currently see X keys on the platform...",
+        ].join(" ");
 
   const messages: ChatMessage[] = [
     {
@@ -33,12 +52,19 @@ function buildChatMessages(packet: LlmContextPacket): ChatMessage[] {
     },
   ];
 
-  // Prior turns (exclude the current user message which is sent separately)
   const prior = packet.memory.recentTurns.slice(0, -1).slice(-10);
   for (const turn of prior) {
-    if (turn.role === "user" || turn.role === "assistant") {
-      messages.push({ role: turn.role, content: turn.content });
+    if (turn.role !== "user" && turn.role !== "assistant") continue;
+    // Don't feed old Durum/Özet template replies back into the model
+    if (
+      turn.role === "assistant" &&
+      /(\*\*)?(Durum|Özet|Öneri|Sonraki\s*adım|Status|Summary)(\*\*)?\s*:/i.test(
+        turn.content
+      )
+    ) {
+      continue;
     }
+    messages.push({ role: turn.role, content: turn.content });
   }
 
   const liveContext = {
@@ -57,7 +83,9 @@ function buildChatMessages(packet: LlmContextPacket): ChatMessage[] {
       JSON.stringify(liveContext, null, 2),
       "```",
       "",
-      "Think carefully, then answer helpfully in natural language.",
+      lang === "tr"
+        ? "ChatGPT gibi doğal bir paragraf yaz. Bölüm başlığı / Durum-Özet şablonu YASAK. Canlı context’teki sayıları kullan."
+        : "Write a natural ChatGPT-style paragraph. Section headers / Status-Summary templates are FORBIDDEN. Use numbers from live context.",
     ].join("\n"),
   });
 
@@ -91,7 +119,7 @@ async function reasonWithOpenAi(
       signal: controller.signal,
       body: JSON.stringify({
         model,
-        temperature: 0.55,
+        temperature: 0.65,
         max_tokens: 1800,
         messages: buildChatMessages(packet),
       }),
@@ -120,253 +148,309 @@ async function reasonWithOpenAi(
   }
 }
 
-/** Natural prose fallback when no LLM key / API failure. */
+/**
+ * Detect / dismantle rigid admin templates the model sometimes still emits:
+ *   Durum / Özet / **Durum:** / **Özet:** / Status / Summary ...
+ * If the reply is mostly empty template fluff, return null so caller can
+ * replace with composeNaturalAnswer().
+ */
+function normalizeAssistantProse(text: string): string | null {
+  const raw = text.trim();
+  if (!raw) return null;
+
+  const hasRigidLabels =
+    /(\*\*)?(Durum|Özet|Öneri|Sonraki\s*adım|Status|Summary|Recommendation|Next\s*Step)(\*\*)?\s*:/i.test(
+      raw
+    ) ||
+    /^(Durum|Özet|Öneri|Sonraki adım|Status|Summary|Recommendation|Next Step)\s*$/im.test(
+      raw
+    );
+
+  let out = raw
+    // **Durum:** value  / Durum: value
+    .replace(
+      /^\s*(\*\*)?(Durum|Status)(\*\*)?\s*:\s*.*$/gim,
+      ""
+    )
+    .replace(
+      /^\s*(\*\*)?(Özet|Summary)(\*\*)?\s*:\s*/gim,
+      ""
+    )
+    .replace(
+      /^\s*(\*\*)?(Öneri|Recommendation)(\*\*)?\s*:\s*/gim,
+      ""
+    )
+    .replace(
+      /^\s*(\*\*)?(Sonraki\s*adım|Next\s*Step)(\*\*)?\s*:\s*/gim,
+      ""
+    )
+    // Line-only labels (old format)
+    .replace(
+      /^\s*(Durum|Özet|Öneri|Sonraki adım|Status|Summary|Recommendation|Next Step)\s*$/gim,
+      ""
+    )
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+
+  // Generic empty chatbot fluff after stripping → reject
+  const fluff =
+    /^(merhaba[!.,]?\s*)?(size\s+)?nasıl yardımcı olabilirim\??$/i.test(
+      out.replace(/\s+/g, " ").trim()
+    ) ||
+    /how can i help you\??$/i.test(out.replace(/\s+/g, " ").trim()) ||
+    /herhangi bir konuda bilgi almak/i.test(out) ||
+    /lütfen sormak istediğiniz/i.test(out) ||
+    /please (tell|specify|ask).*(topic|question)/i.test(out);
+
+  if (hasRigidLabels && (fluff || out.length < 40)) {
+    return null;
+  }
+
+  if (!out) return null;
+  return out;
+}
+
+/** Single cohesive GPT-style answer from tool results (no Durum/Özet). */
 function composeNaturalAnswer(packet: LlmContextPacket): string {
   const lang = langOf(packet);
   const tr = lang === "tr";
+  const tools = packet.tools;
+
+  const blocked = tools.find(
+    (t) => t.intent === "SECURITY" && t.ok && t.data.blocked
+  );
+  if (blocked) {
+    return typeof blocked.data.message === "string" && blocked.data.message
+      ? blocked.data.message
+      : securityBlockedMessage(lang);
+  }
+
+  const failed = tools.filter((t) => !t.ok);
+  if (failed.length && tools.every((t) => !t.ok)) {
+    return tr
+      ? `Şu an canlı platform verisine ulaşamadım (${failed[0]?.error || "bilinmeyen hata"}). Birazdan tekrar dene veya Admin → System Health’e bak.`
+      : `I couldn’t reach live platform data (${failed[0]?.error || "unknown error"}). Retry shortly or check Admin → System Health.`;
+  }
+
+  const keys = toolByIntent(tools, "API_KEYS");
+  const health = toolByIntent(tools, "HEALTH");
+  const analytics = toolByIntent(tools, "ANALYTICS");
+  const usage = toolByIntent(tools, "USAGE");
+  const projects = toolByIntent(tools, "PROJECTS");
+  const orgs = toolByIntent(tools, "ORGANIZATIONS");
+  const logs = toolByIntent(tools, "LOGS");
+  const docs = toolByIntent(tools, "DOCUMENTATION");
+  const code =
+    toolByIntent(tools, "CODE_GENERATION") ||
+    toolByIntent(tools, "INTEGRATIONS");
+
+  const intents = new Set(packet.intents);
+  const onlyGeneral =
+    packet.intents.length > 0 &&
+    packet.intents.every((i) => i === "GENERAL" || i === "UNKNOWN");
+
+  // —— Greeting / general: one warm GPT-style intro with live snapshot ——
+  if (onlyGeneral && !docs && !code) {
+    const keyCount = Number(keys?.data.totalKeys ?? 0);
+    const active = Number(keys?.data.active ?? 0);
+    const status = String(health?.data.status ?? (tr ? "bilinmiyor" : "unknown"));
+    const today = Number(
+      analytics?.data.requestsToday ?? usage?.data.requestsToday ?? 0
+    );
+
+    if (tr) {
+      return [
+        `Merhaba — ben **Helia Suite AI**. Platformunu seninle birlikte yöneten asistanınım; API anahtarları, kullanım, sağlık, loglar, dokümantasyon ve entegrasyon kodunda yardımcı olurum.`,
+        ``,
+        `Şu an canlı tarafta gördüğüm özet: platform **${status}**, **${keyCount}** API anahtarı (**${active}** aktif), bugün yaklaşık **${today}** istek.`,
+        ``,
+        `İstersen doğrudan sor: “Kaç API anahtarım var?”, “401 INVALID_API_KEY neden olur?”, “whoami için Node örneği yaz” veya “Son hataları göster”.`,
+      ].join("\n");
+    }
+
+    return [
+      `Hi — I’m **Helia Suite AI**, your platform operator assistant. I help with API keys, usage, health, logs, docs, and integration code.`,
+      ``,
+      `Live snapshot: platform is **${status}**, **${keyCount}** API key(s) (**${active}** active), about **${today}** requests today.`,
+      ``,
+      `Ask me anything like: “How many API keys do I have?”, “Why am I getting 401 INVALID_API_KEY?”, “Write a Node whoami example”, or “Show recent errors”.`,
+    ].join("\n");
+  }
+
   const parts: string[] = [];
 
-  for (const tool of packet.tools) {
-    if (!tool.ok) {
-      parts.push(
-        tr
-          ? `${tool.tool} şu an yanıt veremedi (${tool.error || "bilinmeyen hata"}). Admin → System Health veya Logs’a bakmanı öneririm.`
-          : `${tool.tool} failed (${tool.error || "unknown error"}). Check Admin → System Health or Logs.`
-      );
-      continue;
-    }
-
-    const d = tool.data;
-
-    if (tool.intent === "SECURITY" && d.blocked) {
-      parts.push(
-        typeof d.message === "string" && d.message
-          ? d.message
-          : securityBlockedMessage(lang)
-      );
-      continue;
-    }
-
-    if (tool.intent === "API_KEYS") {
-      const keys = Array.isArray(d.keys) ? d.keys : [];
-      const lines = keys
-        .slice(0, 10)
-        .map(
-          (k: {
-            name?: string;
-            enabled?: boolean;
-            keyEnvironment?: string;
-            usageCount?: number;
-          }) =>
-            tr
-              ? `• **${k.name}** — ${k.enabled ? "aktif" : "pasif"}, ${k.keyEnvironment}, ${k.usageCount ?? 0} kullanım`
-              : `• **${k.name}** — ${k.enabled ? "active" : "disabled"}, ${k.keyEnvironment}, ${k.usageCount ?? 0} uses`
-        )
-        .join("\n");
-      parts.push(
-        tr
-          ? `Şu an **${d.totalKeys ?? 0}** API anahtarı var (aktif: **${d.active ?? 0}**, live: **${d.production ?? 0}**, test: **${d.test ?? 0}**).`
-          : `You currently have **${d.totalKeys ?? 0}** API key(s) (active: **${d.active ?? 0}**, live: **${d.production ?? 0}**, test: **${d.test ?? 0}**).`
-      );
-      if (lines) parts.push(lines);
-      const newest = d.newest as { id?: string; name?: string } | null;
-      if (newest?.name) {
-        parts.push(
+  if (keys) {
+    const list = Array.isArray(keys.data.keys) ? keys.data.keys : [];
+    const lines = list
+      .slice(0, 10)
+      .map(
+        (k: {
+          name?: string;
+          enabled?: boolean;
+          keyEnvironment?: string;
+          usageCount?: number;
+        }) =>
           tr
-            ? `En yeni anahtar: **${newest.name}** (${newest.id}).`
-            : `Newest key: **${newest.name}** (${newest.id}).`
-        );
-      }
-      parts.push(
-        tr
-          ? `Secret’ları sohbette paylaşma; yönetim için Admin → API Keys kullan.`
-          : `Never share secrets in chat; manage keys in Admin → API Keys.`
-      );
-      continue;
-    }
-
-    if (tool.intent === "PROJECTS") {
-      const projects = Array.isArray(d.projects) ? d.projects : [];
-      parts.push(
-        tr
-          ? `**${d.totalProjects ?? 0}** proje görünüyor:`
-          : `I see **${d.totalProjects ?? 0}** project(s):`
-      );
-      parts.push(
-        projects
-          .slice(0, 12)
-          .map(
-            (p: { name?: string; environment?: string; id?: string }) =>
-              `• **${p.name}** (${p.environment}) — \`${p.id}\``
-          )
-          .join("\n") || (tr ? "• (liste boş)" : "• (empty)")
-      );
-      continue;
-    }
-
-    if (tool.intent === "ORGANIZATIONS") {
-      const orgs = Array.isArray(d.organizations) ? d.organizations : [];
-      parts.push(
-        tr
-          ? `**${d.totalOrganizations ?? 0}** organizasyon:`
-          : `**${d.totalOrganizations ?? 0}** organization(s):`
-      );
-      parts.push(
-        orgs
-          .slice(0, 12)
-          .map(
-            (o: { name?: string; planId?: string; status?: string }) =>
-              `• **${o.name}** — plan \`${o.planId}\`, ${o.status}`
-          )
-          .join("\n") || (tr ? "• (liste boş)" : "• (empty)")
-      );
-      continue;
-    }
-
-    if (tool.intent === "USAGE") {
-      const totals = (d.totals || {}) as Record<string, number>;
-      parts.push(
-        tr
-          ? `**${d.month ?? "bu ay"}** kullanımı: **${totals.requests ?? 0}** istek, **${totals.errors ?? 0}** hata, **${totals.brainRequests ?? 0}** brain, **${totals.monitoringRequests ?? 0}** monitoring.${
-              typeof d.requestsToday === "number"
-                ? ` Bugün: **${d.requestsToday}** istek.`
-                : ""
-            }`
-          : `Usage for **${d.month ?? "this month"}**: **${totals.requests ?? 0}** requests, **${totals.errors ?? 0}** errors, **${totals.brainRequests ?? 0}** brain, **${totals.monitoringRequests ?? 0}** monitoring.${
-              typeof d.requestsToday === "number"
-                ? ` Today: **${d.requestsToday}** requests.`
-                : ""
-            }`
-      );
-      continue;
-    }
-
-    if (tool.intent === "LOGS") {
-      const recent = Array.isArray(d.recent) ? d.recent : [];
-      parts.push(
-        tr
-          ? `Audit penceresinde **${d.totalInWindow ?? 0}** kayıt var; **${d.errorLike ?? 0}** hata benzeri olay.`
-          : `Audit window shows **${d.totalInWindow ?? 0}** entries with **${d.errorLike ?? 0}** error-like events.`
-      );
-      if (recent.length) {
-        parts.push(
-          recent
-            .slice(0, 8)
-            .map(
-              (l: {
-                level?: string;
-                category?: string;
-                createdAt?: string;
-                message?: string;
-              }) =>
-                `• [${l.level}/${l.category}] ${l.createdAt}: ${l.message}`
-            )
-            .join("\n")
-        );
-      }
-      continue;
-    }
-
-    if (tool.intent === "HEALTH") {
-      parts.push(
-        tr
-          ? `Platform durumu **${d.status}**. Uptime **${d.uptimeSeconds}s**, sürüm **${d.platformVersion}**.`
-          : `Platform status is **${d.status}**. Uptime **${d.uptimeSeconds}s**, version **${d.platformVersion}**.`
-      );
-      if (d.services && typeof d.services === "object") {
-        const services = Object.entries(d.services as Record<string, string>)
-          .map(([k, v]) => `${k}=${v}`)
-          .join(", ");
-        if (services) {
-          parts.push(tr ? `Servisler: ${services}` : `Services: ${services}`);
-        }
-      }
-      continue;
-    }
-
-    if (tool.intent === "ANALYTICS") {
-      parts.push(
-        tr
-          ? `Analitik özeti: bugün **${d.requestsToday ?? 0}** istek, bu ay **${d.monthRequests ?? 0}** istek / **${d.monthErrors ?? 0}** hata (oran %${d.errorRate ?? 0}), **${d.activeApiKeys ?? 0}** aktif anahtar.`
-          : `Analytics snapshot: **${d.requestsToday ?? 0}** requests today, **${d.monthRequests ?? 0}** month requests / **${d.monthErrors ?? 0}** errors (${d.errorRate ?? 0}% rate), **${d.activeApiKeys ?? 0}** active keys.`
-      );
-      const top = Array.isArray(d.topKeys) ? d.topKeys : [];
-      if (top.length) {
-        parts.push(
-          top
-            .slice(0, 5)
-            .map(
-              (k: { name?: string; usageCount?: number }) =>
-                `• ${k.name}: ${k.usageCount}`
-            )
-            .join("\n")
-        );
-      }
-      continue;
-    }
-
-    if (tool.intent === "DOCUMENTATION") {
-      const articles = Array.isArray(d.articles) ? d.articles : [];
-      if (!articles.length) {
-        parts.push(
-          tr
-            ? `Bu soru için dokümantasyon kaydı bulamadım. Authentication, API Keys, REST API, Webhooks veya Rate Limits diye sorabilirsin.`
-            : `I couldn’t find matching docs. Try Authentication, API Keys, REST API, Webhooks, or Rate Limits.`
-        );
-      } else {
-        parts.push(
-          tr
-            ? `Helia dokümantasyonundan ${articles.length} eşleşme buldum:`
-            : `I found ${articles.length} matching Helia doc article(s):`
-        );
-        for (const a of articles.slice(0, 3) as Array<{
-          title?: string;
-          body?: string;
-        }>) {
-          parts.push(`### ${a.title}\n${a.body}`);
-        }
-      }
-      continue;
-    }
-
-    if (tool.intent === "CODE_GENERATION" || tool.intent === "INTEGRATIONS") {
-      parts.push(
-        tr
-          ? `${d.endpoint || "Helia REST"} için **${d.language || "entegrasyon"}** örneği:`
-          : `Here’s a **${d.language || "integration"}** example for ${d.endpoint || "Helia REST"}:`
-      );
-      parts.push("```\n" + String(d.code || "") + "\n```");
-      parts.push(
-        String(
-          d.authHeader ||
-            (tr
-              ? "Header: `Authorization: Bearer <HELIA_API_KEY>` — key’i sadece sunucu ortamında tut."
-              : "Header: `Authorization: Bearer <HELIA_API_KEY>` — keep the key server-side only.")
-        )
-      );
-      continue;
-    }
-
-    if (tool.intent === "GENERAL") {
-      parts.push(
-        tr
-          ? `Merhaba — ben Helia Suite AI’yım. API anahtarları, projeler, organizasyonlar, kullanım, sağlık, loglar, analitik, dokümantasyon ve entegrasyon kodunda yardımcı olurum.\n\nÖrnek sorular: “Kaç API anahtarım var?”, “Platform sağlıklı mı?”, “whoami için Node örneği yaz.”`
-          : `Hi — I’m Helia Suite AI. I can help with API keys, projects, organizations, usage, health, logs, analytics, documentation, and integration code.\n\nTry: “How many API keys do I have?”, “Is the platform healthy?”, or “Write a Node whoami example.”`
-      );
-      continue;
-    }
+            ? `• **${k.name}** — ${k.enabled ? "aktif" : "pasif"}, ${k.keyEnvironment}, ${k.usageCount ?? 0} kullanım`
+            : `• **${k.name}** — ${k.enabled ? "active" : "disabled"}, ${k.keyEnvironment}, ${k.usageCount ?? 0} uses`
+      )
+      .join("\n");
 
     parts.push(
       tr
-        ? `${tool.tool} verisi alındı — detay için Admin paneline bakabilir veya daha spesifik sorabilirsin.`
-        : `${tool.tool} returned data — open the Admin panel or ask a more specific follow-up.`
+        ? `Canlı kayıtta **${keys.data.totalKeys ?? 0}** API anahtarı var (aktif **${keys.data.active ?? 0}**, live **${keys.data.production ?? 0}**, test **${keys.data.test ?? 0}**).`
+        : `Live store shows **${keys.data.totalKeys ?? 0}** API key(s) (**${keys.data.active ?? 0}** active, **${keys.data.production ?? 0}** live, **${keys.data.test ?? 0}** test).`
+    );
+    if (lines) parts.push(lines);
+    const newest = keys.data.newest as { id?: string; name?: string } | null;
+    if (newest?.name) {
+      parts.push(
+        tr
+          ? `En yenisi **${newest.name}** (\`${newest.id}\`). Secret’ı sohbette paylaşma; yönetim Admin → API Keys üzerinden.`
+          : `Newest is **${newest.name}** (\`${newest.id}\`). Don’t paste secrets here — manage them in Admin → API Keys.`
+      );
+    }
+  }
+
+  if (projects) {
+    const list = Array.isArray(projects.data.projects)
+      ? projects.data.projects
+      : [];
+    parts.push(
+      tr
+        ? `**${projects.data.totalProjects ?? 0}** proje görünüyor:`
+        : `I see **${projects.data.totalProjects ?? 0}** project(s):`
+    );
+    parts.push(
+      list
+        .slice(0, 12)
+        .map(
+          (p: { name?: string; environment?: string; id?: string }) =>
+            `• **${p.name}** (${p.environment}) — \`${p.id}\``
+        )
+        .join("\n") || (tr ? "• (boş)" : "• (empty)")
+    );
+  }
+
+  if (orgs) {
+    const list = Array.isArray(orgs.data.organizations)
+      ? orgs.data.organizations
+      : [];
+    parts.push(
+      tr
+        ? `**${orgs.data.totalOrganizations ?? 0}** organizasyon:`
+        : `**${orgs.data.totalOrganizations ?? 0}** organization(s):`
+    );
+    parts.push(
+      list
+        .slice(0, 12)
+        .map(
+          (o: { name?: string; planId?: string; status?: string }) =>
+            `• **${o.name}** — \`${o.planId}\`, ${o.status}`
+        )
+        .join("\n") || (tr ? "• (boş)" : "• (empty)")
+    );
+  }
+
+  if (usage) {
+    const totals = (usage.data.totals || {}) as Record<string, number>;
+    parts.push(
+      tr
+        ? `**${usage.data.month ?? "Bu ay"}** kullanımı: **${totals.requests ?? 0}** istek, **${totals.errors ?? 0}** hata, **${totals.brainRequests ?? 0}** brain.${
+            typeof usage.data.requestsToday === "number"
+              ? ` Bugün **${usage.data.requestsToday}** istek.`
+              : ""
+          }`
+        : `Usage for **${usage.data.month ?? "this month"}**: **${totals.requests ?? 0}** requests, **${totals.errors ?? 0}** errors, **${totals.brainRequests ?? 0}** brain.${
+            typeof usage.data.requestsToday === "number"
+              ? ` Today: **${usage.data.requestsToday}**.`
+              : ""
+          }`
+    );
+  }
+
+  if (analytics && !usage) {
+    parts.push(
+      tr
+        ? `Analitik: bugün **${analytics.data.requestsToday ?? 0}** istek, ay **${analytics.data.monthRequests ?? 0}** / **${analytics.data.monthErrors ?? 0}** hata (%${analytics.data.errorRate ?? 0}), **${analytics.data.activeApiKeys ?? 0}** aktif anahtar.`
+        : `Analytics: **${analytics.data.requestsToday ?? 0}** today, **${analytics.data.monthRequests ?? 0}** month requests / **${analytics.data.monthErrors ?? 0}** errors (${analytics.data.errorRate ?? 0}%), **${analytics.data.activeApiKeys ?? 0}** active keys.`
+    );
+  }
+
+  if (health) {
+    parts.push(
+      tr
+        ? `Platform durumu **${health.data.status}** (uptime ${health.data.uptimeSeconds}s, sürüm ${health.data.platformVersion}).`
+        : `Platform status is **${health.data.status}** (uptime ${health.data.uptimeSeconds}s, version ${health.data.platformVersion}).`
+    );
+  }
+
+  if (logs) {
+    const recent = Array.isArray(logs.data.recent) ? logs.data.recent : [];
+    parts.push(
+      tr
+        ? `Audit penceresinde **${logs.data.totalInWindow ?? 0}** kayıt, **${logs.data.errorLike ?? 0}** hata benzeri olay var.`
+        : `Audit window: **${logs.data.totalInWindow ?? 0}** entries, **${logs.data.errorLike ?? 0}** error-like.`
+    );
+    if (recent.length) {
+      parts.push(
+        recent
+          .slice(0, 6)
+          .map(
+            (l: {
+              level?: string;
+              category?: string;
+              createdAt?: string;
+              message?: string;
+            }) =>
+              `• [${l.level}/${l.category}] ${l.createdAt}: ${l.message}`
+          )
+          .join("\n")
+      );
+    }
+  }
+
+  if (docs) {
+    const articles = Array.isArray(docs.data.articles) ? docs.data.articles : [];
+    if (!articles.length) {
+      parts.push(
+        tr
+          ? `Bu soruya uyan dokümantasyon bulamadım. Authentication, API Keys, REST veya Rate Limits diye sorabilirsin.`
+          : `No matching docs. Try Authentication, API Keys, REST, or Rate Limits.`
+      );
+    } else {
+      parts.push(
+        tr
+          ? `Dokümantasyondan ${articles.length} eşleşme:`
+          : `Matched ${articles.length} doc article(s):`
+      );
+      for (const a of articles.slice(0, 3) as Array<{
+        title?: string;
+        body?: string;
+      }>) {
+        parts.push(`### ${a.title}\n${a.body}`);
+      }
+    }
+  }
+
+  if (code) {
+    parts.push(
+      tr
+        ? `İşte **${code.data.language || "entegrasyon"}** örneği (${code.data.endpoint || "Helia REST"}):`
+        : `Here’s a **${code.data.language || "integration"}** example (${code.data.endpoint || "Helia REST"}):`
+    );
+    parts.push("```\n" + String(code.data.code || "") + "\n```");
+    parts.push(
+      tr
+        ? `Header: \`Authorization: Bearer <HELIA_API_KEY>\` — key’i sadece sunucuda tut.`
+        : `Header: \`Authorization: Bearer <HELIA_API_KEY>\` — keep keys server-side only.`
     );
   }
 
   if (!parts.length) {
     return tr
-      ? `Helia API’leri, anahtarlar, kullanım, sağlık, loglar ve entegrasyonlarda yardımcı olabilirim. Ne öğrenmek istiyorsun?`
-      : `I can help with Helia APIs, keys, usage, health, logs, and integrations. What would you like to know?`;
+      ? `Anladım. Helia platformunda API anahtarları, kullanım, sağlık, loglar, dokümantasyon ve kod örneklerinde yardımcı olabilirim — neyi netleştirmek istersin?`
+      : `Got it. I can help with Helia API keys, usage, health, logs, docs, and code samples — what should we dig into?`;
   }
 
   return parts.join("\n\n");
@@ -376,18 +460,25 @@ export async function formatWithLlm(
   packet: LlmContextPacket
 ): Promise<{ text: string; mode: "openai" | "deterministic" }> {
   const { sanitizeAssistantOutput } = await import("./sanitize");
+  const fallback = () =>
+    sanitizeAssistantOutput(composeNaturalAnswer(packet));
 
   try {
     const ai = await reasonWithOpenAi(packet);
     if (ai) {
-      return { text: sanitizeAssistantOutput(ai), mode: "openai" };
+      const normalized = normalizeAssistantProse(ai);
+      if (normalized) {
+        return {
+          text: sanitizeAssistantOutput(normalized),
+          mode: "openai",
+        };
+      }
+      // Model slipped into Durum/Özet fluff — use our GPT-style composer instead
+      return { text: fallback(), mode: "deterministic" };
     }
   } catch (error) {
     console.error("[helia-brain] conversational LLM failed", error);
   }
 
-  return {
-    text: sanitizeAssistantOutput(composeNaturalAnswer(packet)),
-    mode: "deterministic",
-  };
+  return { text: fallback(), mode: "deterministic" };
 }
