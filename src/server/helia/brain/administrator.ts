@@ -20,6 +20,7 @@ import {
 export type AdministratorAskInput = {
   text: string;
   conversationId: string;
+  userId: string;
   questionId?: string;
   answerId?: string;
 };
@@ -108,61 +109,58 @@ export async function askHeliaAdministrator(
     };
   }
 
-  // Priority: live platform → errors → api keys → code → docs
+  // Priority: live platform → errors → api keys help → code → docs
   try {
-    const platform = await answerFromPlatformData(text);
+    const platform = await answerFromPlatformData(text, {
+      userId: input.userId,
+    });
     if (platform) {
       return {
         ...base,
         intent: platform.intent,
         summary: platform.summary,
         reasoning: platform.insufficientData
-          ? "Live platform stores did not contain the requested metric."
-          : "Answered from live Helia Cloud admin platform data.",
+          ? "Requested metric is not persisted in Helia Cloud."
+          : "Answered from live Helia service layer (Organization/Project/ApiKey/Usage/Audit/Health).",
         evidence: platform.evidence,
         confidence: platform.confidence,
         recommendedAction: platform.recommendedAction ?? "",
         businessImpact: platform.insufficientData
-          ? "No operational decision without observed data."
+          ? "No operational decision without that metric."
           : "Operators can act on observed platform metrics.",
         technicalImpact: platform.insufficientData
           ? NO_LIVE_DATA_MESSAGE
-          : "Values read from embedded Cloud stores.",
+          : "Values read from Helia Cloud services.",
         insufficientData: platform.insufficientData,
       };
     }
-  } catch {
-    // Continue to other handlers; surface live-data miss only if clearly requested.
-    if (
-      /\b(how many|show|list|usage|health|errors?|organizations?|projects?|deploy)\b/i.test(
-        text
-      )
-    ) {
-      return {
-        ...base,
-        intent: "live_data_unavailable",
-        summary: formatAdminSections({
-          status: "Live data",
-          summary: NO_LIVE_DATA_MESSAGE,
-          recommendation: "Retry shortly or open Admin → System Health.",
-          nextStep: "If the issue persists, inspect Admin → Logs.",
-        }),
-        reasoning: "Platform data lookup failed.",
-        evidence: [
-          {
-            source: "platform",
-            reference: "lookup",
-            detail: "Exception while reading admin platform data",
-            observedAt: answeredAt,
-          },
-        ],
-        confidence: 1,
-        recommendedAction: "",
-        businessImpact: "",
-        technicalImpact: "",
-        insufficientData: true,
-      };
-    }
+  } catch (err) {
+    return {
+      ...base,
+      intent: "live_data_error",
+      summary: formatAdminSections({
+        status: "Service error",
+        summary: `Live platform query failed: ${
+          err instanceof Error ? err.message : "unknown error"
+        }`,
+        recommendation: "Check Admin → System Health, then retry.",
+        nextStep: "If it persists, inspect Admin → Logs.",
+      }),
+      reasoning: "Service-layer exception while querying platform data.",
+      evidence: [
+        {
+          source: "platform",
+          reference: "lookup",
+          detail: err instanceof Error ? err.message : "error",
+          observedAt: answeredAt,
+        },
+      ],
+      confidence: 1,
+      recommendedAction: "",
+      businessImpact: "",
+      technicalImpact: "",
+      insufficientData: false,
+    };
   }
 
   const errorAnswer = analyzeError(text);
@@ -282,22 +280,22 @@ export async function askHeliaAdministrator(
 
   return {
     ...base,
-    intent: "insufficient",
+    intent: "unmatched",
     summary: formatAdminSections({
-      status: "Unable to answer",
-      summary: NO_LIVE_DATA_MESSAGE,
+      status: "Need a clearer platform question",
+      summary:
+        "I could not map that request to a Helia service query. I did not invent an answer.",
       recommendation:
-        "Rephrase as a Helia Suite platform, API, documentation, or integration question.",
+        "Ask about API keys, projects, organizations, usage, logs, health, documentation, or request integration code.",
       nextStep:
-        "Examples: usage today, active API keys, recent errors, health, or “Generate a Go example”.",
+        "Examples: “How many API Keys do I have?”, “How many projects?”, “Show usage”, “Is the platform healthy?”",
     }),
-    reasoning:
-      "No live-data intent, documentation match, code request, or error pattern matched.",
+    reasoning: "No service intent, documentation, code, or error pattern matched.",
     evidence: [],
     confidence: 1,
     recommendedAction: "",
     businessImpact: "",
     technicalImpact: "",
-    insufficientData: true,
+    insufficientData: false,
   };
 }

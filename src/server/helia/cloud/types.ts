@@ -211,6 +211,30 @@ export interface AdminSettingsRecord {
   updatedByUserId?: string;
 }
 
+/** Helia Admin Chat conversation (Cloud-persisted). */
+export interface BrainConversationRecord {
+  id: string;
+  userId: string;
+  organizationId: string;
+  projectId: string;
+  title: string;
+  preview?: string;
+  createdAt: string;
+  updatedAt: string;
+  product?: 'helia-suite' | 'snapsell' | 'crm' | 'erp' | 'mobile';
+}
+
+/** Helia Admin Chat message (Cloud-persisted). */
+export interface BrainMessageRecord {
+  id: string;
+  conversationId: string;
+  userId: string;
+  role: 'user' | 'assistant';
+  content: string;
+  /** ISO timestamp */
+  timestamp: string;
+}
+
 export interface AuthTokens {
   accessToken: string;
   refreshToken: string;

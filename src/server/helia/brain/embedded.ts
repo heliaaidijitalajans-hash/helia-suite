@@ -69,6 +69,7 @@ export async function askBrainEmbedded(
   const answer: BrainAnswer = await askHeliaAdministrator({
     text,
     conversationId: session.id,
+    userId: body.adminId || "unknown",
     questionId,
     answerId,
   });

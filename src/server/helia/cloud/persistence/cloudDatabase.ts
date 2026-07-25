@@ -7,6 +7,8 @@ import type {
   AdminSettingsRecord,
   ApiKeyRecord,
   AuditLogRecord,
+  BrainConversationRecord,
+  BrainMessageRecord,
   CloudSession,
   CloudUser,
   Organization,
@@ -28,6 +30,8 @@ export class CloudDatabase {
   readonly usage: CloudDocumentStore<UsageBucket>;
   readonly auditLogs: CloudDocumentStore<AuditLogRecord>;
   readonly settings: CloudDocumentStore<AdminSettingsRecord>;
+  readonly brainConversations: CloudDocumentStore<BrainConversationRecord>;
+  readonly brainMessages: CloudDocumentStore<BrainMessageRecord>;
 
   constructor(dataDir: string) {
     this.users = new CloudDocumentStore(join(dataDir, "users.json"));
@@ -47,6 +51,14 @@ export class CloudDatabase {
       50_000
     );
     this.settings = new CloudDocumentStore(join(dataDir, "admin-settings.json"), 10);
+    this.brainConversations = new CloudDocumentStore(
+      join(dataDir, "brain-conversations.json"),
+      50_000
+    );
+    this.brainMessages = new CloudDocumentStore(
+      join(dataDir, "brain-messages.json"),
+      200_000
+    );
   }
 
   async init(): Promise<void> {
@@ -61,6 +73,8 @@ export class CloudDatabase {
       this.usage.init(),
       this.auditLogs.init(),
       this.settings.init(),
+      this.brainConversations.init(),
+      this.brainMessages.init(),
     ]);
   }
 }

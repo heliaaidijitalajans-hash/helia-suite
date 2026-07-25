@@ -167,6 +167,40 @@ export class UsageService {
     );
     return { month, buckets: all };
   }
+
+  /** Platform-wide usage totals for the current month (Admin / Helia Chat). */
+  async summarizePlatform(): Promise<{
+    month: string;
+    bucketCount: number;
+    totals: {
+      requests: number;
+      errors: number;
+      brainRequests: number;
+      monitoringRequests: number;
+      storageBytes: number;
+      bandwidthBytes: number;
+    };
+  }> {
+    const month = currentMonthKey();
+    const buckets = await this.db.usage.query((u) => u.month === month);
+    const totals = {
+      requests: 0,
+      errors: 0,
+      brainRequests: 0,
+      monitoringRequests: 0,
+      storageBytes: 0,
+      bandwidthBytes: 0,
+    };
+    for (const b of buckets) {
+      totals.requests += b.requests;
+      totals.errors += b.errors;
+      totals.brainRequests += b.brainRequests;
+      totals.monitoringRequests += b.monitoringRequests;
+      totals.storageBytes += b.storageBytes;
+      totals.bandwidthBytes += b.bandwidthBytes;
+    }
+    return { month, bucketCount: buckets.length, totals };
+  }
 }
 
 export function planForOrganizationPlanId(planId: Parameters<typeof getPlan>[0]): PlanDefinition {

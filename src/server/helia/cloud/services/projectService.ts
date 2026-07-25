@@ -76,6 +76,11 @@ export class ProjectService {
     return all;
   }
 
+  /** Platform-wide listing (Admin Panel / Helia Chat). */
+  async listAll(): Promise<Project[]> {
+    return this.db.projects.findAll();
+  }
+
   async getForUser(projectId: string, userId: string): Promise<Project> {
     const project = await this.db.projects.findById(projectId);
     if (!project) throw new NotFoundError('Project', projectId);

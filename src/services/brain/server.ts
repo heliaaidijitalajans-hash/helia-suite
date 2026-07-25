@@ -1,24 +1,18 @@
 /**
  * Helia Brain orchestration (server).
- * Flow: in-process Cloud auth → usage metering → embedded Brain ask → persist.
+ * Flow: admin auth → usage metering → embedded Brain ask → Cloud-persisted chat.
  */
 
 import { askBrain } from "@/lib/api/brain";
 import { trackBrainUsageInProcess } from "@/lib/api/helia-cloud";
 import type { HeliaAuthContext } from "@/lib/auth/helia-session";
+import { getCloudContainer } from "@/server/helia/runtime";
 import {
   createLocalId,
   titleFromContent,
   toAssistantMessage,
   toUserMessage,
 } from "./format";
-import {
-  getPersistedConversation,
-  listPersistedConversations,
-  savePersistedConversation,
-  deletePersistedConversation,
-  renamePersistedConversation,
-} from "./persistence";
 import type {
   AskBrainServiceInput,
   AskBrainServiceResult,
@@ -26,39 +20,31 @@ import type {
 } from "./types";
 
 export async function listScopedConversations(auth: HeliaAuthContext) {
-  const items = await listPersistedConversations({
-    organizationId: auth.organization.id,
-    projectId: auth.project.id,
-    userId: auth.user.id,
-  });
-
-  return items.map((c) => ({
-    id: c.id,
-    title: c.title,
-    preview: c.preview,
-    updatedAt: c.updatedAt,
-  }));
+  const container = await getCloudContainer();
+  return container.brainChat.listForUser(auth.user.id);
 }
 
 export async function getScopedConversation(
   auth: HeliaAuthContext,
   conversationId: string
 ): Promise<PersistedConversation | null> {
-  return getPersistedConversation(
-    {
-      organizationId: auth.organization.id,
-      projectId: auth.project.id,
-      userId: auth.user.id,
-    },
+  const container = await getCloudContainer();
+  const found = await container.brainChat.getForUser(
+    auth.user.id,
     conversationId
   );
-}
-
-function scopeFromAuth(auth: HeliaAuthContext) {
+  if (!found) return null;
   return {
-    organizationId: auth.organization.id,
-    projectId: auth.project.id,
-    userId: auth.user.id,
+    id: found.id,
+    organizationId: found.organizationId,
+    projectId: found.projectId,
+    userId: found.userId,
+    title: found.title,
+    preview: found.preview,
+    createdAt: found.createdAt,
+    updatedAt: found.updatedAt,
+    messages: found.messages,
+    product: found.product,
   };
 }
 
@@ -66,9 +52,8 @@ export async function deleteScopedConversation(
   auth: HeliaAuthContext,
   conversationId: string
 ): Promise<boolean> {
-  const existing = await getScopedConversation(auth, conversationId);
-  if (!existing) return false;
-  return deletePersistedConversation(scopeFromAuth(auth), conversationId);
+  const container = await getCloudContainer();
+  return container.brainChat.delete(auth.user.id, conversationId);
 }
 
 export async function renameScopedConversation(
@@ -76,21 +61,41 @@ export async function renameScopedConversation(
   conversationId: string,
   title: string
 ): Promise<PersistedConversation | null> {
-  return renamePersistedConversation(
-    scopeFromAuth(auth),
+  const container = await getCloudContainer();
+  const updated = await container.brainChat.rename(
+    auth.user.id,
     conversationId,
     title
   );
+  if (!updated) return null;
+  const full = await container.brainChat.getForUser(auth.user.id, updated.id);
+  if (!full) return null;
+  return {
+    id: full.id,
+    organizationId: full.organizationId,
+    projectId: full.projectId,
+    userId: full.userId,
+    title: full.title,
+    preview: full.preview,
+    createdAt: full.createdAt,
+    updatedAt: full.updatedAt,
+    messages: full.messages,
+    product: full.product,
+  };
 }
 
 export async function askBrainForUser(
   auth: HeliaAuthContext,
   input: AskBrainServiceInput
 ): Promise<AskBrainServiceResult> {
+  const container = await getCloudContainer();
   const userMessage = toUserMessage(input.content);
+
   const existing = input.conversationId
-    ? await getScopedConversation(auth, input.conversationId)
+    ? await container.brainChat.getForUser(auth.user.id, input.conversationId)
     : null;
+
+  const conversationId = existing?.id || createLocalId("conv");
 
   try {
     await trackBrainUsageInProcess({
@@ -103,46 +108,35 @@ export async function askBrainForUser(
 
   const brain = await askBrain({
     text: input.content,
-    ...(input.conversationId
-      ? { conversationId: input.conversationId }
-      : {}),
+    conversationId,
     adminId: auth.user.id,
   });
 
   const assistantMessage = toAssistantMessage(brain.answer);
-  const conversationId = brain.answer.conversationId || createLocalId("conv");
-  const now = new Date().toISOString();
 
-  const conversation: PersistedConversation = existing
-    ? {
-        ...existing,
-        id: conversationId,
-        preview: input.content,
-        updatedAt: now,
-        messages: [...existing.messages, userMessage, assistantMessage],
-      }
-    : {
-        id: conversationId,
-        organizationId: auth.organization.id,
-        projectId: auth.project.id,
-        userId: auth.user.id,
-        title: titleFromContent(input.content),
-        preview: input.content,
-        createdAt: now,
-        updatedAt: now,
-        messages: [userMessage, assistantMessage],
-        product: input.product ?? "helia-suite",
-      };
+  const saved = await container.brainChat.appendMessages({
+    userId: auth.user.id,
+    conversationId,
+    organizationId: auth.organization.id,
+    projectId: auth.project.id,
+    titleIfNew: titleFromContent(input.content),
+    product: input.product ?? "helia-suite",
+    userContent: userMessage.content,
+    assistantContent: assistantMessage.content,
+  });
 
-  if (existing && existing.id !== conversationId) {
-    conversation.messages = [
-      ...existing.messages,
-      userMessage,
-      assistantMessage,
-    ];
-  }
-
-  await savePersistedConversation(conversation);
+  const conversation: PersistedConversation = {
+    id: saved.id,
+    organizationId: saved.organizationId,
+    projectId: saved.projectId,
+    userId: saved.userId,
+    title: saved.title,
+    preview: saved.preview,
+    createdAt: saved.createdAt,
+    updatedAt: saved.updatedAt,
+    messages: saved.messages,
+    product: saved.product,
+  };
 
   return { conversation, userMessage, assistantMessage };
 }

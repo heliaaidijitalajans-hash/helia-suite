@@ -8,6 +8,7 @@ import { AdminService } from "../services/adminService";
 import { ApiKeyService } from "../services/apiKeyService";
 import { AuditLogService } from "../services/auditLogService";
 import { AuthService } from "../services/authService";
+import { BrainChatService } from "../services/brainChatService";
 import { GatewayService } from "../services/gatewayService";
 import { OrganizationService } from "../services/organizationService";
 import { ProjectService } from "../services/projectService";
@@ -26,6 +27,7 @@ export interface CloudContainer {
   gateway: GatewayService;
   audit: AuditLogService;
   admin: AdminService;
+  brainChat: BrainChatService;
 }
 
 export async function createCloudContainer(
@@ -44,6 +46,7 @@ export async function createCloudContainer(
   const audit = new AuditLogService(db);
   gateway.setAudit(audit);
   const admin = new AdminService(db, config, audit);
+  const brainChat = new BrainChatService(db);
   await admin.bootstrapAdmins();
 
   return {
@@ -58,5 +61,6 @@ export async function createCloudContainer(
     gateway,
     audit,
     admin,
+    brainChat,
   };
 }

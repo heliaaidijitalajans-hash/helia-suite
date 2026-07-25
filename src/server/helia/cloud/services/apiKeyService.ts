@@ -118,6 +118,12 @@ export class ApiKeyService {
     return keys.map(sanitize);
   }
 
+  /** Platform-wide listing (Admin Panel / Helia Chat). Never exposes plaintext secrets. */
+  async listAll(): Promise<ApiKeyRecord[]> {
+    const keys = await this.db.apiKeys.findAll();
+    return keys.map(sanitize);
+  }
+
   async rotate(input: {
     userId: string;
     apiKeyId: string;

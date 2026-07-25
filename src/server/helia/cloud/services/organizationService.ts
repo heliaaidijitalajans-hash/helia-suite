@@ -92,6 +92,11 @@ export class OrganizationService {
     return orgs;
   }
 
+  /** Platform-wide listing (Admin Panel / Helia Chat). */
+  async listAll(): Promise<Organization[]> {
+    return this.db.organizations.findAll();
+  }
+
   async getForUser(organizationId: string, userId: string): Promise<Organization> {
     await this.requireMembership(organizationId, userId);
     const org = await this.db.organizations.findById(organizationId);
