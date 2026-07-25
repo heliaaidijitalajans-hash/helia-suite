@@ -232,23 +232,27 @@ export class AuthService {
       session = undefined;
     }
 
-    let user =
-      (session ? await this.db.users.findById(session.userId) : null) ??
+    let user: CloudUser | undefined =
+      (session ? await this.db.users.findById(session.userId) : undefined) ??
       (await this.db.users.findById(payload.sub));
 
-    if (!user && typeof payload.email === 'string' && payload.email) {
+    if (!user && typeof payload.email === "string" && payload.email) {
       const email = normalizeEmail(payload.email);
       const found = await this.db.users.query((u) => u.email === email);
-      user = found[0] ?? null;
+      user = found[0];
     }
 
     // Serverless recovery: JWT still valid but /tmp user+session wiped.
     if (!user) {
-      user = await this.rehydrateUserFromAccessPayload(payload);
+      user =
+        (await this.rehydrateUserFromAccessPayload(payload)) ?? undefined;
     }
-    if (!user) throw new UnauthorizedError('User not found');
+    if (!user) throw new UnauthorizedError("User not found");
     if (user.disabledAt) {
-      throw new AppError('Account disabled', { statusCode: 403, code: 'ACCOUNT_DISABLED' });
+      throw new AppError("Account disabled", {
+        statusCode: 403,
+        code: "ACCOUNT_DISABLED",
+      });
     }
 
     if (!session) {
