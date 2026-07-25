@@ -1,4 +1,5 @@
-import { jsonError, jsonOk, readJsonBody } from "@/server/helia/http";
+import { jsonError, readJsonBody } from "@/server/helia/http";
+import { jsonOkWithAccessCookie } from "@/server/helia/auth-cookies";
 import { getCloudContainer } from "@/server/helia/runtime";
 import { ValidationError } from "@/server/helia/utils/errors";
 
@@ -12,7 +13,7 @@ export async function POST(request: Request) {
       typeof body.refreshToken === "string" ? body.refreshToken : "";
     if (!refreshToken) throw new ValidationError("refreshToken is required");
     const tokens = await container.auth.refresh(refreshToken);
-    return jsonOk({ tokens });
+    return jsonOkWithAccessCookie({ tokens }, tokens.accessToken);
   } catch (error) {
     return jsonError(error);
   }

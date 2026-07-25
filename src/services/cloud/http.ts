@@ -17,29 +17,29 @@ export class HeliaCloudClientError extends Error {
   }
 }
 
-/** Same-origin Helia Cloud API (Next.js Route Handlers). */
+/**
+ * Same-origin Helia Cloud API.
+ * Sends credentials (cookie) always; adds Bearer when a client token exists.
+ * Browser sessions work with cookie alone — no manual Authorization required.
+ */
 export async function cloudRequest<T>(
   path: string,
   init: RequestInit = {}
 ): Promise<T> {
   const token = getHeliaAccessToken();
-  if (!token) {
-    throw new HeliaCloudClientError(
-      "Helia Cloud session missing. Please log in.",
-      401,
-      "NO_SESSION"
-    );
+  const headers: Record<string, string> = {
+    Accept: "application/json",
+    "Content-Type": "application/json",
+    ...(init.headers as Record<string, string> | undefined),
+  };
+  if (token && !headers.Authorization && !headers.authorization) {
+    headers.Authorization = `Bearer ${token}`;
   }
 
   const res = await fetch(path.startsWith("/api/") ? path : `/api${path}`, {
     ...init,
     credentials: "same-origin",
-    headers: {
-      Accept: "application/json",
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-      ...(init.headers ?? {}),
-    },
+    headers,
     cache: "no-store",
   });
 

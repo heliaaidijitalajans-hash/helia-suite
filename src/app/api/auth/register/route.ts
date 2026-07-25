@@ -1,9 +1,5 @@
-import {
-  jsonError,
-  jsonOk,
-  readJsonBody,
-  requireCloudUser,
-} from "@/server/helia/http";
+import { jsonError, readJsonBody } from "@/server/helia/http";
+import { jsonOkWithAccessCookie } from "@/server/helia/auth-cookies";
 import { getCloudContainer } from "@/server/helia/runtime";
 import { ValidationError } from "@/server/helia/utils/errors";
 
@@ -31,6 +27,14 @@ export async function POST(request: Request) {
       password,
       displayName,
     });
+
+    if (result.tokens?.accessToken) {
+      return jsonOkWithAccessCookie({ ...result }, result.tokens.accessToken, {
+        status: 201,
+      });
+    }
+
+    const { jsonOk } = await import("@/server/helia/http");
     return jsonOk({ ...result }, { status: 201 });
   } catch (error) {
     return jsonError(error);

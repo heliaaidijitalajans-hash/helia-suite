@@ -19,6 +19,7 @@ import type { CloudDatabase } from "../persistence/cloudDatabase";
 import type {
   AdminSettingsRecord,
   ApiKeyRecord,
+  CloudUser,
   Organization,
   PlanId,
   PlatformRole,
@@ -77,25 +78,7 @@ export class AdminService {
   ) {}
 
   async bootstrapAdmins(): Promise<void> {
-    const emails = this.config.adminEmails
-      .split(",")
-      .map((e) => e.trim().toLowerCase())
-      .filter(Boolean);
-    for (const email of emails) {
-      const users = await this.db.users.query((u) => u.email === email);
-      const user = users[0];
-      if (!user) continue;
-      if (resolvePlatformRole(user) === "admin") continue;
-      await this.db.users.patch(user.id, {
-        role: "admin",
-        updatedAt: new Date().toISOString(),
-      });
-      await this.audit.write({
-        category: "admin",
-        message: `Promoted ${email} to platform admin (bootstrap)`,
-        actorUserId: user.id,
-      });
-    }
+    await this.promoteListedAdminEmails();
 
     // Normalize legacy users missing role
     const allUsers = await this.db.users.findAll();
@@ -123,6 +106,108 @@ export class AdminService {
     if (!existing) {
       await this.db.settings.upsert(defaultSettings());
     }
+  }
+
+  /** Always read live env so `.env.local` / Vercel updates apply without stale cache gaps. */
+  listedAdminEmails(): string[] {
+    const raw =
+      process.env.HELIA_ADMIN_EMAILS ?? this.config.adminEmails ?? "";
+    return raw
+      .split(",")
+      .map((e) => e.trim().toLowerCase())
+      .filter(Boolean);
+  }
+
+  /**
+   * Promote every existing account whose email is in HELIA_ADMIN_EMAILS.
+   * Safe to call on login and on every /admin gate — idempotent.
+   */
+  async promoteListedAdminEmails(): Promise<string[]> {
+    const emails = this.listedAdminEmails();
+    const promoted: string[] = [];
+    for (const email of emails) {
+      const users = await this.db.users.query((u) => u.email === email);
+      const user = users[0];
+      if (!user) continue;
+      if (resolvePlatformRole(user) === "admin") continue;
+      await this.db.users.patch(user.id, {
+        role: "admin",
+        updatedAt: new Date().toISOString(),
+      });
+      await this.audit.write({
+        category: "admin",
+        message: `Promoted ${email} to platform admin (HELIA_ADMIN_EMAILS)`,
+        actorUserId: user.id,
+      });
+      promoted.push(email);
+    }
+    return promoted;
+  }
+
+  /** Ensure this user is admin if their email is listed — returns fresh user record. */
+  async ensureListedAdmin(userId: string): Promise<CloudUser> {
+    await this.promoteListedAdminEmails();
+    const user = await this.db.users.findById(userId);
+    if (!user) throw new NotFoundError("User", userId);
+    return user;
+  }
+
+  async countAdmins(): Promise<number> {
+    const users = await this.db.users.findAll();
+    return users.filter((u) => resolvePlatformRole(u) === "admin").length;
+  }
+
+  /**
+   * Secure self-promote: logged-in user + HELIA_ADMIN_BOOTSTRAP_SECRET.
+   * Use when no admin exists yet or env email list was missed.
+   */
+  async promoteWithBootstrapSecret(
+    userId: string,
+    secret: string
+  ): Promise<PublicUser> {
+    const expected = (
+      process.env.HELIA_ADMIN_BOOTSTRAP_SECRET ||
+      this.config.adminBootstrapSecret ||
+      ""
+    ).trim();
+    if (expected.length < 16) {
+      throw new AppError(
+        "Admin bootstrap secret is not configured (HELIA_ADMIN_BOOTSTRAP_SECRET).",
+        { statusCode: 503, code: "BOOTSTRAP_UNAVAILABLE" }
+      );
+    }
+    if (!secret || secret !== expected) {
+      throw new AppError("Invalid bootstrap secret", {
+        statusCode: 403,
+        code: "FORBIDDEN",
+      });
+    }
+
+    const user = await this.db.users.findById(userId);
+    if (!user) throw new NotFoundError("User", userId);
+    if (user.disabledAt) {
+      throw new AppError("Account disabled", {
+        statusCode: 403,
+        code: "ACCOUNT_DISABLED",
+      });
+    }
+
+    if (resolvePlatformRole(user) !== "admin") {
+      await this.db.users.patch(user.id, {
+        role: "admin",
+        updatedAt: new Date().toISOString(),
+      });
+      await this.audit.write({
+        category: "admin",
+        level: "warning",
+        message: `Promoted ${user.email} via bootstrap secret`,
+        actorUserId: user.id,
+      });
+    }
+
+    const refreshed = await this.db.users.findById(userId);
+    if (!refreshed) throw new NotFoundError("User", userId);
+    return toPublicUser(refreshed);
   }
 
   async getOverview() {

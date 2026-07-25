@@ -39,12 +39,28 @@ export const DEFAULT_PROFILE_PREFS: ProfilePreferences = {
 
 export async function fetchAuthMe(): Promise<{
   user: HeliaPublicUser;
+  email?: string;
+  role?: "user" | "admin";
+  adminAccess?: {
+    role: "user" | "admin";
+    isAdmin: boolean;
+  };
+  organization?: unknown;
+  permissions?: string[];
 }> {
   const data = await cloudRequest<{
     ok: true;
     user: HeliaPublicUser;
+    email?: string;
+    role?: "user" | "admin";
+    adminAccess?: {
+      role: "user" | "admin";
+      isAdmin: boolean;
+    };
+    organization?: unknown;
+    permissions?: string[];
   }>("/api/auth/me");
-  return { user: data.user };
+  return data;
 }
 
 export function loadProfilePreferences(userId: string): ProfilePreferences {

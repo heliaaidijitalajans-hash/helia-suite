@@ -47,6 +47,7 @@ async function authRequest(
       Accept: "application/json",
       "Content-Type": "application/json",
     },
+    credentials: "same-origin",
     body: JSON.stringify(body),
     cache: "no-store",
   });
@@ -112,17 +113,18 @@ export async function logoutHeliaCloud(): Promise<void> {
   }
 
   try {
-    if (refreshToken) {
-      await fetch("/api/auth/logout", {
-        method: "POST",
-        headers: {
-          Accept: "application/json",
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ refreshToken }),
-        cache: "no-store",
-      });
-    }
+    await fetch("/api/auth/logout", {
+      method: "POST",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+      },
+      credentials: "same-origin",
+      body: JSON.stringify(
+        refreshToken ? { refreshToken } : {}
+      ),
+      cache: "no-store",
+    });
   } catch {
     // Local clear still proceeds.
   }

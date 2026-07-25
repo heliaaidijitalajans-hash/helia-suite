@@ -3,7 +3,9 @@ import {
   jsonOk,
   readJsonBody,
 } from "@/server/helia/http";
+import { jsonOkWithAccessCookie } from "@/server/helia/auth-cookies";
 import { getCloudContainer } from "@/server/helia/runtime";
+import { toPublicUser } from "@/server/helia/cloud/utils";
 import { ValidationError } from "@/server/helia/utils/errors";
 
 export const runtime = "nodejs";
@@ -26,7 +28,16 @@ export async function POST(request: Request) {
         ? { userAgent: request.headers.get("user-agent")! }
         : {}),
     });
-    return jsonOk({ ...result });
+
+    const ensured = await container.admin.ensureListedAdmin(result.user.id);
+
+    return jsonOkWithAccessCookie(
+      {
+        user: toPublicUser(ensured),
+        tokens: result.tokens,
+      },
+      result.tokens.accessToken
+    );
   } catch (error) {
     return jsonError(error);
   }

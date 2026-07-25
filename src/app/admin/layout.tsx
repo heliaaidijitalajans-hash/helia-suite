@@ -13,18 +13,30 @@ export const metadata: Metadata = {
 
 export const dynamic = "force-dynamic";
 
+function readAccessToken(raw: string | undefined): string | null {
+  if (!raw?.trim()) return null;
+  const trimmed = raw.trim();
+  try {
+    return decodeURIComponent(trimmed);
+  } catch {
+    return trimmed;
+  }
+}
+
 async function assertAdmin() {
   const jar = await cookies();
-  const token = jar.get("helia_access_token")?.value?.trim();
+  const token = readAccessToken(jar.get("helia_access_token")?.value);
   if (!token) redirect("/login?next=/admin");
 
   try {
     const container = await getCloudContainer();
-    const { user } = await container.auth.authenticateAccessToken(
-      decodeURIComponent(token)
-    );
-    if (resolvePlatformRole(user) !== "admin") {
-      redirect("/dashboard");
+    const { user } = await container.auth.authenticateAccessToken(token);
+
+    // Re-apply HELIA_ADMIN_EMAILS on every gate (fixes "registered after boot").
+    const ensured = await container.admin.ensureListedAdmin(user.id);
+
+    if (resolvePlatformRole(ensured) !== "admin") {
+      redirect("/dashboard?forbidden=admin");
     }
   } catch {
     redirect("/login?next=/admin");

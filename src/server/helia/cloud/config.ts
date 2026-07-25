@@ -42,8 +42,13 @@ const CloudConfigSchema = z.object({
   rateLimitWindowMs: z.coerce.number().int().positive().default(60_000),
   rateLimitMax: z.coerce.number().int().positive().default(300),
   requireEmailVerification: booleanFromEnv.default(false),
-  /** Comma-separated emails promoted to platform admin on boot. */
+  /** Comma-separated emails promoted to platform admin on boot / login. */
   adminEmails: z.string().default(""),
+  /**
+   * Optional one-time / emergency promote secret for POST /api/admin/bootstrap-promote.
+   * Min 16 chars when set. Never commit the real value.
+   */
+  adminBootstrapSecret: z.string().default(""),
   version: z.string().default("1.0.0"),
 });
 
@@ -75,6 +80,7 @@ export function loadCloudConfig(): CloudConfig {
     requireEmailVerification:
       process.env.CLOUD_REQUIRE_EMAIL_VERIFICATION ?? false,
     adminEmails: process.env.HELIA_ADMIN_EMAILS ?? "",
+    adminBootstrapSecret: process.env.HELIA_ADMIN_BOOTSTRAP_SECRET ?? "",
     version: process.env.CLOUD_VERSION ?? "1.0.0",
   });
 
