@@ -13,7 +13,7 @@ export async function POST(request: Request) {
       typeof body.refreshToken === "string" ? body.refreshToken : "";
     if (!refreshToken) throw new ValidationError("refreshToken is required");
     const tokens = await container.auth.refresh(refreshToken);
-    return jsonOkWithAccessCookie({ tokens }, tokens.accessToken);
+    return jsonOkWithAccessCookie({ tokens }, tokens.accessToken, { request });
   } catch (error) {
     return jsonError(error);
   }

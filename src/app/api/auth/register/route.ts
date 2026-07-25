@@ -29,9 +29,11 @@ export async function POST(request: Request) {
     });
 
     if (result.tokens?.accessToken) {
-      return jsonOkWithAccessCookie({ ...result }, result.tokens.accessToken, {
-        status: 201,
-      });
+      return jsonOkWithAccessCookie(
+        { ...result },
+        result.tokens.accessToken,
+        { status: 201, request }
+      );
     }
 
     const { jsonOk } = await import("@/server/helia/http");

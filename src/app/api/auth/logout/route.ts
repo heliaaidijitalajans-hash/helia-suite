@@ -1,4 +1,4 @@
-import { jsonError, jsonOk, readJsonBody } from "@/server/helia/http";
+import { jsonError, readJsonBody } from "@/server/helia/http";
 import { clearAccessTokenCookie } from "@/server/helia/auth-cookies";
 import { getCloudContainer } from "@/server/helia/runtime";
 import { NextResponse } from "next/server";
@@ -14,7 +14,7 @@ export async function POST(request: Request) {
     if (refreshToken) await container.auth.logout(refreshToken);
 
     const response = NextResponse.json({ ok: true });
-    return clearAccessTokenCookie(response);
+    return clearAccessTokenCookie(response, request);
   } catch (error) {
     return jsonError(error);
   }

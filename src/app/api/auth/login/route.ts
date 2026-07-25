@@ -1,8 +1,4 @@
-import {
-  jsonError,
-  jsonOk,
-  readJsonBody,
-} from "@/server/helia/http";
+import { jsonError, readJsonBody } from "@/server/helia/http";
 import { jsonOkWithAccessCookie } from "@/server/helia/auth-cookies";
 import { getCloudContainer } from "@/server/helia/runtime";
 import { toPublicUser } from "@/server/helia/cloud/utils";
@@ -36,7 +32,8 @@ export async function POST(request: Request) {
         user: toPublicUser(ensured),
         tokens: result.tokens,
       },
-      result.tokens.accessToken
+      result.tokens.accessToken,
+      { request }
     );
   } catch (error) {
     return jsonError(error);

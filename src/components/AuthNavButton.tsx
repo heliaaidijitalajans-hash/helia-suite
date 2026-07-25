@@ -5,7 +5,6 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
   getHeliaAccessToken,
-  setHeliaAccessToken,
 } from "@/lib/cloud/session";
 import { logoutHeliaCloud } from "@/services/cloud/auth";
 import { cn } from "@/lib/cn";
@@ -34,11 +33,7 @@ export function AuthNavButton({
 
   useEffect(() => {
     const sync = () => {
-      const token = getHeliaAccessToken();
-      if (token) {
-        setHeliaAccessToken(token);
-      }
-      setAuthed(Boolean(token));
+      setAuthed(Boolean(getHeliaAccessToken()));
     };
     sync();
     window.addEventListener("storage", sync);
