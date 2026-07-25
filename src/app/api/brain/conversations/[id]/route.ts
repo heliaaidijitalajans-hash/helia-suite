@@ -9,6 +9,7 @@ import {
   brainRouteErrorResponse,
   requireAdminBrainContext,
 } from "@/services/brain/admin-gate";
+import { clearConversationMemory } from "@/server/helia/brain/orchestrator/memory";
 
 export const runtime = "nodejs";
 
@@ -118,6 +119,12 @@ export async function DELETE(request: Request, { params }: Params) {
         },
         { status: 404 }
       );
+    }
+
+    try {
+      clearConversationMemory(id, auth.user.id);
+    } catch {
+      // best-effort
     }
 
     try {

@@ -110,6 +110,10 @@ export async function askBrainForUser(
     text: input.content,
     conversationId,
     adminId: auth.user.id,
+    recentMessages: (existing?.messages || []).map((m) => ({
+      role: m.role,
+      content: m.content,
+    })),
   });
 
   const assistantMessage = toAssistantMessage(brain.answer);

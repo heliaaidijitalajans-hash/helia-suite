@@ -1,17 +1,16 @@
 /**
- * Embedded Helia Brain ask — runs in-process inside Next.js (no :4090).
- * Routes through Helia Suite AI Administrator (not a general chatbot).
+ * Embedded Helia Brain — delegates to the AI Orchestrator.
+ * Flow: context → intent → tools → structured JSON → LLM format.
  */
 
 import { createId } from "@/server/helia/utils/id";
 import type {
-  BrainAnswer,
   BrainAskRequestBody,
   BrainAskResult,
   BrainConversationSession,
   BrainStreamHandlers,
 } from "@/lib/api/brain-types";
-import { askHeliaAdministrator } from "./administrator";
+import { orchestrateBrainAnswer } from "./orchestrator";
 
 type MemoryStore = {
   sessions: Map<string, BrainConversationSession>;
@@ -58,7 +57,9 @@ function ensureSession(
 }
 
 export async function askBrainEmbedded(
-  body: BrainAskRequestBody,
+  body: BrainAskRequestBody & {
+    recentMessages?: Array<{ role: "user" | "assistant"; content: string }>;
+  },
   handlers: BrainStreamHandlers = {}
 ): Promise<BrainAskResult> {
   const session = ensureSession(body.conversationId, body.adminId);
@@ -66,12 +67,13 @@ export async function askBrainEmbedded(
   const answerId = createId("brainans");
   const text = body.text.trim();
 
-  const answer: BrainAnswer = await askHeliaAdministrator({
+  const answer = await orchestrateBrainAnswer({
     text,
     conversationId: session.id,
     userId: body.adminId || "unknown",
     questionId,
     answerId,
+    recentMessages: body.recentMessages,
   });
 
   session.turns.push({

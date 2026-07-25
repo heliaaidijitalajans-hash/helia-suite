@@ -6,6 +6,7 @@ export type BrainAskRequestBody = {
   text: string;
   conversationId?: string;
   adminId?: string;
+  recentMessages?: Array<{ role: "user" | "assistant"; content: string }>;
 };
 
 export type BrainEvidence = {
