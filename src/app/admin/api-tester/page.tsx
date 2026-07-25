@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import Link from "next/link";
 import {
   Check,
   Copy,
@@ -18,6 +17,7 @@ import {
 } from "@/components/admin/ui";
 import { adminFetch } from "@/services/admin/http";
 import { cn } from "@/lib/cn";
+import { ApiExplorerPanel } from "@/components/admin/api-tester/ApiExplorerPanel";
 import { EndpointCombobox } from "@/components/admin/api-tester/EndpointCombobox";
 import { QueryParamsEditor } from "@/components/admin/api-tester/QueryParamsEditor";
 import { PathParamsEditor } from "@/components/admin/api-tester/PathParamsEditor";
@@ -437,14 +437,17 @@ export default function AdminApiTesterPage() {
 
   return (
     <div className="space-y-6">
+      <ApiExplorerPanel
+        routes={routes}
+        loading={catalogLoading}
+        selectedPath={pathTemplate}
+        selectedMethod={method}
+        onSelect={applyRouteSelection}
+      />
+
       <AdminPanel
         title="API Tester"
         description="Postman-style console — endpoints discovered live from src/app/api. Shortcuts: ⌘/Ctrl+Enter run · ⌘/Ctrl+Shift+V validate."
-        actions={
-          <Link href="/admin/api-explorer" className={adminBtnSecondary}>
-            API Explorer
-          </Link>
-        }
       >
         {catalogLoading ? (
           <p className="mb-4 text-sm text-white/45">Discovering API routes…</p>
