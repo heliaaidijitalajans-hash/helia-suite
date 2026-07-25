@@ -49,6 +49,7 @@ export class AuthService {
       passwordHash: await hashPassword(input.password),
       displayName: input.displayName.trim() || email.split('@')[0]!,
       emailVerified: !this.config.requireEmailVerification,
+      role: 'user',
       ...(this.config.requireEmailVerification
         ? { emailVerificationToken: hashToken(verificationToken) }
         : {}),
@@ -76,6 +77,9 @@ export class AuthService {
     const user = users[0];
     if (!user || !(await verifyPassword(input.password, user.passwordHash))) {
       throw new UnauthorizedError('Invalid email or password');
+    }
+    if (user.disabledAt) {
+      throw new AppError('Account disabled', { statusCode: 403, code: 'ACCOUNT_DISABLED' });
     }
     if (this.config.requireEmailVerification && !user.emailVerified) {
       throw new AppError('Email not verified', { statusCode: 403, code: 'EMAIL_UNVERIFIED' });
@@ -185,6 +189,9 @@ export class AuthService {
     }
     const user = await this.db.users.findById(payload.sub);
     if (!user) throw new UnauthorizedError('User not found');
+    if (user.disabledAt) {
+      throw new AppError('Account disabled', { statusCode: 403, code: 'ACCOUNT_DISABLED' });
+    }
     await this.db.sessions.patch(session.id, { lastUsedAt: new Date().toISOString() });
     return { user, session };
   }
@@ -221,6 +228,7 @@ export class AuthService {
         email: user.email,
         typ: 'access',
         sid: session.id,
+        role: user.role === 'admin' ? 'admin' : 'user',
       } satisfies JwtAccessPayload,
       this.config.jwtAccessSecret,
       this.config.jwtAccessTtlSeconds,

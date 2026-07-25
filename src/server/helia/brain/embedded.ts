@@ -28,6 +28,15 @@ function store(): MemoryStore {
   return globalThis.__heliaEmbeddedBrain;
 }
 
+export function getEmbeddedBrainHealth(): boolean {
+  try {
+    store();
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 function ensureSession(
   conversationId: string | undefined,
   adminId?: string

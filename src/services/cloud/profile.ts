@@ -10,7 +10,10 @@ export type HeliaPublicUser = {
   email: string;
   displayName: string;
   emailVerified: boolean;
+  role?: "user" | "admin";
   createdAt?: string;
+  lastLoginAt?: string;
+  disabledAt?: string;
 };
 
 export type ProfilePreferences = {

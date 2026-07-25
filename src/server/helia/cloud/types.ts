@@ -10,6 +10,21 @@ export type ApiKeyEnvironment = 'live' | 'test';
 
 export type OrgRole = 'owner' | 'admin' | 'member' | 'viewer';
 
+/** Platform-level role — gates Helia Suite Admin Panel (`/admin`). */
+export type PlatformRole = 'user' | 'admin';
+
+export type OrganizationStatus = 'active' | 'suspended';
+
+export type AuditLogLevel = 'info' | 'warning' | 'error';
+
+export type AuditLogCategory =
+  | 'auth'
+  | 'api'
+  | 'request'
+  | 'application'
+  | 'admin'
+  | 'system';
+
 export type UsageMetric =
   | 'requests'
   | 'errors'
@@ -24,12 +39,16 @@ export interface CloudUser {
   passwordHash: string;
   displayName: string;
   emailVerified: boolean;
+  /** Defaults to `user` for legacy records. */
+  role?: PlatformRole;
   emailVerificationToken?: string;
   passwordResetToken?: string;
   passwordResetExpiresAt?: string;
   createdAt: string;
   updatedAt: string;
   lastLoginAt?: string;
+  /** When set, login and API session use are rejected. */
+  disabledAt?: string;
 }
 
 export interface CloudSession {
@@ -50,6 +69,8 @@ export interface Organization {
   slug: string;
   ownerUserId: string;
   planId: PlanId;
+  /** Defaults to `active` for legacy records. */
+  status?: OrganizationStatus;
   createdAt: string;
   updatedAt: string;
 }
@@ -158,7 +179,36 @@ export interface PublicUser {
   email: string;
   displayName: string;
   emailVerified: boolean;
+  role: PlatformRole;
   createdAt: string;
+  lastLoginAt?: string;
+  disabledAt?: string;
+}
+
+export interface AuditLogRecord {
+  id: string;
+  level: AuditLogLevel;
+  category: AuditLogCategory;
+  message: string;
+  actorUserId?: string;
+  organizationId?: string;
+  projectId?: string;
+  apiKeyId?: string;
+  meta?: Record<string, unknown>;
+  createdAt: string;
+}
+
+export interface AdminSettingsRecord {
+  id: 'system';
+  systemName: string;
+  supportEmail: string;
+  jwtAccessTtlSeconds: number;
+  rateLimitMax: number;
+  requireEmailVerification: boolean;
+  brandingAccent: string;
+  monthlyRequestSoftLimit: number;
+  updatedAt: string;
+  updatedByUserId?: string;
 }
 
 export interface AuthTokens {
@@ -173,6 +223,7 @@ export interface JwtAccessPayload {
   email: string;
   typ: 'access';
   sid: string;
+  role: PlatformRole;
 }
 
 export interface ApiKeyAuthContext {

@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
-import { AppError } from "@/server/helia/utils/errors";
+import { AppError, ForbiddenError } from "@/server/helia/utils/errors";
 import { getCloudContainer } from "@/server/helia/runtime";
 import type { CloudContainer } from "@/server/helia/cloud/composition/container";
 import type { CloudUser } from "@/server/helia/cloud/types";
+import { resolvePlatformRole } from "@/server/helia/cloud/utils";
 
 export function jsonOk<T extends Record<string, unknown>>(
   body: T,
@@ -88,6 +89,17 @@ export async function requireCloudUser(
   }
   const { user } = await container.auth.authenticateAccessToken(token);
   return { container, user, accessToken: token };
+}
+
+/** Platform admin only — used by `/api/admin/*` and Admin Panel gates. */
+export async function requireAdminUser(
+  request: Request
+): Promise<{ container: CloudContainer; user: CloudUser; accessToken: string }> {
+  const ctx = await requireCloudUser(request);
+  if (resolvePlatformRole(ctx.user) !== "admin") {
+    throw new ForbiddenError("Admin access required");
+  }
+  return ctx;
 }
 
 export function omitSecretHash<T extends { secretHash: string }>(

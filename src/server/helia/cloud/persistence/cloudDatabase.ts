@@ -2,9 +2,11 @@
  * Helia Cloud persistence root.
  */
 
-import { join } from 'node:path';
+import { join } from "node:path";
 import type {
+  AdminSettingsRecord,
   ApiKeyRecord,
+  AuditLogRecord,
   CloudSession,
   CloudUser,
   Organization,
@@ -12,8 +14,8 @@ import type {
   Project,
   SubscriptionRecord,
   UsageBucket,
-} from '../types';
-import { CloudDocumentStore } from './documentStore';
+} from "../types";
+import { CloudDocumentStore } from "./documentStore";
 
 export class CloudDatabase {
   readonly users: CloudDocumentStore<CloudUser>;
@@ -24,16 +26,27 @@ export class CloudDatabase {
   readonly apiKeys: CloudDocumentStore<ApiKeyRecord>;
   readonly subscriptions: CloudDocumentStore<SubscriptionRecord>;
   readonly usage: CloudDocumentStore<UsageBucket>;
+  readonly auditLogs: CloudDocumentStore<AuditLogRecord>;
+  readonly settings: CloudDocumentStore<AdminSettingsRecord>;
 
   constructor(dataDir: string) {
-    this.users = new CloudDocumentStore(join(dataDir, 'users.json'));
-    this.sessions = new CloudDocumentStore(join(dataDir, 'sessions.json'));
-    this.organizations = new CloudDocumentStore(join(dataDir, 'organizations.json'));
-    this.memberships = new CloudDocumentStore(join(dataDir, 'memberships.json'));
-    this.projects = new CloudDocumentStore(join(dataDir, 'projects.json'));
-    this.apiKeys = new CloudDocumentStore(join(dataDir, 'api-keys.json'), 100_000);
-    this.subscriptions = new CloudDocumentStore(join(dataDir, 'subscriptions.json'));
-    this.usage = new CloudDocumentStore(join(dataDir, 'usage.json'), 200_000);
+    this.users = new CloudDocumentStore(join(dataDir, "users.json"));
+    this.sessions = new CloudDocumentStore(join(dataDir, "sessions.json"));
+    this.organizations = new CloudDocumentStore(
+      join(dataDir, "organizations.json")
+    );
+    this.memberships = new CloudDocumentStore(join(dataDir, "memberships.json"));
+    this.projects = new CloudDocumentStore(join(dataDir, "projects.json"));
+    this.apiKeys = new CloudDocumentStore(join(dataDir, "api-keys.json"), 100_000);
+    this.subscriptions = new CloudDocumentStore(
+      join(dataDir, "subscriptions.json")
+    );
+    this.usage = new CloudDocumentStore(join(dataDir, "usage.json"), 200_000);
+    this.auditLogs = new CloudDocumentStore(
+      join(dataDir, "audit-logs.json"),
+      50_000
+    );
+    this.settings = new CloudDocumentStore(join(dataDir, "admin-settings.json"), 10);
   }
 
   async init(): Promise<void> {
@@ -46,6 +59,8 @@ export class CloudDatabase {
       this.apiKeys.init(),
       this.subscriptions.init(),
       this.usage.init(),
+      this.auditLogs.init(),
+      this.settings.init(),
     ]);
   }
 }

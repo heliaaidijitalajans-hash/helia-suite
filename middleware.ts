@@ -86,7 +86,21 @@ export function middleware(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
+  // /en/admin → /admin
+  if (locale && (rest === "/admin" || rest.startsWith("/admin/"))) {
+    const url = request.nextUrl.clone();
+    url.pathname = rest;
+    return NextResponse.redirect(url);
+  }
+
   if (pathname === "/dashboard" || pathname.startsWith("/dashboard/")) {
+    if (!authed) {
+      return loginRedirect(request, pathname);
+    }
+    return NextResponse.next();
+  }
+
+  if (pathname === "/admin" || pathname.startsWith("/admin/")) {
     if (!authed) {
       return loginRedirect(request, pathname);
     }

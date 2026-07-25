@@ -51,6 +51,7 @@ export class OrganizationService {
       slug,
       ownerUserId: input.userId,
       planId,
+      status: 'active',
       createdAt: now,
       updatedAt: now,
     };

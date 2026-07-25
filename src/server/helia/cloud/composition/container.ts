@@ -2,15 +2,17 @@
  * Helia Cloud composition root — wires services for DI.
  */
 
-import type { CloudConfig } from '../config';
-import { CloudDatabase } from '../persistence/cloudDatabase';
-import { ApiKeyService } from '../services/apiKeyService';
-import { AuthService } from '../services/authService';
-import { GatewayService } from '../services/gatewayService';
-import { OrganizationService } from '../services/organizationService';
-import { ProjectService } from '../services/projectService';
-import { SubscriptionService } from '../services/subscriptionService';
-import { UsageService } from '../services/usageService';
+import type { CloudConfig } from "../config";
+import { CloudDatabase } from "../persistence/cloudDatabase";
+import { AdminService } from "../services/adminService";
+import { ApiKeyService } from "../services/apiKeyService";
+import { AuditLogService } from "../services/auditLogService";
+import { AuthService } from "../services/authService";
+import { GatewayService } from "../services/gatewayService";
+import { OrganizationService } from "../services/organizationService";
+import { ProjectService } from "../services/projectService";
+import { SubscriptionService } from "../services/subscriptionService";
+import { UsageService } from "../services/usageService";
 
 export interface CloudContainer {
   config: CloudConfig;
@@ -22,9 +24,13 @@ export interface CloudContainer {
   subscriptions: SubscriptionService;
   usage: UsageService;
   gateway: GatewayService;
+  audit: AuditLogService;
+  admin: AdminService;
 }
 
-export async function createCloudContainer(config: CloudConfig): Promise<CloudContainer> {
+export async function createCloudContainer(
+  config: CloudConfig
+): Promise<CloudContainer> {
   const db = new CloudDatabase(config.dataDir);
   await db.init();
 
@@ -35,6 +41,10 @@ export async function createCloudContainer(config: CloudConfig): Promise<CloudCo
   const subscriptions = new SubscriptionService(db, organizations);
   const usage = new UsageService(db);
   const gateway = new GatewayService(db, apiKeys, subscriptions, usage);
+  const audit = new AuditLogService(db);
+  gateway.setAudit(audit);
+  const admin = new AdminService(db, config, audit);
+  await admin.bootstrapAdmins();
 
   return {
     config,
@@ -46,5 +56,7 @@ export async function createCloudContainer(config: CloudConfig): Promise<CloudCo
     subscriptions,
     usage,
     gateway,
+    audit,
+    admin,
   };
 }

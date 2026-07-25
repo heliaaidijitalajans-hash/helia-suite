@@ -42,6 +42,8 @@ const CloudConfigSchema = z.object({
   rateLimitWindowMs: z.coerce.number().int().positive().default(60_000),
   rateLimitMax: z.coerce.number().int().positive().default(300),
   requireEmailVerification: booleanFromEnv.default(false),
+  /** Comma-separated emails promoted to platform admin on boot. */
+  adminEmails: z.string().default(""),
   version: z.string().default("1.0.0"),
 });
 
@@ -72,6 +74,7 @@ export function loadCloudConfig(): CloudConfig {
     rateLimitMax: process.env.CLOUD_RATE_LIMIT_MAX ?? 300,
     requireEmailVerification:
       process.env.CLOUD_REQUIRE_EMAIL_VERIFICATION ?? false,
+    adminEmails: process.env.HELIA_ADMIN_EMAILS ?? "",
     version: process.env.CLOUD_VERSION ?? "1.0.0",
   });
 
