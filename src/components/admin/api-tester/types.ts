@@ -88,7 +88,22 @@ export type ExecuteResult = {
   body: unknown;
   rawText?: string;
   executedAt: string;
-  request: { method: string; path: string };
+  request: {
+    method: string;
+    path: string;
+    authMode?: string;
+    headers?: Record<string, string>;
+    body?: unknown;
+  };
+  requestHeaders?: Record<string, string>;
+  authHeadersApplied?: string[];
+  authMode?: string;
+  authDebug?: {
+    message: string;
+    authHeadersApplied: string[];
+    requestHeaders: Record<string, string>;
+  };
+  headers?: Record<string, string>;
 };
 
 export function bodyReportsFailure(body: unknown): boolean {

@@ -35,6 +35,11 @@ import {
 } from "@/components/admin/api-tester/storage";
 import { loadApiCatalog } from "@/components/admin/api-tester/loadCatalog";
 import {
+  buildAuthenticatedHeaders,
+  redactHeadersForDisplay,
+  type AuthMode,
+} from "@/components/admin/api-tester/authHeaders";
+import {
   applyPathParams,
   buildUrlWithQuery,
   formatBytes,
@@ -76,6 +81,7 @@ export default function AdminApiTesterPage() {
   } | null>(null);
 
   const [apiKey, setApiKey] = useState("");
+  const [authMode, setAuthMode] = useState<AuthMode>("both");
   const [method, setMethod] = useState<HttpMethod>("GET");
   const [pathTemplate, setPathTemplate] = useState("/api/apikeys/whoami");
   const [pathParams, setPathParams] = useState<PathParam[]>([]);
@@ -83,9 +89,25 @@ export default function AdminApiTesterPage() {
   const [headersText, setHeadersText] = useState(DEFAULT_HEADERS);
   const [bodyText, setBodyText] = useState("{\n  \n}");
   const [multipartNote, setMultipartNote] = useState(false);
+  const [lastRequestPreview, setLastRequestPreview] = useState<{
+    method: string;
+    url: string;
+    headers: Record<string, string>;
+    body?: unknown;
+    authHeadersApplied: string[];
+  } | null>(null);
+  const [authDebug, setAuthDebug] = useState<{
+    message: string;
+    authHeadersApplied: string[];
+    requestHeaders: Record<string, string>;
+  } | null>(null);
 
   const [validation, setValidation] = useState<ValidateResult | null>(null);
   const [response, setResponse] = useState<unknown>(null);
+  const [responseHeaders, setResponseHeaders] = useState<Record<
+    string,
+    string
+  > | null>(null);
   const [status, setStatus] = useState<number | null>(null);
   const [latencyMs, setLatencyMs] = useState<number | null>(null);
   const [sizeBytes, setSizeBytes] = useState<number | null>(null);
@@ -235,32 +257,30 @@ export default function AdminApiTesterPage() {
     }
   }, [bodyText, bodyValid, method]);
 
+  const effectiveHeaders = useMemo(() => {
+    const { headers, authHeadersApplied } = buildAuthenticatedHeaders({
+      apiKey,
+      authMode,
+      customHeaders: parsedHeaders,
+      includeContentTypeJson: needsBody(method),
+    });
+    return {
+      headers,
+      authHeadersApplied,
+      display: redactHeadersForDisplay(headers),
+    };
+  }, [apiKey, authMode, method, parsedHeaders]);
+
   const codegenInput: CodegenInput | null = useMemo(() => {
     if (typeof window === "undefined") return null;
-    const headers: Record<string, string> = { ...parsedHeaders };
-    if (apiKey.trim()) {
-      if (!headers.Authorization && !headers.authorization) {
-        headers.Authorization = `Bearer ${apiKey.trim()}`;
-      }
-      if (!headers["X-API-Key"] && !headers["x-api-key"]) {
-        headers["X-API-Key"] = apiKey.trim();
-      }
-    }
-    if (
-      needsBody(method) &&
-      !headers["Content-Type"] &&
-      !headers["content-type"]
-    ) {
-      headers["Content-Type"] = "application/json";
-    }
     return {
       method,
       url: `${window.location.origin}${finalPath}`,
-      headers,
+      headers: effectiveHeaders.headers,
       body: needsBody(method) ? parsedBody : undefined,
       apiKey: apiKey.trim() || undefined,
     };
-  }, [apiKey, finalPath, method, parsedBody, parsedHeaders]);
+  }, [apiKey, effectiveHeaders.headers, finalPath, method, parsedBody]);
 
   const validate = useCallback(async () => {
     setBusy(true);
@@ -305,6 +325,8 @@ export default function AdminApiTesterPage() {
       setSizeBytes(0);
       setUpstreamOk(false);
       setImplemented(false);
+      setResponseHeaders(null);
+      setAuthDebug(null);
       setResponse({
         ok: false,
         error: {
@@ -331,7 +353,7 @@ export default function AdminApiTesterPage() {
         setHeadersError("Headers must be valid JSON");
         throw new Error("Headers must be valid JSON");
       }
-      const headers = JSON.parse(headersText) as Record<string, string>;
+      const customHeaders = JSON.parse(headersText) as Record<string, string>;
 
       let jsonBody: unknown = undefined;
       if (needsBody(method)) {
@@ -346,13 +368,34 @@ export default function AdminApiTesterPage() {
         }
       }
 
+      const built = buildAuthenticatedHeaders({
+        apiKey,
+        authMode,
+        customHeaders,
+        includeContentTypeJson: needsBody(method),
+      });
+
+      const preview = {
+        method,
+        url:
+          typeof window !== "undefined"
+            ? `${window.location.origin}${finalPath}`
+            : finalPath,
+        headers: redactHeadersForDisplay(built.headers),
+        body: needsBody(method) ? jsonBody : undefined,
+        authHeadersApplied: Object.keys(built.authHeadersApplied),
+      };
+      setLastRequestPreview(preview);
+      setAuthDebug(null);
+
       const res = await adminFetch<ExecuteResult>("/api/admin/tester/execute", {
         method: "POST",
         body: JSON.stringify({
           apiKey,
+          authMode,
           method,
           path: finalPath,
-          headers,
+          headers: customHeaders,
           jsonBody,
         }),
       });
@@ -363,7 +406,30 @@ export default function AdminApiTesterPage() {
       setUpstreamOk(res.upstreamOk);
       setImplemented(res.implemented ?? true);
       setResponse(res.body);
+      setResponseHeaders(res.headers ?? null);
       setExecutedAt(res.executedAt ?? new Date().toISOString());
+
+      if (res.requestHeaders) {
+        setLastRequestPreview({
+          method: res.request?.method || method,
+          url: preview.url,
+          headers: res.requestHeaders,
+          body: res.request?.body,
+          authHeadersApplied: res.authHeadersApplied || preview.authHeadersApplied,
+        });
+      }
+
+      if (res.status === 401) {
+        setAuthDebug(
+          res.authDebug || {
+            message: "401 Unauthorized — authentication headers that were sent:",
+            authHeadersApplied: res.authHeadersApplied || [],
+            requestHeaders: res.requestHeaders || preview.headers,
+          }
+        );
+      } else {
+        setAuthDebug(null);
+      }
 
       pushRecentEndpoint(method, pathTemplate.split("?")[0] || pathTemplate);
 
@@ -406,6 +472,7 @@ export default function AdminApiTesterPage() {
     }
   }, [
     apiKey,
+    authMode,
     bodyText,
     finalPath,
     headersText,
@@ -520,6 +587,45 @@ export default function AdminApiTesterPage() {
             />
           </label>
 
+          <label className="block space-y-1.5">
+            <span className="text-xs font-medium uppercase tracking-[0.12em] text-white/40">
+              Auth mode
+            </span>
+            <select
+              className={adminInputClass}
+              value={authMode}
+              onChange={(e) => setAuthMode(e.target.value as AuthMode)}
+            >
+              <option value="both">Both (Authorization Bearer + X-API-Key)</option>
+              <option value="bearer">Bearer only (Authorization)</option>
+              <option value="x-api-key">X-API-Key only</option>
+            </select>
+            <p className="text-[11px] text-white/40">
+              The API Key field automatically injects auth headers — no need to
+              edit Headers JSON for authentication.
+            </p>
+          </label>
+
+          <div className="rounded-xl border border-white/[0.08] bg-[#0d0d0f] px-3 py-3">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-white/35">
+              Effective request headers (preview)
+            </p>
+            <pre className="mt-2 max-h-40 overflow-auto font-mono text-[11px] leading-relaxed text-white/75">
+              {prettyJson(effectiveHeaders.display)}
+            </pre>
+            {apiKey.trim() ? (
+              <p className="mt-2 text-[11px] text-emerald-200/70">
+                Auth applied:{" "}
+                {Object.keys(effectiveHeaders.authHeadersApplied).join(", ") ||
+                  "—"}
+              </p>
+            ) : (
+              <p className="mt-2 text-[11px] text-amber-200/80">
+                Enter an API key to attach authentication headers.
+              </p>
+            )}
+          </div>
+
           <EndpointCombobox
             routes={routes}
             method={method}
@@ -549,7 +655,7 @@ export default function AdminApiTesterPage() {
           <label className="block space-y-1.5">
             <div className="flex items-center justify-between gap-2">
               <span className="text-xs font-medium uppercase tracking-[0.12em] text-white/40">
-                Headers (JSON)
+                Extra headers (JSON)
               </span>
               <button
                 type="button"
@@ -583,6 +689,10 @@ export default function AdminApiTesterPage() {
               }}
               spellCheck={false}
             />
+            <p className="text-[11px] text-white/35">
+              Optional extras only (Accept, Content-Type, custom). Auth headers
+              from the API Key field override any Authorization / X-API-Key here.
+            </p>
           </label>
 
           {needsBody(method) ? (
@@ -707,6 +817,35 @@ export default function AdminApiTesterPage() {
         </AdminPanel>
       ) : null}
 
+      {authDebug ? (
+        <AdminPanel title="401 Authentication debug">
+          <p className="mb-3 text-sm text-orange-100/90">{authDebug.message}</p>
+          <p className="mb-2 text-xs text-white/50">
+            Applied: {authDebug.authHeadersApplied.join(", ") || "none"}
+          </p>
+          <pre className="max-h-48 overflow-auto rounded-xl border border-orange-500/20 bg-[#0d0d0f] p-3 font-mono text-[11px] text-orange-50/90">
+            {prettyJson(authDebug.requestHeaders)}
+          </pre>
+        </AdminPanel>
+      ) : null}
+
+      {lastRequestPreview ? (
+        <AdminPanel
+          title="Last request"
+          description="Complete request that was sent to the upstream endpoint."
+        >
+          <pre className="max-h-64 overflow-auto rounded-xl border border-white/10 bg-[#0d0d0f] p-4 font-mono text-[11px] leading-relaxed text-white/75">
+            {prettyJson({
+              method: lastRequestPreview.method,
+              url: lastRequestPreview.url,
+              authHeadersApplied: lastRequestPreview.authHeadersApplied,
+              headers: lastRequestPreview.headers,
+              body: lastRequestPreview.body ?? null,
+            })}
+          </pre>
+        </AdminPanel>
+      ) : null}
+
       <div className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
         <AdminPanel
           title="Response"
@@ -777,7 +916,24 @@ export default function AdminApiTesterPage() {
             </div>
           </div>
           {response != null ? (
-            <CollapsibleJson value={response} />
+            <div className="space-y-4">
+              {responseHeaders ? (
+                <div>
+                  <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-white/35">
+                    Response headers
+                  </p>
+                  <pre className="max-h-40 overflow-auto rounded-xl border border-white/10 bg-[#0d0d0f] p-3 font-mono text-[11px] text-white/70">
+                    {prettyJson(responseHeaders)}
+                  </pre>
+                </div>
+              ) : null}
+              <div>
+                <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-white/35">
+                  Response body
+                </p>
+                <CollapsibleJson value={response} />
+              </div>
+            </div>
           ) : (
             <p className="text-xs text-white/40">
               Run a request to see JSON here.

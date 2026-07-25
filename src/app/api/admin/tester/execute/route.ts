@@ -1,7 +1,6 @@
 /**
- * Admin API Tester — execute same-origin /api/* requests with a pasted customer key.
- * Path is restricted to this deployment origin (no open SSRF).
- * Unknown paths return "This endpoint is not implemented." without calling upstream.
+ * Admin API Tester — execute same-origin /api/* with pasted customer API key.
+ * Auth headers are applied server-side from apiKey + authMode (not left to manual JSON).
  */
 
 import {
@@ -26,6 +25,8 @@ const ALLOWED_METHODS = new Set([
   "DELETE",
 ]);
 
+type AuthMode = "bearer" | "x-api-key" | "both";
+
 function normalizePath(raw: string): string {
   const trimmed = raw.trim();
   if (!trimmed.startsWith("/")) {
@@ -44,11 +45,80 @@ function normalizePath(raw: string): string {
   return trimmed;
 }
 
+function stripAuthHeaders(
+  headers: Record<string, string>
+): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const [k, v] of Object.entries(headers)) {
+    const lower = k.toLowerCase();
+    if (lower === "authorization" || lower === "x-api-key") continue;
+    out[k] = v;
+  }
+  return out;
+}
+
+function redact(headers: Record<string, string>): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const [k, v] of Object.entries(headers)) {
+    const lower = k.toLowerCase();
+    if (lower === "authorization") {
+      const m = v.match(/^(Bearer)\s+(\S+)$/i);
+      if (m) {
+        const token = m[2];
+        const hint =
+          token.length <= 12
+            ? "***"
+            : `${token.slice(0, 8)}…${token.slice(-4)}`;
+        out[k] = `${m[1]} ${hint}`;
+      } else out[k] = "***";
+      continue;
+    }
+    if (lower === "x-api-key") {
+      out[k] = v.length <= 12 ? "***" : `${v.slice(0, 8)}…${v.slice(-4)}`;
+      continue;
+    }
+    out[k] = v;
+  }
+  return out;
+}
+
+function buildUpstreamHeaders(opts: {
+  apiKey: string;
+  authMode: AuthMode;
+  custom?: Record<string, string>;
+  withJsonBody: boolean;
+}): { headers: Record<string, string>; authApplied: string[] } {
+  const headers = stripAuthHeaders({
+    Accept: "application/json",
+    ...(opts.custom ?? {}),
+  });
+  if (
+    opts.withJsonBody &&
+    !headers["Content-Type"] &&
+    !headers["content-type"]
+  ) {
+    headers["Content-Type"] = "application/json";
+  }
+
+  const authApplied: string[] = [];
+  const key = opts.apiKey;
+  if (opts.authMode === "bearer" || opts.authMode === "both") {
+    headers.Authorization = `Bearer ${key}`;
+    authApplied.push("Authorization: Bearer");
+  }
+  if (opts.authMode === "x-api-key" || opts.authMode === "both") {
+    headers["X-API-Key"] = key;
+    authApplied.push("X-API-Key");
+  }
+  return { headers, authApplied };
+}
+
 export async function POST(request: Request) {
   try {
     await requireAdminUser(request);
     const body = await readJsonBody<{
       apiKey?: string;
+      authMode?: AuthMode;
       method?: string;
       path?: string;
       headers?: Record<string, string>;
@@ -56,6 +126,10 @@ export async function POST(request: Request) {
     }>(request);
 
     const apiKey = body.apiKey?.trim();
+    const authMode: AuthMode =
+      body.authMode === "bearer" || body.authMode === "x-api-key"
+        ? body.authMode
+        : "both";
     const method = (body.method ?? "GET").toUpperCase();
     const path = normalizePath(body.path?.trim() || "/api/apikeys/whoami");
     const pathOnly = path.split("?")[0] || path;
@@ -78,6 +152,8 @@ export async function POST(request: Request) {
         implemented: false,
         message: "This endpoint is not implemented.",
         headers: {},
+        requestHeaders: {},
+        authHeadersApplied: [],
         body: {
           ok: false,
           error: {
@@ -88,7 +164,7 @@ export async function POST(request: Request) {
         },
         rawText: "",
         executedAt: new Date().toISOString(),
-        request: { method, path },
+        request: { method, path, authMode },
       });
     }
 
@@ -104,6 +180,8 @@ export async function POST(request: Request) {
         implemented: true,
         message: `Method ${method} is not supported for ${matched.path}. Allowed: ${matched.methods.join(", ")}`,
         headers: {},
+        requestHeaders: {},
+        authHeadersApplied: [],
         body: {
           ok: false,
           error: {
@@ -114,29 +192,28 @@ export async function POST(request: Request) {
         },
         rawText: "",
         executedAt: new Date().toISOString(),
-        request: { method, path },
+        request: { method, path, authMode },
       });
     }
 
-    const origin = new URL(request.url).origin;
-    const headers: Record<string, string> = {
-      Accept: "application/json",
-      Authorization: `Bearer ${apiKey}`,
-      ...(body.headers ?? {}),
-    };
+    const withJsonBody =
+      method !== "GET" &&
+      method !== "DELETE" &&
+      body.jsonBody !== undefined;
 
-    if (!headers["X-API-Key"] && !headers["x-api-key"]) {
-      headers["X-API-Key"] = apiKey;
-    }
+    const { headers, authApplied } = buildUpstreamHeaders({
+      apiKey,
+      authMode,
+      custom: body.headers,
+      withJsonBody,
+    });
 
     let payload: string | undefined;
-    if (method !== "GET" && method !== "DELETE" && body.jsonBody !== undefined) {
-      if (!headers["Content-Type"] && !headers["content-type"]) {
-        headers["Content-Type"] = "application/json";
-      }
+    if (withJsonBody) {
       payload = JSON.stringify(body.jsonBody);
     }
 
+    const origin = new URL(request.url).origin;
     const started = Date.now();
     const res = await fetch(`${origin}${path}`, {
       method,
@@ -154,6 +231,8 @@ export async function POST(request: Request) {
       json = null;
     }
 
+    const requestHeadersDisplay = redact(headers);
+
     return jsonOk({
       status: res.status,
       latencyMs,
@@ -161,15 +240,33 @@ export async function POST(request: Request) {
       upstreamOk: res.ok,
       implemented: true,
       headers: Object.fromEntries(res.headers.entries()),
+      requestHeaders: requestHeadersDisplay,
+      authHeadersApplied: authApplied,
+      authMode,
       body: json ?? text,
       rawText: text,
       executedAt: new Date().toISOString(),
-      request: { method, path },
+      request: {
+        method,
+        path,
+        authMode,
+        headers: requestHeadersDisplay,
+        body: withJsonBody ? body.jsonBody : undefined,
+      },
       route: {
         path: matched.path,
         file: matched.file,
         authentication: matched.authentication,
       },
+      ...(res.status === 401
+        ? {
+            authDebug: {
+              message: "401 Unauthorized — authentication headers that were sent:",
+              authHeadersApplied: authApplied,
+              requestHeaders: requestHeadersDisplay,
+            },
+          }
+        : {}),
     });
   } catch (error) {
     return jsonError(error);
