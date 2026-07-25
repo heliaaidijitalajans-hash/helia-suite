@@ -37,7 +37,7 @@ const marketShellNav: ShellNavOptions = {
     { href: "/", label: "Home", icon: Home },
     { href: "/stores", label: "Stores", icon: Store },
     { href: "/cart", label: "Cart", icon: ShoppingBag },
-    { href: "/admin", label: "Admin", icon: Settings },
+    { href: "/seller", label: "Admin", icon: Settings },
   ],
   homeHref: "/",
   detailPathPrefix: "/product",
