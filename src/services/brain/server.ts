@@ -7,8 +7,9 @@ import { askBrain } from "@/lib/api/brain";
 import { trackBrainUsageInProcess } from "@/lib/api/helia-cloud";
 import type { HeliaAuthContext } from "@/lib/auth/helia-session";
 import { getCloudContainer } from "@/server/helia/runtime";
+import { createId } from "@/server/helia/utils/id";
+import { sanitizeAssistantOutput } from "@/server/helia/brain/orchestrator/sanitize";
 import {
-  createLocalId,
   titleFromContent,
   toAssistantMessage,
   toUserMessage,
@@ -95,7 +96,7 @@ export async function askBrainForUser(
     ? await container.brainChat.getForUser(auth.user.id, input.conversationId)
     : null;
 
-  const conversationId = existing?.id || createLocalId("conv");
+  const conversationId = existing?.id || createId("conv");
 
   try {
     await trackBrainUsageInProcess({
@@ -117,6 +118,7 @@ export async function askBrainForUser(
   });
 
   const assistantMessage = toAssistantMessage(brain.answer);
+  assistantMessage.content = sanitizeAssistantOutput(assistantMessage.content);
 
   const saved = await container.brainChat.appendMessages({
     userId: auth.user.id,

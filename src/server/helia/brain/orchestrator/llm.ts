@@ -468,11 +468,17 @@ async function formatWithOpenAi(
 export async function formatWithLlm(
   packet: LlmContextPacket
 ): Promise<{ text: string; mode: "openai" | "deterministic" }> {
+  const { sanitizeAssistantOutput } = await import("./sanitize");
   try {
     const ai = await formatWithOpenAi(packet);
-    if (ai) return { text: ai, mode: "openai" };
+    if (ai) {
+      return { text: sanitizeAssistantOutput(ai), mode: "openai" };
+    }
   } catch {
     // fall through
   }
-  return { text: formatFromTools(packet), mode: "deterministic" };
+  return {
+    text: sanitizeAssistantOutput(formatFromTools(packet)),
+    mode: "deterministic",
+  };
 }

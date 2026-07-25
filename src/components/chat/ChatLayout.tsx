@@ -15,6 +15,7 @@ export function ChatLayout({
   activeConversationId = null,
   messages,
   loading = false,
+  thinkingLanguage = "en",
   onSelectConversation,
   onNewChat,
   onSend,
@@ -28,6 +29,7 @@ export function ChatLayout({
   activeConversationId?: string | null;
   messages: ChatMessage[];
   loading?: boolean;
+  thinkingLanguage?: "tr" | "en";
   onSelectConversation?: (id: string) => void;
   onNewChat?: () => void;
   onSend?: (payload: ChatSendPayload) => void | Promise<void>;
@@ -57,6 +59,7 @@ export function ChatLayout({
         <Conversation
           messages={messages}
           loading={loading}
+          thinkingLanguage={thinkingLanguage}
           emptyTitle={emptyTitle}
           emptyDescription={emptyDescription}
         />

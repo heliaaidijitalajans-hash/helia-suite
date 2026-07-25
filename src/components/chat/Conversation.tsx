@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useRef } from "react";
 import { cn } from "@/lib/cn";
 import { EmptyState } from "./EmptyState";
 import { MessageBubble } from "./MessageBubble";
@@ -9,17 +10,24 @@ import type { ChatMessage } from "./types";
 export function Conversation({
   messages,
   loading = false,
+  thinkingLanguage = "en",
   className,
   emptyTitle,
   emptyDescription,
 }: {
   messages: ChatMessage[];
   loading?: boolean;
+  thinkingLanguage?: "tr" | "en";
   className?: string;
   emptyTitle?: string;
   emptyDescription?: string;
 }) {
   const isEmpty = messages.length === 0 && !loading;
+  const bottomRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+  }, [messages.length, loading]);
 
   return (
     <div
@@ -38,7 +46,8 @@ export function Conversation({
           {messages.map((message) => (
             <MessageBubble key={message.id} message={message} />
           ))}
-          {loading ? <TypingIndicator /> : null}
+          {loading ? <TypingIndicator language={thinkingLanguage} /> : null}
+          <div ref={bottomRef} />
         </div>
       )}
     </div>

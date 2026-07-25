@@ -24,8 +24,12 @@ export function formatBrainAnswerContent(answer: BrainAnswer): string {
   if (
     /^Status\n/m.test(summary) ||
     /^Summary\n/m.test(summary) ||
-    summary === "This operation is blocked by the Helia security policy." ||
+    /^Durum\n/m.test(summary) ||
+    /^Özet\n/m.test(summary) ||
+    summary.includes("blocked by the Helia security policy") ||
+    summary.includes("Helia güvenlik politikası") ||
     summary === "No documentation found." ||
+    summary === "Dokümantasyon bulunamadı." ||
     summary === "No live data available."
   ) {
     return summary;

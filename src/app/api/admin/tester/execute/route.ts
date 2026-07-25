@@ -1,3 +1,8 @@
+/**
+ * Admin API Tester — execute same-origin /api/* requests with a pasted customer key.
+ * Path is restricted to this deployment origin (no open SSRF).
+ */
+
 import {
   jsonError,
   jsonOk,
@@ -8,15 +13,33 @@ import { ValidationError } from "@/server/helia/utils/errors";
 
 export const runtime = "nodejs";
 
-const ALLOWED_PATHS = new Set([
-  "/api/apikeys/whoami",
-  "/api/organizations/plans",
+const ALLOWED_METHODS = new Set([
+  "GET",
+  "POST",
+  "PUT",
+  "PATCH",
+  "DELETE",
 ]);
 
-/**
- * Execute a same-origin API request with a pasted API key.
- * Tracks real usage via gateway when hitting whoami.
- */
+function normalizePath(raw: string): string {
+  const trimmed = raw.trim();
+  if (!trimmed.startsWith("/")) {
+    throw new ValidationError("Path must start with /");
+  }
+  // Reject protocol-relative / absolute URLs
+  if (trimmed.startsWith("//") || /^https?:/i.test(trimmed)) {
+    throw new ValidationError("Absolute URLs are not allowed");
+  }
+  const pathOnly = trimmed.split("?")[0] || trimmed;
+  if (!pathOnly.startsWith("/api/")) {
+    throw new ValidationError("Path must start with /api/");
+  }
+  if (pathOnly.includes("..")) {
+    throw new ValidationError("Invalid path");
+  }
+  return trimmed;
+}
+
 export async function POST(request: Request) {
   try {
     await requireAdminUser(request);
@@ -30,28 +53,13 @@ export async function POST(request: Request) {
 
     const apiKey = body.apiKey?.trim();
     const method = (body.method ?? "GET").toUpperCase();
-    const path = body.path?.trim() || "/api/apikeys/whoami";
+    const path = normalizePath(body.path?.trim() || "/api/apikeys/whoami");
 
     if (!apiKey) throw new ValidationError("API key is required");
-    if (!["GET", "POST", "DELETE"].includes(method)) {
-      throw new ValidationError("Method must be GET, POST, or DELETE");
-    }
-    if (!path.startsWith("/api/")) {
-      throw new ValidationError("Path must start with /api/");
-    }
-    if (!ALLOWED_PATHS.has(path) && path !== "/api/apikeys/whoami") {
-      // Allow whoami always; other /api paths only if explicitly listed for safety
-      if (!path.startsWith("/api/apikeys/whoami")) {
-        // Restrict to known safe gateway endpoints to avoid SSRF-like loops
-        const safe =
-          path === "/api/apikeys/whoami" ||
-          path === "/api/organizations/plans";
-        if (!safe) {
-          throw new ValidationError(
-            "Endpoint not allowed in Admin API Tester. Use /api/apikeys/whoami or /api/organizations/plans."
-          );
-        }
-      }
+    if (!ALLOWED_METHODS.has(method)) {
+      throw new ValidationError(
+        "Method must be GET, POST, PUT, PATCH, or DELETE"
+      );
     }
 
     const origin = new URL(request.url).origin;
@@ -61,9 +69,16 @@ export async function POST(request: Request) {
       ...(body.headers ?? {}),
     };
 
+    // Prefer explicit X-API-Key if provided; keep Bearer for gateway compatibility
+    if (!headers["X-API-Key"] && !headers["x-api-key"]) {
+      headers["X-API-Key"] = apiKey;
+    }
+
     let payload: string | undefined;
-    if (method !== "GET" && body.jsonBody !== undefined) {
-      headers["Content-Type"] = "application/json";
+    if (method !== "GET" && method !== "DELETE" && body.jsonBody !== undefined) {
+      if (!headers["Content-Type"] && !headers["content-type"]) {
+        headers["Content-Type"] = "application/json";
+      }
       payload = JSON.stringify(body.jsonBody);
     }
 
@@ -76,6 +91,7 @@ export async function POST(request: Request) {
     });
     const latencyMs = Date.now() - started;
     const text = await res.text();
+    const sizeBytes = new TextEncoder().encode(text).length;
     let json: unknown = null;
     try {
       json = JSON.parse(text);
@@ -86,9 +102,11 @@ export async function POST(request: Request) {
     return jsonOk({
       status: res.status,
       latencyMs,
+      sizeBytes,
       ok: res.ok,
       headers: Object.fromEntries(res.headers.entries()),
       body: json ?? text,
+      rawText: text,
       executedAt: new Date().toISOString(),
       request: { method, path },
     });

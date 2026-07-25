@@ -22,6 +22,7 @@ export default function HeliaChatPageClient({
     activeConversationId,
     messages,
     loading,
+    thinkingLanguage,
     error,
     sendMessage,
     selectConversation,
@@ -58,6 +59,7 @@ export default function HeliaChatPageClient({
         activeConversationId={activeConversationId}
         messages={messages}
         loading={loading}
+        thinkingLanguage={thinkingLanguage}
         onSelectConversation={(id) => void selectConversation(id)}
         onNewChat={startNewChat}
         onSend={(payload) => void sendMessage(payload)}

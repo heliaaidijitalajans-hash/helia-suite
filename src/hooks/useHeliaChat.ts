@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type {
   ChatConversationSummary,
   ChatMessage,
@@ -19,6 +19,20 @@ export type UseHeliaChatOptions = {
   autoLoad?: boolean;
 };
 
+const ACTIVE_KEY = "helia_admin_chat_active_id";
+
+function detectClientLang(text: string): "tr" | "en" {
+  if (/[çğıöşüÇĞİÖŞÜ]/.test(text)) return "tr";
+  if (
+    /\b(kaç|nedir|nasıl|göster|proje|organizasyon|anahtar|kullanım|sağlık|hata|merhaba)\b/i.test(
+      text
+    )
+  ) {
+    return "tr";
+  }
+  return "en";
+}
+
 export function useHeliaChat(options: UseHeliaChatOptions = {}) {
   const product = options.product ?? "helia-suite";
   const autoLoad = options.autoLoad ?? true;
@@ -35,29 +49,47 @@ export function useHeliaChat(options: UseHeliaChatOptions = {}) {
   const [error, setError] = useState<string | null>(null);
   const lastPayloadRef = useRef<ChatSendPayload | null>(null);
 
+  const thinkingLanguage = useMemo(() => {
+    const lastUser = [...messages].reverse().find((m) => m.role === "user");
+    return detectClientLang(lastUser?.content || "");
+  }, [messages]);
+
+  const persistActiveId = useCallback((id: string | null) => {
+    if (typeof window === "undefined") return;
+    if (id) window.sessionStorage.setItem(ACTIVE_KEY, id);
+    else window.sessionStorage.removeItem(ACTIVE_KEY);
+  }, []);
+
   const refreshConversations = useCallback(async () => {
     const items = await fetchConversations();
     setConversations(items);
     return items;
   }, []);
 
-  const selectConversation = useCallback(async (id: string) => {
-    setError(null);
-    setActiveConversationId(id);
-    try {
-      const next = await fetchConversationMessages(id);
-      setMessages(next);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load conversation");
-    }
-  }, []);
+  const selectConversation = useCallback(
+    async (id: string) => {
+      setError(null);
+      setActiveConversationId(id);
+      persistActiveId(id);
+      try {
+        const next = await fetchConversationMessages(id);
+        setMessages(next);
+      } catch (err) {
+        setError(
+          err instanceof Error ? err.message : "Failed to load conversation"
+        );
+      }
+    },
+    [persistActiveId]
+  );
 
   const startNewChat = useCallback(() => {
     setActiveConversationId(null);
     setMessages([]);
     setError(null);
     lastPayloadRef.current = null;
-  }, []);
+    persistActiveId(null);
+  }, [persistActiveId]);
 
   const renameConversation = useCallback(
     async (id: string, title: string) => {
@@ -82,6 +114,7 @@ export function useHeliaChat(options: UseHeliaChatOptions = {}) {
         if (activeConversationId === id) {
           setActiveConversationId(null);
           setMessages([]);
+          persistActiveId(null);
         }
         await refreshConversations();
       } catch (err) {
@@ -90,7 +123,7 @@ export function useHeliaChat(options: UseHeliaChatOptions = {}) {
         );
       }
     },
-    [activeConversationId, refreshConversations]
+    [activeConversationId, persistActiveId, refreshConversations]
   );
 
   const sendMessage = useCallback(
@@ -118,6 +151,7 @@ export function useHeliaChat(options: UseHeliaChatOptions = {}) {
         });
 
         setActiveConversationId(result.conversation.id);
+        persistActiveId(result.conversation.id);
         setMessages(result.conversation.messages);
         await refreshConversations();
         lastPayloadRef.current = null;
@@ -128,7 +162,7 @@ export function useHeliaChat(options: UseHeliaChatOptions = {}) {
         setLoading(false);
       }
     },
-    [product, refreshConversations]
+    [persistActiveId, product, refreshConversations]
   );
 
   const retry = useCallback(async () => {
@@ -146,7 +180,24 @@ export function useHeliaChat(options: UseHeliaChatOptions = {}) {
         const { ensureWorkspace } = await import("@/services/cloud");
         await ensureWorkspace();
         const items = await fetchConversations();
-        if (!cancelled) setConversations(items);
+        if (cancelled) return;
+        setConversations(items);
+
+        const saved =
+          typeof window !== "undefined"
+            ? window.sessionStorage.getItem(ACTIVE_KEY)
+            : null;
+        const restoreId =
+          (saved && items.some((i) => i.id === saved) && saved) ||
+          items[0]?.id ||
+          null;
+
+        if (restoreId) {
+          setActiveConversationId(restoreId);
+          persistActiveId(restoreId);
+          const next = await fetchConversationMessages(restoreId);
+          if (!cancelled) setMessages(next);
+        }
       } catch (err) {
         if (!cancelled) {
           setError(
@@ -160,15 +211,14 @@ export function useHeliaChat(options: UseHeliaChatOptions = {}) {
     return () => {
       cancelled = true;
     };
-  }, [autoLoad]);
+  }, [autoLoad, persistActiveId]);
 
   return {
     conversations,
     activeConversationId,
     messages,
-    /** True while waiting for a Brain response (TypingIndicator). */
     loading,
-    /** True while conversation history is first loading. */
+    thinkingLanguage,
     hydrating,
     error,
     sendMessage,
