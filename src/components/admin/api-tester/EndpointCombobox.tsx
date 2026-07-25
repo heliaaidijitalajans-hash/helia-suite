@@ -90,6 +90,7 @@ export function EndpointCombobox({
             className={adminInputClass}
             value={method}
             onChange={(e) => onMethodChange(e.target.value as HttpMethod)}
+            aria-label="HTTP method"
           >
             {methodOptions.map((m) => (
               <option key={m} value={m}>
@@ -108,6 +109,9 @@ export function EndpointCombobox({
             value={query}
             placeholder="/api/…"
             autoComplete="off"
+            aria-label="API endpoint path"
+            aria-autocomplete="list"
+            aria-controls="endpoint-suggestions"
             onFocus={() => {
               setRecent(loadRecentEndpoints());
               setOpen(true);
@@ -119,6 +123,14 @@ export function EndpointCombobox({
             }}
             onKeyDown={(e) => {
               if (e.key === "Escape") setOpen(false);
+              if (e.key === "ArrowDown" && suggestions[0]) {
+                e.preventDefault();
+                setOpen(true);
+              }
+              if (e.key === "Enter" && open && suggestions[0]) {
+                e.preventDefault();
+                pick(suggestions[0]);
+              }
             }}
           />
         </label>
@@ -139,7 +151,12 @@ export function EndpointCombobox({
       ) : null}
 
       {open ? (
-        <div className="absolute left-0 right-0 top-[calc(100%+0.35rem)] z-30 max-h-80 overflow-auto rounded-xl border border-white/10 bg-[#121214] shadow-[0_20px_50px_-20px_rgba(0,0,0,0.9)]">
+        <div
+          id="endpoint-suggestions"
+          role="listbox"
+          aria-label="Endpoint suggestions"
+          className="absolute left-0 right-0 top-[calc(100%+0.35rem)] z-30 max-h-80 overflow-auto rounded-xl border border-white/10 bg-[#121214] shadow-[0_20px_50px_-20px_rgba(0,0,0,0.9)]"
+        >
           {suggestions.length === 0 ? (
             <p className="px-3 py-4 text-xs text-white/40">
               No discovered matches. Custom paths are checked against the live

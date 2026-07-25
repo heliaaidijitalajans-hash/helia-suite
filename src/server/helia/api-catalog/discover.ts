@@ -380,20 +380,6 @@ export function discoverApiRoutesWithDebug(
   const manifest = loadBundledManifest();
   const fsScan = scanFilesystem(cwd);
 
-  console.log("[api-catalog] Search root:", fsScan.apiRoot || manifest.searchRoot);
-  console.log(
-    "[api-catalog] Found route files (fs):",
-    fsScan.filesFound.length,
-    "| (manifest):",
-    manifest.filesFound.length
-  );
-  console.log(
-    "[api-catalog] Generated routes (fs):",
-    fsScan.routes.length,
-    "| (manifest):",
-    manifest.routes.length
-  );
-
   // Prefer whichever source has more routes; usually equal in local, manifest on Vercel
   if (fsScan.routes.length > 0) {
     const endpointCount = fsScan.routes.reduce(

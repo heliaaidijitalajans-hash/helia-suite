@@ -6,7 +6,6 @@ import { createCloudContainer, type CloudContainer } from "./cloud/composition/c
 import { loadCloudConfig } from "./cloud/config";
 
 declare global {
-  // eslint-disable-next-line no-var
   var __heliaCloudContainerPromise: Promise<CloudContainer> | undefined;
 }
 
@@ -16,4 +15,9 @@ export async function getCloudContainer(): Promise<CloudContainer> {
     globalThis.__heliaCloudContainerPromise = createCloudContainer(config);
   }
   return globalThis.__heliaCloudContainerPromise;
+}
+
+/** Test / HMR helper — drop the singleton so the next call rebuilds. */
+export function resetCloudContainer(): void {
+  globalThis.__heliaCloudContainerPromise = undefined;
 }

@@ -42,6 +42,7 @@ export function CodeExportPanel({ input }: { input: CodegenInput | null }) {
           className={cn(adminInputClass, "max-w-xs")}
           value={lang}
           onChange={(e) => setLang(e.target.value as CodeLang)}
+          aria-label="Code export language"
         >
           {LANGS.map((l) => (
             <option key={l.id} value={l.id}>
@@ -49,7 +50,12 @@ export function CodeExportPanel({ input }: { input: CodegenInput | null }) {
             </option>
           ))}
         </select>
-        <button type="button" className={adminBtnSecondary} onClick={() => void copy()}>
+        <button
+          type="button"
+          className={adminBtnSecondary}
+          onClick={() => void copy()}
+          aria-label="Copy generated code"
+        >
           {copied ? (
             <>
               <Check className="mr-1.5 h-3.5 w-3.5" />

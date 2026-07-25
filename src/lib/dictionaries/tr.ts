@@ -100,6 +100,143 @@ export const tr: Dictionary = {
       "Bu, işletmeniz için özelleştirilmiş bir sistemdir. Nihai fiyat; özellikler, entegrasyonlar ve ölçeğe bağlıdır.",
     pricingEstimatorCta: "Projenize Başlayın",
   },
+  developer: {
+    platformTitle: "Geliştirici Platformu",
+    platformSubtitle:
+      "Modern SaaS uygulamaları için tasarlanmış güvenli API’ler, kimlik doğrulama ve geliştirici araçlarıyla Helia üzerinde üretin.",
+    features: [
+      {
+        title: "REST API",
+        meta: "47+ uç nokta",
+        body: "Auth, organizasyon, proje, anahtar ve Brain için production App Router API’leri.",
+      },
+      {
+        title: "API Anahtarları",
+        meta: "Güvenli proje anahtarları",
+        body: "Canlı/test ortamları ve kapsamlı izinlerle hash’lenmiş proje sırları.",
+      },
+      {
+        title: "JWT Kimlik Doğrulama",
+        meta: "Oturum & Bearer",
+        body: "Access token, refresh rotasyonu ve HttpOnly oturum çerezleri.",
+      },
+      {
+        title: "API Tester",
+        meta: "Dahili konsol",
+        body: "Kimlik doğrulamalı istekleri başlık, gövde ve yanıt incelemesiyle çalıştırın.",
+      },
+      {
+        title: "API Explorer",
+        meta: "Canlı keşif",
+        body: "Keşfedilen rotaları yöntem, auth tipi ve kategoriye göre gezinin.",
+      },
+      {
+        title: "Webhook’lar",
+        meta: "Entegrasyonlara hazır",
+        body: "Ürün entegrasyonlarınız büyüdükçe dışa dönük olay kancaları için tasarlandı.",
+      },
+      {
+        title: "Rate Limiting",
+        meta: "Güvenli API erişimi",
+        body: "İstek pencereleri ve plana duyarlı limitlerle kiracıları koruyun.",
+      },
+      {
+        title: "TypeScript SDK",
+        meta: "Yakında",
+        body: "Helia Cloud için tip güvenli istemci yardımcıları — sıradaki adım.",
+      },
+    ],
+    experienceTitle: "Geliştiricilerin ihtiyaç duyduğu her şey",
+    experienceIntro:
+      "Helia içinde Postman sınıfı bir iş akışı — uç noktaları keşfedin, istek oluşturun, platformdan çıkmadan auth’u doğrulayın.",
+    experiencePoints: [
+      {
+        title: "API Explorer",
+        body: "Gerçek App Router kataloğundan canlı rotaları keşfedin.",
+      },
+      {
+        title: "Request Builder",
+        body: "Method, path parametreleri, query, header ve JSON gövdeleri.",
+      },
+      {
+        title: "Execution History",
+        body: "Durum ve gecikme bağlamıyla son çağrıları yeniden oynatın.",
+      },
+      {
+        title: "JSON Responses",
+        body: "Okunabilir, katlanabilir payload’lar ve güvenli önizlemeler.",
+      },
+      {
+        title: "Authentication",
+        body: "Bearer, API Key ve oturum modları tek konsolda.",
+      },
+      {
+        title: "Live Testing",
+        body: "Aynı origin /api rotalarına gerçek kimlik bilgileriyle vurun.",
+      },
+    ],
+    codeLabel: "Yanıt önizlemesi",
+    securityTitle: "Kurumsal düzeyde güvenlik",
+    securitySubtitle:
+      "Oturumlar, anahtarlar ve dayanıklı kiracı verisi için katmanlı koruma.",
+    securityCards: [
+      {
+        title: "JWT Authentication",
+        body: "Açık tip ve oturum bağlama ile imzalı access token’lar.",
+      },
+      {
+        title: "API Keys",
+        body: "HMAC hash’li sırlar — düz metin yalnızca oluşturmada bir kez.",
+      },
+      {
+        title: "HttpOnly Cookies",
+        body: "Güvenli helia_access_token çerezleriyle tarayıcı oturumları.",
+      },
+      {
+        title: "Role Based Access",
+        body: "Platform admin ve müşteri rolleri middleware ile API’de zorunlu.",
+      },
+      {
+        title: "Audit Logs",
+        body: "Admin ve hassas anahtar işlemleri için operasyon izleri.",
+      },
+      {
+        title: "Secure Headers",
+        body: "SameSite, Secure ve path kapsamlı çerez varsayılanları.",
+      },
+      {
+        title: "Encrypted Passwords",
+        body: "scrypt parola hash’leri — düz metin kimlik bilgisi yok.",
+      },
+      {
+        title: "Supabase-backed Persistence",
+        body: "Production kimlik ve kiracı verisi dayanıklı Postgres’te.",
+      },
+    ],
+    architectureTitle: "Platform mimarisi",
+    architectureSubtitle:
+      "Ürün yüzeyinizden dayanıklı altyapıya net bir yol.",
+    architectureLayers: {
+      website: "Website",
+      platform: "Helia Platform",
+      modules: ["Authentication", "Organizations", "Projects", "Brain", "API"],
+      data: "Supabase",
+    },
+    statsTitle: "Modern yığınlar için",
+    stats: [
+      { value: "47+", label: "API Uç Noktası" },
+      { value: "100%", label: "TypeScript" },
+      { value: "Node.js", label: "Runtime" },
+      { value: "Supabase", label: "Dayanıklı veri" },
+      { value: "Vercel", label: "Deploy" },
+      { value: "Enterprise", label: "Hazır" },
+    ],
+    ctaTitle: "Helia üzerinde üretmeye hazır mısınız?",
+    ctaSubtitle:
+      "API yüzeyini keşfedin veya hesabınızla tester’ı açın.",
+    ctaDocs: "API Dokümantasyonunu Görüntüle",
+    ctaTester: "API Tester’ı Aç",
+  },
   pricing: {
     title: "İşletmenize Özel Fiyatlandırma",
     subtitle:

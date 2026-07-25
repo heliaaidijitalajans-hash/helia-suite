@@ -25,8 +25,8 @@ export async function GET(request: Request) {
 }
 
 /**
- * Create an API key from the Admin Panel and persist it into the runtime
- * store (data/cloud/api-keys.json) with HMAC secretHash — same path whoami uses.
+ * Create an API key from the Admin Panel and persist it into the Helia Cloud
+ * store with HMAC secretHash — same path whoami uses.
  */
 export async function POST(request: Request) {
   try {

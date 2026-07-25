@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import { JsonHighlight } from "./JsonHighlight";
-import { prettyJson } from "./types";
+import { prettyJson, truncateForPreview } from "./types";
 
 type JsonNode =
   | { kind: "scalar"; value: unknown }
@@ -59,13 +59,21 @@ function CollapsibleNode({
     <div className="font-mono text-xs leading-relaxed">
       <button
         type="button"
-        className="inline-flex items-center gap-1 text-left text-white/70 hover:text-white"
+        className="inline-flex items-center gap-1 text-left text-white/70 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent/60"
         onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+        aria-label={
+          name != null
+            ? `${open ? "Collapse" : "Expand"} ${name}`
+            : open
+              ? "Collapse JSON node"
+              : "Expand JSON node"
+        }
       >
         {open ? (
-          <ChevronDown className="h-3 w-3" />
+          <ChevronDown className="h-3 w-3" aria-hidden />
         ) : (
-          <ChevronRight className="h-3 w-3" />
+          <ChevronRight className="h-3 w-3" aria-hidden />
         )}
         {name != null ? (
           <span className="text-sky-300/90">&quot;{name}&quot;</span>
@@ -119,6 +127,28 @@ export function CollapsibleJson({ value }: { value: unknown }) {
     return value;
   }, [value]);
 
+  const preview = useMemo(() => {
+    const full = prettyJson(value);
+    return truncateForPreview(full);
+  }, [value]);
+
+  if (preview.truncated) {
+    return (
+      <div className="space-y-2">
+        <p className="text-[11px] text-amber-200/80" id="response-preview-note">
+          Response preview truncated to protect browser performance. Download
+          JSON for the complete body.
+        </p>
+        <pre
+          className="max-h-[480px] overflow-auto rounded-xl border border-white/10 bg-[#0d0d0f] p-4 font-mono text-xs leading-relaxed"
+          aria-describedby="response-preview-note"
+        >
+          <JsonHighlight text={preview.text} />
+        </pre>
+      </div>
+    );
+  }
+
   if (parsed == null || typeof parsed !== "object") {
     return (
       <pre className="max-h-[480px] overflow-auto rounded-xl border border-white/10 bg-[#0d0d0f] p-4 font-mono text-xs leading-relaxed">
@@ -128,7 +158,11 @@ export function CollapsibleJson({ value }: { value: unknown }) {
   }
 
   return (
-    <div className="max-h-[480px] overflow-auto rounded-xl border border-white/10 bg-[#0d0d0f] p-4">
+    <div
+      className="max-h-[480px] overflow-auto rounded-xl border border-white/10 bg-[#0d0d0f] p-4"
+      role="tree"
+      aria-label="Response JSON"
+    >
       <CollapsibleNode value={parsed} depth={0} defaultOpen />
     </div>
   );

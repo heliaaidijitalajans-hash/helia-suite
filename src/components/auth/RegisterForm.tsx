@@ -2,7 +2,7 @@
 
 import { FormEvent, useMemo, useState } from "react";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 import {
   registerWithHeliaCloud,
@@ -10,7 +10,6 @@ import {
 } from "@/services/cloud/auth";
 
 export function RegisterForm() {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const nextPath = useMemo(
     () => safeAuthNextPath(searchParams.get("next")),
@@ -28,10 +27,20 @@ export function RegisterForm() {
     setBusy(true);
     setError(null);
     try {
-      await registerWithHeliaCloud({ email, password, displayName });
+      const user = await registerWithHeliaCloud({
+        email,
+        password,
+        displayName,
+      });
       window.dispatchEvent(new Event("helia-auth-changed"));
-      router.replace(nextPath);
-      router.refresh();
+      const target =
+        user.role === "admin"
+          ? nextPath.startsWith("/admin")
+            ? nextPath
+            : "/admin"
+          : nextPath;
+      // Full navigation so the HttpOnly session cookie is applied (same as Login).
+      window.location.assign(target);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Registration failed");
     } finally {

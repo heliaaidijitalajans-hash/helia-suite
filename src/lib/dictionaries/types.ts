@@ -65,6 +65,32 @@ export type Dictionary = {
     pricingEstimatorDisclaimer: string;
     pricingEstimatorCta: string;
   };
+  developer: {
+    platformTitle: string;
+    platformSubtitle: string;
+    features: { title: string; meta: string; body: string }[];
+    experienceTitle: string;
+    experienceIntro: string;
+    experiencePoints: { title: string; body: string }[];
+    codeLabel: string;
+    securityTitle: string;
+    securitySubtitle: string;
+    securityCards: { title: string; body: string }[];
+    architectureTitle: string;
+    architectureSubtitle: string;
+    architectureLayers: {
+      website: string;
+      platform: string;
+      modules: string[];
+      data: string;
+    };
+    statsTitle: string;
+    stats: { value: string; label: string }[];
+    ctaTitle: string;
+    ctaSubtitle: string;
+    ctaDocs: string;
+    ctaTester: string;
+  };
   pricing: {
     title: string;
     subtitle: string;

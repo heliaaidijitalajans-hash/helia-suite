@@ -1,3 +1,6 @@
+import {
+  sanitizeHeadersForCodeExport,
+} from "@/lib/admin/api-tester-auth";
 import type { HttpMethod } from "./types";
 
 export type CodegenInput = {
@@ -10,6 +13,15 @@ export type CodegenInput = {
 
 function esc(s: string): string {
   return s.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+}
+
+/** Never embed real secrets in generated snippets. */
+function safeInput(input: CodegenInput): CodegenInput {
+  return {
+    ...input,
+    headers: sanitizeHeadersForCodeExport(input.headers, input.apiKey),
+    apiKey: undefined,
+  };
 }
 
 function headerLines(
@@ -229,20 +241,21 @@ export type CodeLang =
   | "csharp";
 
 export function generateCode(lang: CodeLang, input: CodegenInput): string {
+  const sanitized = safeInput(input);
   switch (lang) {
     case "curl":
-      return generateCurl(input);
+      return generateCurl(sanitized);
     case "fetch":
-      return generateFetch(input);
+      return generateFetch(sanitized);
     case "axios":
-      return generateAxios(input);
+      return generateAxios(sanitized);
     case "python":
-      return generatePython(input);
+      return generatePython(sanitized);
     case "go":
-      return generateGo(input);
+      return generateGo(sanitized);
     case "php":
-      return generatePhp(input);
+      return generatePhp(sanitized);
     case "csharp":
-      return generateCSharp(input);
+      return generateCSharp(sanitized);
   }
 }

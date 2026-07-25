@@ -5,7 +5,6 @@
 
 import { z } from "zod";
 import path from "node:path";
-import os from "node:os";
 import { cleanEnvValue } from "@/server/helia/env";
 
 const booleanFromEnv = z
@@ -17,10 +16,7 @@ const booleanFromEnv = z
 
 function defaultDataDir(): string {
   if (process.env.CLOUD_DATA_DIR) return process.env.CLOUD_DATA_DIR;
-  // Vercel: writable temp; local: project data folder
-  if (process.env.VERCEL) {
-    return path.join(os.tmpdir(), "helia-cloud");
-  }
+  // Local / non-Vercel file store only. Production uses Supabase (no /tmp).
   return path.join(process.cwd(), "data", "cloud");
 }
 

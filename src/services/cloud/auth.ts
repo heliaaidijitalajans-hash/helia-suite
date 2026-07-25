@@ -89,7 +89,7 @@ export async function registerWithHeliaCloud(input: {
 }): Promise<HeliaAuthUser> {
   const data = await authRequest("/api/auth/register", {
     email: input.email.trim(),
-    password: input.password,
+    password: input.password.trim(),
     displayName:
       input.displayName?.trim() ||
       input.email.trim().split("@")[0] ||
@@ -101,9 +101,10 @@ export async function registerWithHeliaCloud(input: {
     return data.user;
   }
 
+  // Email-verification mode: complete session via login with the same credentials.
   return loginWithHeliaCloud({
-    email: input.email,
-    password: input.password,
+    email: input.email.trim(),
+    password: input.password.trim(),
   });
 }
 

@@ -147,7 +147,6 @@ export function ApiExplorerPanel({
         leaf.route.group,
         leaf.route.description || "",
         leaf.route.authentication,
-        leaf.route.file,
         leaf.route.apiKeySupported ? "api key" : "",
         leaf.route.sessionRequired ? "session" : "",
       ]
@@ -202,14 +201,6 @@ export function ApiExplorerPanel({
               </p>
               <dl className="grid gap-1 sm:grid-cols-2">
                 <div>
-                  <dt className="text-white/35">Search Root</dt>
-                  <dd className="text-white/75">{debug.searchRoot || "—"}</dd>
-                </div>
-                <div>
-                  <dt className="text-white/35">Files Found</dt>
-                  <dd className="text-white/75">{debug.filesFound?.length ?? 0}</dd>
-                </div>
-                <div>
                   <dt className="text-white/35">Routes Generated</dt>
                   <dd className="text-white/75">{debug.routesGenerated ?? 0}</dd>
                 </div>
@@ -251,6 +242,7 @@ export function ApiExplorerPanel({
               placeholder="Search endpoints…"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
+              aria-label="Search endpoints"
             />
             <select
               className={adminInputClass}
@@ -258,6 +250,7 @@ export function ApiExplorerPanel({
               onChange={(e) =>
                 setMethodFilter(e.target.value as "all" | HttpMethod)
               }
+              aria-label="Filter by HTTP method"
             >
               <option value="all">All methods</option>
               {(["GET", "POST", "PUT", "PATCH", "DELETE"] as const).map((m) => (
@@ -270,6 +263,7 @@ export function ApiExplorerPanel({
               className={adminInputClass}
               value={categoryFilter}
               onChange={(e) => setCategoryFilter(e.target.value)}
+              aria-label="Filter by category"
             >
               <option value="all">All categories</option>
               {categories.map((c) => (
@@ -282,6 +276,7 @@ export function ApiExplorerPanel({
               className={adminInputClass}
               value={authFilter}
               onChange={(e) => setAuthFilter(e.target.value)}
+              aria-label="Filter by authentication type"
             >
               <option value="all">All authentication</option>
               {authOptions.map((a) => (
@@ -311,8 +306,10 @@ export function ApiExplorerPanel({
                   >
                     <button
                       type="button"
-                      className="flex w-full items-center justify-between gap-2 px-3 py-2.5 text-left"
+                      className="flex w-full items-center justify-between gap-2 px-3 py-2.5 text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent/60"
                       onClick={() => toggleGroup(group)}
+                      aria-expanded={!isCollapsed}
+                      aria-label={`${isCollapsed ? "Expand" : "Collapse"} ${group} endpoints`}
                     >
                       <span className="flex items-center gap-2 text-sm font-medium text-white/85">
                         {isCollapsed ? (
@@ -339,7 +336,7 @@ export function ApiExplorerPanel({
                               <button
                                 type="button"
                                 className={cn(
-                                  "flex w-full flex-col gap-1 rounded-lg px-2 py-2 text-left transition-colors",
+                                  "flex w-full flex-col gap-1 rounded-lg px-2 py-2 text-left transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent/60",
                                   active
                                     ? "bg-accent/10 ring-1 ring-accent/25"
                                     : "hover:bg-white/[0.04]"
@@ -348,6 +345,8 @@ export function ApiExplorerPanel({
                                   onSelect(leaf.route, leaf.method);
                                   setExpandedLeaf(leaf.key);
                                 }}
+                                aria-label={`Load ${leaf.method} ${leaf.route.path}`}
+                                aria-current={active ? "true" : undefined}
                               >
                                 <div className="flex items-center gap-2">
                                   <span
@@ -388,9 +387,6 @@ export function ApiExplorerPanel({
                                           ? "Yes"
                                           : "No"}
                                       </span>
-                                    </p>
-                                    <p className="truncate font-mono text-[10px] text-white/35">
-                                      {leaf.route.file}
                                     </p>
                                   </div>
                                 ) : null}

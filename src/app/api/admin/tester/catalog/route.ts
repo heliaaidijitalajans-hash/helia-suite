@@ -14,18 +14,28 @@ export async function GET(request: Request) {
     const { routes, debug } = discoverApiRoutesWithDebug();
     const groups = [...new Set(routes.map((r) => r.group))].sort();
 
-    console.log("[api-catalog/route] Search root:", debug.searchRoot);
-    console.log("[api-catalog/route] Files found:", debug.filesFound.length);
-    console.log("[api-catalog/route] Routes generated:", debug.routesGenerated);
-    console.log("[api-catalog/route] Manifest loaded:", debug.manifestLoaded);
-    console.log("[api-catalog/route] Endpoint count:", debug.endpointCount);
+    if (process.env.NODE_ENV === "development" && debug.error) {
+      console.error("[api-catalog/route]", debug.error);
+    }
+
+    // Do not expose source file paths to the client.
+    const safeRoutes = routes.map((route) => {
+      const { file, ...rest } = route;
+      void file;
+      return rest;
+    });
+    const safeDebug = {
+      ...debug,
+      filesFound: [] as string[],
+      searchRoot: "src/app/api",
+    };
 
     return jsonOk({
       generatedAt: new Date().toISOString(),
       count: routes.length,
       groups,
-      routes,
-      debug,
+      routes: safeRoutes,
+      debug: safeDebug,
     });
   } catch (error) {
     return jsonError(error);

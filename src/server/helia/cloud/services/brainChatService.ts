@@ -1,6 +1,9 @@
 /**
- * Helia Admin Chat persistence — conversations + messages.
- * Prefers durable Supabase store; falls back to Cloud JSON files.
+ * Helia Admin Chat persistence — single source of truth.
+ *
+ * Production / durable: helia_brain_conversations + helia_brain_messages (Supabase).
+ * Development (JSON Cloud backend): CloudDatabase brain collections on disk.
+ * No dual-write. No metadata-table fallback.
  */
 
 import { createId } from "../../utils/id";
@@ -10,6 +13,7 @@ import type {
   BrainConversationRecord,
   BrainMessageRecord,
 } from "../types";
+import { shouldUseSupabaseCloudStore } from "../persistence/supabase/client";
 import {
   isSupabaseChatStoreEnabled,
   SupabaseBrainChatStore,
@@ -29,13 +33,13 @@ export type BrainChatConversation = BrainConversationRecord & {
 export class BrainChatService {
   constructor(private readonly db: CloudDatabase) {}
 
-  private supabase(): SupabaseBrainChatStore | null {
-    if (!isSupabaseChatStoreEnabled()) return null;
-    try {
-      return new SupabaseBrainChatStore();
-    } catch {
-      return null;
-    }
+  /** Durable SoT: helia_brain_conversations / helia_brain_messages. */
+  private useDurableBrain(): boolean {
+    return shouldUseSupabaseCloudStore() || isSupabaseChatStoreEnabled();
+  }
+
+  private durable(): SupabaseBrainChatStore {
+    return new SupabaseBrainChatStore();
   }
 
   async listForUser(userId: string): Promise<
@@ -46,13 +50,8 @@ export class BrainChatService {
       updatedAt: string;
     }>
   > {
-    const remote = this.supabase();
-    if (remote) {
-      try {
-        return await remote.listForUser(userId);
-      } catch {
-        // fall through to file store
-      }
+    if (this.useDurableBrain()) {
+      return this.durable().listForUser(userId);
     }
 
     await this.db.brainConversations.reload();
@@ -73,14 +72,8 @@ export class BrainChatService {
     userId: string,
     conversationId: string
   ): Promise<BrainChatConversation | null> {
-    const remote = this.supabase();
-    if (remote) {
-      try {
-        const found = await remote.getForUser(userId, conversationId);
-        if (found) return found;
-      } catch {
-        // fall through
-      }
+    if (this.useDurableBrain()) {
+      return this.durable().getForUser(userId, conversationId);
     }
 
     await this.db.brainConversations.reload();
@@ -119,17 +112,12 @@ export class BrainChatService {
       timestamp: new Date().toISOString(),
     };
 
-    const remote = this.supabase();
-    if (remote) {
-      try {
-        return await remote.appendMessages({
-          ...input,
-          userMsg,
-          assistantMsg,
-        });
-      } catch {
-        // fall through to local file persistence
-      }
+    if (this.useDurableBrain()) {
+      return this.durable().appendMessages({
+        ...input,
+        userMsg,
+        assistantMsg,
+      });
     }
 
     await this.db.brainConversations.reload();
@@ -176,14 +164,8 @@ export class BrainChatService {
     const nextTitle = title.trim();
     if (!nextTitle) throw new ValidationError("title is required");
 
-    const remote = this.supabase();
-    if (remote) {
-      try {
-        const updated = await remote.rename(userId, conversationId, nextTitle);
-        if (updated) return updated;
-      } catch {
-        // fall through
-      }
+    if (this.useDurableBrain()) {
+      return this.durable().rename(userId, conversationId, nextTitle);
     }
 
     const conv = await this.db.brainConversations.findById(conversationId);
@@ -198,14 +180,8 @@ export class BrainChatService {
   }
 
   async delete(userId: string, conversationId: string): Promise<boolean> {
-    const remote = this.supabase();
-    if (remote) {
-      try {
-        const ok = await remote.delete(userId, conversationId);
-        if (ok) return true;
-      } catch {
-        // fall through
-      }
+    if (this.useDurableBrain()) {
+      return this.durable().delete(userId, conversationId);
     }
 
     const conv = await this.db.brainConversations.findById(conversationId);

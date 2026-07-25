@@ -791,8 +791,8 @@ export class AdminService {
   }
 
   /**
-   * Platform-admin create: persist a hashed API key into the runtime store
-   * (data/cloud/api-keys.json). Plaintext secret is returned once only.
+   * Platform-admin create: persist a hashed API key into the Helia Cloud store.
+   * Plaintext secret is returned once only.
    */
   async createApiKey(
     actorId: string,

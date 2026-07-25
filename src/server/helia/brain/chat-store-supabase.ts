@@ -1,6 +1,7 @@
 /**
  * Durable Helia Admin Chat store (Supabase).
- * Survives refresh / cold starts — unlike Vercel /tmp JSON files.
+ * Single source of truth: helia_brain_conversations / helia_brain_messages.
+ * Survives refresh / cold starts — used whenever Cloud runs on Supabase.
  */
 
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";

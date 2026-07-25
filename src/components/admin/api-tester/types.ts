@@ -13,7 +13,8 @@ export type CatalogRoute = {
   path: string;
   methods: HttpMethod[];
   group: string;
-  file: string;
+  /** Omitted from public / client-facing catalog responses. */
+  file?: string;
   description: string | null;
   authentication: AuthType;
   permissions: string[];
@@ -175,6 +176,22 @@ export function prettyJson(value: unknown): string {
   } catch {
     return String(value);
   }
+}
+
+/** Soft cap for on-screen JSON preview to avoid freezing the tab. */
+export const RESPONSE_PREVIEW_MAX_CHARS = 200_000;
+
+export function truncateForPreview(
+  text: string,
+  maxChars = RESPONSE_PREVIEW_MAX_CHARS
+): { text: string; truncated: boolean } {
+  if (text.length <= maxChars) return { text, truncated: false };
+  return {
+    text:
+      text.slice(0, maxChars) +
+      "\n\n… truncated for preview — use Download JSON for the complete response.",
+    truncated: true,
+  };
 }
 
 export function isValidJson(text: string): boolean {

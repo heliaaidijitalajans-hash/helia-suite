@@ -141,7 +141,7 @@ export default function AdminApiKeysPage() {
     <div className="space-y-6">
       <AdminPanel
         title="Create API key"
-        description="Persists a hashed key into the runtime store (data/cloud/api-keys.json). Copy the secret once — it is never stored in plaintext."
+        description="Creates a hashed API key in the durable Helia Cloud store. Copy the secret once — it is never stored in plaintext."
       >
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
           <label className="block min-w-0 flex-1 space-y-1.5">

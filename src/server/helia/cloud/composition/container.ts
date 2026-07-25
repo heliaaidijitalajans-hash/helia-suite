@@ -33,7 +33,7 @@ export interface CloudContainer {
 export async function createCloudContainer(
   config: CloudConfig
 ): Promise<CloudContainer> {
-  const db = new CloudDatabase(config.dataDir);
+  const db = CloudDatabase.create(config.dataDir);
   await db.init();
 
   const auth = new AuthService(db, config);

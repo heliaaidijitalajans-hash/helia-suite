@@ -4,7 +4,11 @@
  */
 
 import { adminFetch } from "@/services/admin/http";
-import type { CatalogRoute } from "@/components/admin/api-tester/types";
+import type {
+  AuthType,
+  CatalogRoute,
+  HttpMethod,
+} from "@/components/admin/api-tester/types";
 
 export type CatalogDebug = {
   searchRoot: string;
@@ -22,14 +26,19 @@ export type LoadedCatalog = {
   debug: CatalogDebug;
 };
 
+type PublicEndpoint = {
+  method: string;
+  path: string;
+  authentication?: string;
+  category?: string;
+};
+
 type PublicManifest = {
   generatedAt?: string;
-  searchRoot?: string;
-  filesFound?: string[];
-  routeCount?: number;
   endpointCount?: number;
+  endpoints?: PublicEndpoint[];
+  /** Legacy full-route shape (pre-hardening). */
   routes?: CatalogRoute[];
-  endpoints?: Array<{ method: string; path: string; category: string }>;
 };
 
 function emptyDebug(error: string): CatalogDebug {
@@ -45,6 +54,48 @@ function emptyDebug(error: string): CatalogDebug {
   };
 }
 
+function pathParamsFromPath(urlPath: string): string[] {
+  const out: string[] = [];
+  for (const seg of urlPath.split("/")) {
+    if (seg.startsWith(":")) out.push(seg.slice(1));
+  }
+  return out;
+}
+
+function routesFromPublicEndpoints(endpoints: PublicEndpoint[]): CatalogRoute[] {
+  const byPath = new Map<string, CatalogRoute>();
+  for (const e of endpoints) {
+    if (!e?.path || !e?.method) continue;
+    const method = e.method.toUpperCase() as HttpMethod;
+    const auth = (e.authentication || "unknown") as AuthType;
+    let route = byPath.get(e.path);
+    if (!route) {
+      route = {
+        path: e.path,
+        methods: [],
+        group: e.category || "Other",
+        description: null,
+        authentication: auth,
+        permissions: [],
+        queryParameters: [],
+        pathParameters: pathParamsFromPath(e.path),
+        bodyFields: [],
+        bodySchemaHint: null,
+        multipart: false,
+        apiKeySupported: auth === "api_key",
+        sessionRequired: auth === "session" || auth === "admin_session",
+      };
+      byPath.set(e.path, route);
+    }
+    if (!route.methods.includes(method)) {
+      route.methods.push(method);
+    }
+  }
+  return [...byPath.values()].sort(
+    (a, b) => a.group.localeCompare(b.group) || a.path.localeCompare(b.path)
+  );
+}
+
 async function loadPublicManifest(): Promise<LoadedCatalog> {
   const res = await fetch("/api-manifest.json", { cache: "no-store" });
   if (!res.ok) {
@@ -53,7 +104,18 @@ async function loadPublicManifest(): Promise<LoadedCatalog> {
     );
   }
   const data = (await res.json()) as PublicManifest;
-  const routes = Array.isArray(data.routes) ? data.routes : [];
+
+  let routes: CatalogRoute[] = [];
+  if (Array.isArray(data.endpoints) && data.endpoints.length > 0) {
+    routes = routesFromPublicEndpoints(data.endpoints);
+  } else if (Array.isArray(data.routes)) {
+    routes = data.routes.map((route) => {
+      const { file, ...rest } = route;
+      void file;
+      return rest;
+    });
+  }
+
   const endpointCount =
     data.endpointCount ||
     routes.reduce((n, r) => n + (r.methods?.length || 0), 0);
@@ -62,15 +124,15 @@ async function loadPublicManifest(): Promise<LoadedCatalog> {
     return {
       routes: [],
       debug: {
-        searchRoot: data.searchRoot || "src/app/api",
-        filesFound: data.filesFound || [],
+        searchRoot: "src/app/api",
+        filesFound: [],
         routesGenerated: 0,
         endpointCount: 0,
         manifestLoaded: true,
         manifestGeneratedAt: data.generatedAt || null,
         source: "public-manifest",
         error:
-          "public/api-manifest.json loaded but contains 0 routes. Re-run npm run generate:api-manifest.",
+          "public/api-manifest.json loaded but contains 0 endpoints. Re-run npm run generate:api-manifest.",
       },
     };
   }
@@ -78,8 +140,8 @@ async function loadPublicManifest(): Promise<LoadedCatalog> {
   return {
     routes,
     debug: {
-      searchRoot: data.searchRoot || "src/app/api",
-      filesFound: data.filesFound || routes.map((r) => r.file),
+      searchRoot: "src/app/api",
+      filesFound: [],
       routesGenerated: routes.length,
       endpointCount,
       manifestLoaded: true,
@@ -106,7 +168,7 @@ export async function loadApiCatalog(): Promise<LoadedCatalog> {
         routes,
         debug: res.debug || {
           searchRoot: "src/app/api",
-          filesFound: routes.map((r) => r.file),
+          filesFound: [],
           routesGenerated: routes.length,
           endpointCount: routes.reduce((n, r) => n + r.methods.length, 0),
           manifestLoaded: true,
@@ -116,10 +178,7 @@ export async function loadApiCatalog(): Promise<LoadedCatalog> {
         },
       };
     }
-    errors.push(
-      res.debug?.error ||
-        "Admin catalog API returned 0 routes."
-    );
+    errors.push(res.debug?.error || "Admin catalog API returned 0 routes.");
   } catch (err) {
     errors.push(
       err instanceof Error

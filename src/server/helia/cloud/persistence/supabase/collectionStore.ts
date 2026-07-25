@@ -1,25 +1,27 @@
 /**
- * Cloud document store — atomic JSON persistence with delete support.
- * Development / local only. Production uses SupabaseCollectionStore.
- *
- * Concurrency: all mutating ops + reload share one queue so reload() never
- * erases in-flight writes, and persist() always writes a frozen snapshot.
+ * Durable Supabase-backed collection store.
+ * Same CloudRecordStore contract as CloudDocumentStore — one source of truth
+ * for register/login when HELIA_CLOUD_STORE=supabase / production.
  */
 
-import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
-import { dirname } from "node:path";
-import type { CloudRecordStore } from "./recordStore";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import type { CloudRecordStore } from "../recordStore";
 
-export class CloudDocumentStore<T extends { id: string }>
+type Row = {
+  id: string;
+  payload: Record<string, unknown>;
+};
+
+export class SupabaseCollectionStore<T extends { id: string }>
   implements CloudRecordStore<T>
 {
   private data: T[] = [];
   private loaded = false;
-  /** Serializes init / mutate / reload / persist. */
   private opQueue: Promise<unknown> = Promise.resolve();
 
   constructor(
-    private readonly filePath: string,
+    private readonly sb: SupabaseClient,
+    private readonly table: string,
     private readonly maxRecords = 100_000
   ) {}
 
@@ -35,29 +37,44 @@ export class CloudDocumentStore<T extends { id: string }>
   async init(): Promise<void> {
     return this.enqueue(async () => {
       if (this.loaded) return;
-      await this.loadFromDisk();
+      await this.loadFromRemote();
     });
   }
 
-  private async loadFromDisk(): Promise<void> {
-    await mkdir(dirname(this.filePath), { recursive: true });
-    try {
-      const raw = await readFile(this.filePath, "utf8");
-      const parsed = JSON.parse(raw) as unknown;
-      if (Array.isArray(parsed)) this.data = parsed as T[];
-      else this.data = [];
-    } catch (error) {
-      const code = (error as NodeJS.ErrnoException).code;
-      if (code !== "ENOENT") throw error;
-      this.data = [];
-      await this.writeSnapshot(this.data);
-    }
+  private async loadFromRemote(): Promise<void> {
+    const { data, error } = await this.sb
+      .from(this.table)
+      .select("id, payload");
+    if (error) throw error;
+    this.data = ((data as Row[] | null) || []).map((row) => {
+      const payload = row.payload as T;
+      return { ...payload, id: row.id };
+    });
     this.loaded = true;
+  }
+
+  private async writeRow(record: T): Promise<void> {
+    const { error } = await this.sb.from(this.table).upsert(
+      {
+        id: record.id,
+        payload: record,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: "id" }
+    );
+    if (error) throw error;
+  }
+
+  private async deleteRow(id: string): Promise<void> {
+    const { error } = await this.sb.from(this.table).delete().eq("id", id);
+    if (error) throw error;
   }
 
   async upsert(record: T): Promise<T> {
     return this.enqueue(async () => {
-      if (!this.loaded) await this.loadFromDisk();
+      if (!this.loaded) await this.loadFromRemote();
+      // Durable write first — then memory (never the reverse).
+      await this.writeRow(record);
       const index = this.data.findIndex((item) => item.id === record.id);
       if (index >= 0) this.data[index] = record;
       else {
@@ -66,31 +83,31 @@ export class CloudDocumentStore<T extends { id: string }>
           this.data = this.data.slice(this.data.length - this.maxRecords);
         }
       }
-      await this.writeSnapshot(this.data);
       return record;
     });
   }
 
   async patch(id: string, patch: Partial<T>): Promise<T | undefined> {
     return this.enqueue(async () => {
-      if (!this.loaded) await this.loadFromDisk();
+      if (!this.loaded) await this.loadFromRemote();
       const index = this.data.findIndex((item) => item.id === id);
       const current = index >= 0 ? this.data[index] : undefined;
       if (!current) return undefined;
       const next = { ...current, ...patch, id: current.id };
+      await this.writeRow(next);
       this.data[index] = next;
-      await this.writeSnapshot(this.data);
       return next;
     });
   }
 
   async delete(id: string): Promise<boolean> {
     return this.enqueue(async () => {
-      if (!this.loaded) await this.loadFromDisk();
+      if (!this.loaded) await this.loadFromRemote();
       const before = this.data.length;
-      this.data = this.data.filter((item) => item.id !== id);
-      if (this.data.length === before) return false;
-      await this.writeSnapshot(this.data);
+      const next = this.data.filter((item) => item.id !== id);
+      if (next.length === before) return false;
+      await this.deleteRow(id);
+      this.data = next;
       return true;
     });
   }
@@ -110,20 +127,11 @@ export class CloudDocumentStore<T extends { id: string }>
     return this.data.filter(predicate);
   }
 
-  /** Drop memory cache and re-read from disk after draining in-flight writes. */
   async reload(): Promise<void> {
     return this.enqueue(async () => {
       this.loaded = false;
       this.data = [];
-      await this.loadFromDisk();
+      await this.loadFromRemote();
     });
-  }
-
-  /** Persist a frozen copy — never serialize live mutable `this.data` later. */
-  private async writeSnapshot(records: T[]): Promise<void> {
-    const snapshot = records.map((item) => ({ ...item }));
-    const tmp = `${this.filePath}.${process.pid}.tmp`;
-    await writeFile(tmp, JSON.stringify(snapshot, null, 0), "utf8");
-    await rename(tmp, this.filePath);
   }
 }

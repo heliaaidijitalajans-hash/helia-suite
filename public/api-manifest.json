@@ -1,1103 +1,287 @@
 {
-  "generatedAt": "2026-07-25T18:15:14.742Z",
-  "router": "app",
-  "searchRoot": "src/app/api",
-  "filesFound": [
-    "src/app/api/admin/analytics/route.ts",
-    "src/app/api/admin/apikeys/route.ts",
-    "src/app/api/admin/applications/[id]/rotate/route.ts",
-    "src/app/api/admin/applications/[id]/route.ts",
-    "src/app/api/admin/applications/route.ts",
-    "src/app/api/admin/bootstrap-promote/route.ts",
-    "src/app/api/admin/health/route.ts",
-    "src/app/api/admin/logs/route.ts",
-    "src/app/api/admin/organizations/[id]/route.ts",
-    "src/app/api/admin/organizations/route.ts",
-    "src/app/api/admin/overview/route.ts",
-    "src/app/api/admin/settings/route.ts",
-    "src/app/api/admin/tester/catalog/route.ts",
-    "src/app/api/admin/tester/execute/route.ts",
-    "src/app/api/admin/tester/validate/route.ts",
-    "src/app/api/admin/users/[id]/reset-password/route.ts",
-    "src/app/api/admin/users/[id]/route.ts",
-    "src/app/api/admin/users/route.ts",
-    "src/app/api/apikeys/[id]/disable/route.ts",
-    "src/app/api/apikeys/[id]/rotate/route.ts",
-    "src/app/api/apikeys/[id]/route.ts",
-    "src/app/api/apikeys/route.ts",
-    "src/app/api/apikeys/whoami/route.ts",
-    "src/app/api/auth/login/route.ts",
-    "src/app/api/auth/logout/route.ts",
-    "src/app/api/auth/me/route.ts",
-    "src/app/api/auth/refresh/route.ts",
-    "src/app/api/auth/register/route.ts",
-    "src/app/api/brain/ask/route.ts",
-    "src/app/api/brain/conversations/[id]/route.ts",
-    "src/app/api/brain/conversations/route.ts",
-    "src/app/api/organizations/plans/route.ts",
-    "src/app/api/organizations/route.ts",
-    "src/app/api/organizations/subscriptions/change-plan/route.ts",
-    "src/app/api/organizations/usage/route.ts",
-    "src/app/api/projects/route.ts"
-  ],
-  "routeCount": 36,
+  "generatedAt": "2026-07-25T20:15:30.941Z",
   "endpointCount": 47,
-  "routes": [
-    {
-      "path": "/api/admin/bootstrap-promote",
-      "methods": [
-        "POST"
-      ],
-      "group": "Admin",
-      "file": "src/app/api/admin/bootstrap-promote/route.ts",
-      "description": "Promote the currently authenticated user to role=admin. Requires HELIA_ADMIN_BOOTSTRAP_SECRET (min 16 chars) in env. Does NOT require existing admin — used to unlock /admin safely.",
-      "authentication": "session",
-      "permissions": [
-        "authenticated"
-      ],
-      "queryParameters": [],
-      "pathParameters": [],
-      "bodyFields": [
-        "secret"
-      ],
-      "bodySchemaHint": "{\n  \"secret\": \"\"\n}",
-      "multipart": false,
-      "apiKeySupported": false,
-      "sessionRequired": true
-    },
-    {
-      "path": "/api/admin/settings",
-      "methods": [
-        "GET",
-        "PATCH"
-      ],
-      "group": "Admin",
-      "file": "src/app/api/admin/settings/route.ts",
-      "description": null,
-      "authentication": "admin_session",
-      "permissions": [
-        "admin"
-      ],
-      "queryParameters": [],
-      "pathParameters": [],
-      "bodyFields": [],
-      "bodySchemaHint": "{\n  \n}",
-      "multipart": false,
-      "apiKeySupported": false,
-      "sessionRequired": true
-    },
-    {
-      "path": "/api/admin/tester/catalog",
-      "methods": [
-        "GET"
-      ],
-      "group": "Admin",
-      "file": "src/app/api/admin/tester/catalog/route.ts",
-      "description": "Admin API — catalog for API Tester / Explorer. Uses build-time api-manifest.json (bundled) with optional live FS scan.",
-      "authentication": "admin_session",
-      "permissions": [
-        "admin"
-      ],
-      "queryParameters": [],
-      "pathParameters": [],
-      "bodyFields": [],
-      "bodySchemaHint": null,
-      "multipart": false,
-      "apiKeySupported": false,
-      "sessionRequired": true
-    },
-    {
-      "path": "/api/admin/tester/execute",
-      "methods": [
-        "POST"
-      ],
-      "group": "Admin",
-      "file": "src/app/api/admin/tester/execute/route.ts",
-      "description": "Admin API Tester — execute same-origin /api/* with pasted customer API key. Auth headers are applied server-side from apiKey + authMode (not left to manual JSON).",
-      "authentication": "admin_session",
-      "permissions": [
-        "admin"
-      ],
-      "queryParameters": [],
-      "pathParameters": [],
-      "bodyFields": [
-        "apiKey",
-        "authMode",
-        "headers",
-        "jsonBody",
-        "method",
-        "path"
-      ],
-      "bodySchemaHint": "{\n  \"apiKey\": \"\",\n  \"authMode\": \"\",\n  \"headers\": \"\",\n  \"jsonBody\": \"\",\n  \"method\": \"\",\n  \"path\": \"\"\n}",
-      "multipart": false,
-      "apiKeySupported": false,
-      "sessionRequired": true
-    },
-    {
-      "path": "/api/admin/tester/validate",
-      "methods": [
-        "POST"
-      ],
-      "group": "Admin",
-      "file": "src/app/api/admin/tester/validate/route.ts",
-      "description": "Validate a pasted customer API key (admin-only).",
-      "authentication": "admin_session",
-      "permissions": [
-        "admin"
-      ],
-      "queryParameters": [],
-      "pathParameters": [],
-      "bodyFields": [
-        "apiKey"
-      ],
-      "bodySchemaHint": "{\n  \"apiKey\": \"\"\n}",
-      "multipart": false,
-      "apiKeySupported": false,
-      "sessionRequired": true
-    },
-    {
-      "path": "/api/admin/users",
-      "methods": [
-        "GET"
-      ],
-      "group": "Admin",
-      "file": "src/app/api/admin/users/route.ts",
-      "description": null,
-      "authentication": "admin_session",
-      "permissions": [
-        "admin"
-      ],
-      "queryParameters": [
-        "q",
-        "role",
-        "status"
-      ],
-      "pathParameters": [],
-      "bodyFields": [],
-      "bodySchemaHint": null,
-      "multipart": false,
-      "apiKeySupported": false,
-      "sessionRequired": true
-    },
-    {
-      "path": "/api/admin/users/:id",
-      "methods": [
-        "PATCH",
-        "DELETE"
-      ],
-      "group": "Admin",
-      "file": "src/app/api/admin/users/[id]/route.ts",
-      "description": null,
-      "authentication": "admin_session",
-      "permissions": [
-        "admin"
-      ],
-      "queryParameters": [],
-      "pathParameters": [
-        "id"
-      ],
-      "bodyFields": [],
-      "bodySchemaHint": "{\n  \n}",
-      "multipart": false,
-      "apiKeySupported": false,
-      "sessionRequired": true
-    },
-    {
-      "path": "/api/admin/users/:id/reset-password",
-      "methods": [
-        "POST"
-      ],
-      "group": "Admin",
-      "file": "src/app/api/admin/users/[id]/reset-password/route.ts",
-      "description": null,
-      "authentication": "admin_session",
-      "permissions": [
-        "admin"
-      ],
-      "queryParameters": [],
-      "pathParameters": [
-        "id"
-      ],
-      "bodyFields": [
-        "password"
-      ],
-      "bodySchemaHint": "{\n  \"password\": \"\"\n}",
-      "multipart": false,
-      "apiKeySupported": false,
-      "sessionRequired": true
-    },
-    {
-      "path": "/api/admin/analytics",
-      "methods": [
-        "GET"
-      ],
-      "group": "Analytics",
-      "file": "src/app/api/admin/analytics/route.ts",
-      "description": null,
-      "authentication": "admin_session",
-      "permissions": [
-        "admin"
-      ],
-      "queryParameters": [],
-      "pathParameters": [],
-      "bodyFields": [],
-      "bodySchemaHint": null,
-      "multipart": false,
-      "apiKeySupported": false,
-      "sessionRequired": true
-    },
-    {
-      "path": "/api/admin/apikeys",
-      "methods": [
-        "GET",
-        "POST"
-      ],
-      "group": "API Keys",
-      "file": "src/app/api/admin/apikeys/route.ts",
-      "description": "Create an API key from the Admin Panel and persist it into the runtime store (data/cloud/api-keys.json) with HMAC secretHash — same path whoami uses.",
-      "authentication": "admin_session",
-      "permissions": [
-        "admin"
-      ],
-      "queryParameters": [
-        "q",
-        "status"
-      ],
-      "pathParameters": [],
-      "bodyFields": [
-        "applicationType",
-        "capabilities",
-        "keyEnvironment",
-        "name",
-        "permissions",
-        "projectId"
-      ],
-      "bodySchemaHint": "{\n  \"applicationType\": \"\",\n  \"capabilities\": \"\",\n  \"keyEnvironment\": \"\",\n  \"name\": \"\",\n  \"permissions\": \"\",\n  \"projectId\": \"\"\n}",
-      "multipart": false,
-      "apiKeySupported": false,
-      "sessionRequired": true
-    },
-    {
-      "path": "/api/apikeys",
-      "methods": [
-        "GET",
-        "POST"
-      ],
-      "group": "API Keys",
-      "file": "src/app/api/apikeys/route.ts",
-      "description": null,
-      "authentication": "session",
-      "permissions": [
-        "authenticated"
-      ],
-      "queryParameters": [
-        "projectId"
-      ],
-      "pathParameters": [],
-      "bodyFields": [
-        "applicationType",
-        "capabilities",
-        "expiresAt",
-        "keyEnvironment",
-        "name",
-        "permissions",
-        "projectId"
-      ],
-      "bodySchemaHint": "{\n  \"applicationType\": \"\",\n  \"capabilities\": \"\",\n  \"expiresAt\": \"\",\n  \"keyEnvironment\": \"\",\n  \"name\": \"\",\n  \"permissions\": \"\",\n  \"projectId\": \"\"\n}",
-      "multipart": false,
-      "apiKeySupported": false,
-      "sessionRequired": true
-    },
-    {
-      "path": "/api/apikeys/:id",
-      "methods": [
-        "DELETE"
-      ],
-      "group": "API Keys",
-      "file": "src/app/api/apikeys/[id]/route.ts",
-      "description": null,
-      "authentication": "session",
-      "permissions": [
-        "authenticated"
-      ],
-      "queryParameters": [],
-      "pathParameters": [
-        "id"
-      ],
-      "bodyFields": [],
-      "bodySchemaHint": null,
-      "multipart": false,
-      "apiKeySupported": false,
-      "sessionRequired": true
-    },
-    {
-      "path": "/api/apikeys/:id/disable",
-      "methods": [
-        "POST"
-      ],
-      "group": "API Keys",
-      "file": "src/app/api/apikeys/[id]/disable/route.ts",
-      "description": null,
-      "authentication": "session",
-      "permissions": [
-        "authenticated"
-      ],
-      "queryParameters": [],
-      "pathParameters": [
-        "id"
-      ],
-      "bodyFields": [],
-      "bodySchemaHint": "{\n  \n}",
-      "multipart": false,
-      "apiKeySupported": false,
-      "sessionRequired": true
-    },
-    {
-      "path": "/api/apikeys/:id/rotate",
-      "methods": [
-        "POST"
-      ],
-      "group": "API Keys",
-      "file": "src/app/api/apikeys/[id]/rotate/route.ts",
-      "description": null,
-      "authentication": "session",
-      "permissions": [
-        "authenticated"
-      ],
-      "queryParameters": [],
-      "pathParameters": [
-        "id"
-      ],
-      "bodyFields": [],
-      "bodySchemaHint": "{\n  \n}",
-      "multipart": false,
-      "apiKeySupported": false,
-      "sessionRequired": true
-    },
-    {
-      "path": "/api/apikeys/whoami",
-      "methods": [
-        "GET"
-      ],
-      "group": "API Keys",
-      "file": "src/app/api/apikeys/whoami/route.ts",
-      "description": "Auth-related headers actually present on the incoming Request (redacted). */ function receivedAuthHeaders(request: Request): Record<string, string | null> { const authorization = request.headers.get(\"authorization\"); const xApiKey = request.headers.get(\"x-api-key\"); return { authorization: authorization ? authorization.startsWith(\"Bearer \") ? `Bearer ${redactToken(authorization.slice(\"Bearer \".length))}` : \"***\" : null, \"x-api-key\": redactToken(xApiKey), }; } /** Was GET /v1/whoami on Helia Cloud gateway.",
-      "authentication": "api_key",
-      "permissions": [
-        "api_key"
-      ],
-      "queryParameters": [],
-      "pathParameters": [],
-      "bodyFields": [],
-      "bodySchemaHint": null,
-      "multipart": false,
-      "apiKeySupported": true,
-      "sessionRequired": false
-    },
-    {
-      "path": "/api/admin/applications",
-      "methods": [
-        "GET"
-      ],
-      "group": "Applications",
-      "file": "src/app/api/admin/applications/route.ts",
-      "description": null,
-      "authentication": "admin_session",
-      "permissions": [
-        "admin"
-      ],
-      "queryParameters": [
-        "q",
-        "status"
-      ],
-      "pathParameters": [],
-      "bodyFields": [],
-      "bodySchemaHint": null,
-      "multipart": false,
-      "apiKeySupported": false,
-      "sessionRequired": true
-    },
-    {
-      "path": "/api/admin/applications/:id",
-      "methods": [
-        "PATCH",
-        "DELETE"
-      ],
-      "group": "Applications",
-      "file": "src/app/api/admin/applications/[id]/route.ts",
-      "description": null,
-      "authentication": "admin_session",
-      "permissions": [
-        "admin"
-      ],
-      "queryParameters": [],
-      "pathParameters": [
-        "id"
-      ],
-      "bodyFields": [
-        "enabled"
-      ],
-      "bodySchemaHint": "{\n  \"enabled\": \"\"\n}",
-      "multipart": false,
-      "apiKeySupported": false,
-      "sessionRequired": true
-    },
-    {
-      "path": "/api/admin/applications/:id/rotate",
-      "methods": [
-        "POST"
-      ],
-      "group": "Applications",
-      "file": "src/app/api/admin/applications/[id]/rotate/route.ts",
-      "description": null,
-      "authentication": "admin_session",
-      "permissions": [
-        "admin"
-      ],
-      "queryParameters": [],
-      "pathParameters": [
-        "id"
-      ],
-      "bodyFields": [],
-      "bodySchemaHint": "{\n  \n}",
-      "multipart": false,
-      "apiKeySupported": false,
-      "sessionRequired": true
-    },
-    {
-      "path": "/api/auth/login",
-      "methods": [
-        "POST"
-      ],
-      "group": "Authentication",
-      "file": "src/app/api/auth/login/route.ts",
-      "description": null,
-      "authentication": "public",
-      "permissions": [],
-      "queryParameters": [],
-      "pathParameters": [],
-      "bodyFields": [
-        "email",
-        "password"
-      ],
-      "bodySchemaHint": "{\n  \"email\": \"\",\n  \"password\": \"\"\n}",
-      "multipart": false,
-      "apiKeySupported": false,
-      "sessionRequired": false
-    },
-    {
-      "path": "/api/auth/logout",
-      "methods": [
-        "POST"
-      ],
-      "group": "Authentication",
-      "file": "src/app/api/auth/logout/route.ts",
-      "description": null,
-      "authentication": "public",
-      "permissions": [],
-      "queryParameters": [],
-      "pathParameters": [],
-      "bodyFields": [
-        "refreshToken"
-      ],
-      "bodySchemaHint": "{\n  \"refreshToken\": \"\"\n}",
-      "multipart": false,
-      "apiKeySupported": false,
-      "sessionRequired": false
-    },
-    {
-      "path": "/api/auth/me",
-      "methods": [
-        "GET"
-      ],
-      "group": "Authentication",
-      "file": "src/app/api/auth/me/route.ts",
-      "description": "Current session identity. Auth: Authorization Bearer JWT OR helia_access_token cookie.",
-      "authentication": "session",
-      "permissions": [
-        "authenticated"
-      ],
-      "queryParameters": [],
-      "pathParameters": [],
-      "bodyFields": [],
-      "bodySchemaHint": null,
-      "multipart": false,
-      "apiKeySupported": false,
-      "sessionRequired": true
-    },
-    {
-      "path": "/api/auth/refresh",
-      "methods": [
-        "POST"
-      ],
-      "group": "Authentication",
-      "file": "src/app/api/auth/refresh/route.ts",
-      "description": null,
-      "authentication": "public",
-      "permissions": [],
-      "queryParameters": [],
-      "pathParameters": [],
-      "bodyFields": [
-        "refreshToken"
-      ],
-      "bodySchemaHint": "{\n  \"refreshToken\": \"\"\n}",
-      "multipart": false,
-      "apiKeySupported": false,
-      "sessionRequired": false
-    },
-    {
-      "path": "/api/auth/register",
-      "methods": [
-        "POST"
-      ],
-      "group": "Authentication",
-      "file": "src/app/api/auth/register/route.ts",
-      "description": null,
-      "authentication": "public",
-      "permissions": [],
-      "queryParameters": [],
-      "pathParameters": [],
-      "bodyFields": [
-        "displayName",
-        "email",
-        "password"
-      ],
-      "bodySchemaHint": "{\n  \"displayName\": \"\",\n  \"email\": \"\",\n  \"password\": \"\"\n}",
-      "multipart": false,
-      "apiKeySupported": false,
-      "sessionRequired": false
-    },
-    {
-      "path": "/api/brain/ask",
-      "methods": [
-        "POST"
-      ],
-      "group": "Chat",
-      "file": "src/app/api/brain/ask/route.ts",
-      "description": null,
-      "authentication": "admin_session",
-      "permissions": [
-        "admin"
-      ],
-      "queryParameters": [],
-      "pathParameters": [],
-      "bodyFields": [
-        "content",
-        "conversationId",
-        "product"
-      ],
-      "bodySchemaHint": "{\n  \"content\": \"\",\n  \"conversationId\": \"\",\n  \"product\": \"\"\n}",
-      "multipart": false,
-      "apiKeySupported": false,
-      "sessionRequired": true
-    },
-    {
-      "path": "/api/brain/conversations",
-      "methods": [
-        "GET"
-      ],
-      "group": "Chat",
-      "file": "src/app/api/brain/conversations/route.ts",
-      "description": null,
-      "authentication": "admin_session",
-      "permissions": [
-        "admin"
-      ],
-      "queryParameters": [],
-      "pathParameters": [],
-      "bodyFields": [],
-      "bodySchemaHint": null,
-      "multipart": false,
-      "apiKeySupported": false,
-      "sessionRequired": true
-    },
-    {
-      "path": "/api/brain/conversations/:id",
-      "methods": [
-        "GET",
-        "PATCH",
-        "DELETE"
-      ],
-      "group": "Chat",
-      "file": "src/app/api/brain/conversations/[id]/route.ts",
-      "description": null,
-      "authentication": "admin_session",
-      "permissions": [
-        "admin"
-      ],
-      "queryParameters": [],
-      "pathParameters": [
-        "id"
-      ],
-      "bodyFields": [
-        "title"
-      ],
-      "bodySchemaHint": "{\n  \"title\": \"\"\n}",
-      "multipart": false,
-      "apiKeySupported": false,
-      "sessionRequired": true
-    },
-    {
-      "path": "/api/admin/health",
-      "methods": [
-        "GET"
-      ],
-      "group": "Health",
-      "file": "src/app/api/admin/health/route.ts",
-      "description": null,
-      "authentication": "admin_session",
-      "permissions": [
-        "admin"
-      ],
-      "queryParameters": [],
-      "pathParameters": [],
-      "bodyFields": [],
-      "bodySchemaHint": null,
-      "multipart": false,
-      "apiKeySupported": false,
-      "sessionRequired": true
-    },
-    {
-      "path": "/api/admin/overview",
-      "methods": [
-        "GET"
-      ],
-      "group": "Health",
-      "file": "src/app/api/admin/overview/route.ts",
-      "description": null,
-      "authentication": "admin_session",
-      "permissions": [
-        "admin"
-      ],
-      "queryParameters": [],
-      "pathParameters": [],
-      "bodyFields": [],
-      "bodySchemaHint": null,
-      "multipart": false,
-      "apiKeySupported": false,
-      "sessionRequired": true
-    },
-    {
-      "path": "/api/admin/logs",
-      "methods": [
-        "GET"
-      ],
-      "group": "Logs",
-      "file": "src/app/api/admin/logs/route.ts",
-      "description": null,
-      "authentication": "admin_session",
-      "permissions": [
-        "admin"
-      ],
-      "queryParameters": [
-        "category",
-        "level",
-        "limit",
-        "q"
-      ],
-      "pathParameters": [],
-      "bodyFields": [],
-      "bodySchemaHint": null,
-      "multipart": false,
-      "apiKeySupported": false,
-      "sessionRequired": true
-    },
-    {
-      "path": "/api/admin/organizations",
-      "methods": [
-        "GET"
-      ],
-      "group": "Organizations",
-      "file": "src/app/api/admin/organizations/route.ts",
-      "description": null,
-      "authentication": "admin_session",
-      "permissions": [
-        "admin"
-      ],
-      "queryParameters": [
-        "q",
-        "status"
-      ],
-      "pathParameters": [],
-      "bodyFields": [],
-      "bodySchemaHint": null,
-      "multipart": false,
-      "apiKeySupported": false,
-      "sessionRequired": true
-    },
-    {
-      "path": "/api/admin/organizations/:id",
-      "methods": [
-        "GET",
-        "PATCH",
-        "DELETE"
-      ],
-      "group": "Organizations",
-      "file": "src/app/api/admin/organizations/[id]/route.ts",
-      "description": null,
-      "authentication": "admin_session",
-      "permissions": [
-        "admin"
-      ],
-      "queryParameters": [],
-      "pathParameters": [
-        "id"
-      ],
-      "bodyFields": [],
-      "bodySchemaHint": "{\n  \n}",
-      "multipart": false,
-      "apiKeySupported": false,
-      "sessionRequired": true
-    },
-    {
-      "path": "/api/organizations",
-      "methods": [
-        "GET",
-        "POST"
-      ],
-      "group": "Organizations",
-      "file": "src/app/api/organizations/route.ts",
-      "description": null,
-      "authentication": "session",
-      "permissions": [
-        "authenticated"
-      ],
-      "queryParameters": [],
-      "pathParameters": [],
-      "bodyFields": [
-        "name",
-        "planId"
-      ],
-      "bodySchemaHint": "{\n  \"name\": \"\",\n  \"planId\": \"\"\n}",
-      "multipart": false,
-      "apiKeySupported": false,
-      "sessionRequired": true
-    },
-    {
-      "path": "/api/organizations/plans",
-      "methods": [
-        "GET"
-      ],
-      "group": "Organizations",
-      "file": "src/app/api/organizations/plans/route.ts",
-      "description": "Was GET /plans on Helia Cloud.",
-      "authentication": "public",
-      "permissions": [],
-      "queryParameters": [],
-      "pathParameters": [],
-      "bodyFields": [],
-      "bodySchemaHint": null,
-      "multipart": false,
-      "apiKeySupported": false,
-      "sessionRequired": false
-    },
-    {
-      "path": "/api/organizations/subscriptions/change-plan",
-      "methods": [
-        "POST"
-      ],
-      "group": "Organizations",
-      "file": "src/app/api/organizations/subscriptions/change-plan/route.ts",
-      "description": "Was POST /subscriptions/change-plan on Helia Cloud.",
-      "authentication": "session",
-      "permissions": [
-        "authenticated"
-      ],
-      "queryParameters": [],
-      "pathParameters": [],
-      "bodyFields": [
-        "organizationId",
-        "planId"
-      ],
-      "bodySchemaHint": "{\n  \"organizationId\": \"\",\n  \"planId\": \"\"\n}",
-      "multipart": false,
-      "apiKeySupported": false,
-      "sessionRequired": true
-    },
-    {
-      "path": "/api/projects",
-      "methods": [
-        "GET",
-        "POST"
-      ],
-      "group": "Projects",
-      "file": "src/app/api/projects/route.ts",
-      "description": null,
-      "authentication": "session",
-      "permissions": [
-        "authenticated"
-      ],
-      "queryParameters": [
-        "organizationId"
-      ],
-      "pathParameters": [],
-      "bodyFields": [
-        "environment",
-        "name",
-        "organizationId"
-      ],
-      "bodySchemaHint": "{\n  \"environment\": \"\",\n  \"name\": \"\",\n  \"organizationId\": \"\"\n}",
-      "multipart": false,
-      "apiKeySupported": false,
-      "sessionRequired": true
-    },
-    {
-      "path": "/api/organizations/usage",
-      "methods": [
-        "GET"
-      ],
-      "group": "Usage",
-      "file": "src/app/api/organizations/usage/route.ts",
-      "description": "Was GET /usage on Helia Cloud.",
-      "authentication": "session",
-      "permissions": [
-        "authenticated"
-      ],
-      "queryParameters": [
-        "organizationId"
-      ],
-      "pathParameters": [],
-      "bodyFields": [],
-      "bodySchemaHint": null,
-      "multipart": false,
-      "apiKeySupported": false,
-      "sessionRequired": true
-    }
-  ],
   "endpoints": [
     {
       "method": "GET",
       "path": "/api/admin/analytics",
+      "authentication": "admin_session",
       "category": "Analytics"
     },
     {
       "method": "GET",
       "path": "/api/admin/apikeys",
+      "authentication": "admin_session",
       "category": "API Keys"
     },
     {
       "method": "POST",
       "path": "/api/admin/apikeys",
+      "authentication": "admin_session",
       "category": "API Keys"
     },
     {
       "method": "GET",
       "path": "/api/admin/applications",
+      "authentication": "admin_session",
       "category": "Applications"
     },
     {
       "method": "DELETE",
       "path": "/api/admin/applications/:id",
+      "authentication": "admin_session",
       "category": "Applications"
     },
     {
       "method": "PATCH",
       "path": "/api/admin/applications/:id",
+      "authentication": "admin_session",
       "category": "Applications"
     },
     {
       "method": "POST",
       "path": "/api/admin/applications/:id/rotate",
+      "authentication": "admin_session",
       "category": "Applications"
     },
     {
       "method": "POST",
       "path": "/api/admin/bootstrap-promote",
+      "authentication": "session",
       "category": "Admin"
     },
     {
       "method": "GET",
       "path": "/api/admin/health",
+      "authentication": "admin_session",
       "category": "Health"
     },
     {
       "method": "GET",
       "path": "/api/admin/logs",
+      "authentication": "admin_session",
       "category": "Logs"
     },
     {
       "method": "GET",
       "path": "/api/admin/organizations",
+      "authentication": "admin_session",
       "category": "Organizations"
     },
     {
       "method": "DELETE",
       "path": "/api/admin/organizations/:id",
+      "authentication": "admin_session",
       "category": "Organizations"
     },
     {
       "method": "GET",
       "path": "/api/admin/organizations/:id",
+      "authentication": "admin_session",
       "category": "Organizations"
     },
     {
       "method": "PATCH",
       "path": "/api/admin/organizations/:id",
+      "authentication": "admin_session",
       "category": "Organizations"
     },
     {
       "method": "GET",
       "path": "/api/admin/overview",
+      "authentication": "admin_session",
       "category": "Health"
     },
     {
       "method": "GET",
       "path": "/api/admin/settings",
+      "authentication": "admin_session",
       "category": "Admin"
     },
     {
       "method": "PATCH",
       "path": "/api/admin/settings",
+      "authentication": "admin_session",
       "category": "Admin"
     },
     {
       "method": "GET",
       "path": "/api/admin/tester/catalog",
+      "authentication": "admin_session",
       "category": "Admin"
     },
     {
       "method": "POST",
       "path": "/api/admin/tester/execute",
+      "authentication": "admin_session",
       "category": "Admin"
     },
     {
       "method": "POST",
       "path": "/api/admin/tester/validate",
+      "authentication": "admin_session",
       "category": "Admin"
     },
     {
       "method": "GET",
       "path": "/api/admin/users",
+      "authentication": "admin_session",
       "category": "Admin"
     },
     {
       "method": "DELETE",
       "path": "/api/admin/users/:id",
+      "authentication": "admin_session",
       "category": "Admin"
     },
     {
       "method": "PATCH",
       "path": "/api/admin/users/:id",
+      "authentication": "admin_session",
       "category": "Admin"
     },
     {
       "method": "POST",
       "path": "/api/admin/users/:id/reset-password",
+      "authentication": "admin_session",
       "category": "Admin"
     },
     {
       "method": "GET",
       "path": "/api/apikeys",
+      "authentication": "session",
       "category": "API Keys"
     },
     {
       "method": "POST",
       "path": "/api/apikeys",
+      "authentication": "session",
       "category": "API Keys"
     },
     {
       "method": "DELETE",
       "path": "/api/apikeys/:id",
+      "authentication": "session",
       "category": "API Keys"
     },
     {
       "method": "POST",
       "path": "/api/apikeys/:id/disable",
+      "authentication": "session",
       "category": "API Keys"
     },
     {
       "method": "POST",
       "path": "/api/apikeys/:id/rotate",
+      "authentication": "session",
       "category": "API Keys"
     },
     {
       "method": "GET",
       "path": "/api/apikeys/whoami",
+      "authentication": "api_key",
       "category": "API Keys"
     },
     {
       "method": "POST",
       "path": "/api/auth/login",
+      "authentication": "public",
       "category": "Authentication"
     },
     {
       "method": "POST",
       "path": "/api/auth/logout",
+      "authentication": "public",
       "category": "Authentication"
     },
     {
       "method": "GET",
       "path": "/api/auth/me",
+      "authentication": "session",
       "category": "Authentication"
     },
     {
       "method": "POST",
       "path": "/api/auth/refresh",
+      "authentication": "public",
       "category": "Authentication"
     },
     {
       "method": "POST",
       "path": "/api/auth/register",
+      "authentication": "public",
       "category": "Authentication"
     },
     {
       "method": "POST",
       "path": "/api/brain/ask",
+      "authentication": "admin_session",
       "category": "Chat"
     },
     {
       "method": "GET",
       "path": "/api/brain/conversations",
+      "authentication": "admin_session",
       "category": "Chat"
     },
     {
       "method": "DELETE",
       "path": "/api/brain/conversations/:id",
+      "authentication": "admin_session",
       "category": "Chat"
     },
     {
       "method": "GET",
       "path": "/api/brain/conversations/:id",
+      "authentication": "admin_session",
       "category": "Chat"
     },
     {
       "method": "PATCH",
       "path": "/api/brain/conversations/:id",
+      "authentication": "admin_session",
       "category": "Chat"
     },
     {
       "method": "GET",
       "path": "/api/organizations",
+      "authentication": "session",
       "category": "Organizations"
     },
     {
       "method": "POST",
       "path": "/api/organizations",
+      "authentication": "session",
       "category": "Organizations"
     },
     {
       "method": "GET",
       "path": "/api/organizations/plans",
+      "authentication": "public",
       "category": "Organizations"
     },
     {
       "method": "POST",
       "path": "/api/organizations/subscriptions/change-plan",
+      "authentication": "session",
       "category": "Organizations"
     },
     {
       "method": "GET",
       "path": "/api/organizations/usage",
+      "authentication": "session",
       "category": "Usage"
     },
     {
       "method": "GET",
       "path": "/api/projects",
+      "authentication": "session",
       "category": "Projects"
     },
     {
       "method": "POST",
       "path": "/api/projects",
+      "authentication": "session",
       "category": "Projects"
     }
   ]

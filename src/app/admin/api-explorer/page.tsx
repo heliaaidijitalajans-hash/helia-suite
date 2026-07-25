@@ -58,7 +58,6 @@ export default function AdminApiExplorerPage() {
       return (
         r.path.toLowerCase().includes(q) ||
         r.group.toLowerCase().includes(q) ||
-        r.file.toLowerCase().includes(q) ||
         r.methods.join(" ").toLowerCase().includes(q) ||
         (r.description || "").toLowerCase().includes(q) ||
         r.authentication.toLowerCase().includes(q)
@@ -139,7 +138,6 @@ export default function AdminApiExplorerPage() {
                   <th className="px-2 py-2 font-medium">Auth</th>
                   <th className="px-2 py-2 font-medium">Permissions</th>
                   <th className="px-2 py-2 font-medium">Description</th>
-                  <th className="px-2 py-2 font-medium">File</th>
                 </tr>
               </thead>
               <tbody>
@@ -174,9 +172,6 @@ export default function AdminApiExplorerPage() {
                     </td>
                     <td className="px-2 py-3 text-white/50">
                       {r.description || "—"}
-                    </td>
-                    <td className="px-2 py-3 font-mono text-[10px] text-white/40">
-                      {r.file}
                     </td>
                   </tr>
                 ))}

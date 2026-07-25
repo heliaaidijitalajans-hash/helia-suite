@@ -38,11 +38,13 @@ import {
 import { loadApiCatalog } from "@/components/admin/api-tester/loadCatalog";
 import {
   buildAuthenticatedHeaders,
+  getAuthCompatibility,
   normalizeApiKeyInput,
   redactHeadersForDisplay,
   resolveAuthModeForRoute,
   type AuthMode,
 } from "@/components/admin/api-tester/authHeaders";
+import { ApiTesterErrorBoundary } from "@/components/admin/api-tester/ApiTesterErrorBoundary";
 import {
   applyPathParams,
   buildUrlWithQuery,
@@ -70,6 +72,14 @@ function needsBody(method: HttpMethod) {
 }
 
 export default function AdminApiTesterPage() {
+  return (
+    <ApiTesterErrorBoundary>
+      <AdminApiTesterPageInner />
+    </ApiTesterErrorBoundary>
+  );
+}
+
+function AdminApiTesterPageInner() {
   const [routes, setRoutes] = useState<CatalogRoute[]>([]);
   const [catalogLoading, setCatalogLoading] = useState(true);
   const [catalogError, setCatalogError] = useState<string | null>(null);
@@ -127,6 +137,8 @@ export default function AdminApiTesterPage() {
   );
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [copiedResp, setCopiedResp] = useState(false);
+  const [responseRawText, setResponseRawText] = useState<string>("");
+  const [historyKeyNotice, setHistoryKeyNotice] = useState<string | null>(null);
   const [headersError, setHeadersError] = useState<string | null>(null);
   const [bodyError, setBodyError] = useState<string | null>(null);
 
@@ -197,7 +209,6 @@ export default function AdminApiTesterPage() {
     return () => {
       cancelled = true;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   function applyRouteSelection(route: CatalogRoute, nextMethod: HttpMethod) {
@@ -248,10 +259,29 @@ export default function AdminApiTesterPage() {
     !matchedRoute &&
     !resolvedPath.includes(":");
 
-  const responseText = useMemo(() => prettyJson(response), [response]);
+  const responseText = useMemo(() => {
+    if (responseRawText) return responseRawText;
+    return prettyJson(response);
+  }, [response, responseRawText]);
+
   const headersValid = isValidJson(headersText);
   const bodyValid =
     !needsBody(method) || !bodyText.trim() || isValidJson(bodyText);
+
+  const authCompatibility = useMemo(
+    () =>
+      getAuthCompatibility(
+        matchedRoute?.authentication,
+        Boolean(apiKey.trim())
+      ),
+    [apiKey, matchedRoute?.authentication]
+  );
+
+  const canRunRequest =
+    Boolean(apiKey.trim()) &&
+    headersValid &&
+    bodyValid &&
+    authCompatibility.compatible;
 
   const parsedHeaders = useMemo(() => {
     if (!headersValid) return {} as Record<string, string>;
@@ -346,6 +376,7 @@ export default function AdminApiTesterPage() {
       setImplemented(false);
       setResponseHeaders(null);
       setAuthDebug(null);
+      setResponseRawText("");
       setResponse({
         ok: false,
         error: {
@@ -355,6 +386,13 @@ export default function AdminApiTesterPage() {
         },
       });
       setExecutedAt(new Date().toISOString());
+      setBusy(false);
+      setBusyAction(null);
+      return;
+    }
+
+    if (!authCompatibility.compatible) {
+      setError(authCompatibility.warning);
       setBusy(false);
       setBusyAction(null);
       return;
@@ -425,6 +463,11 @@ export default function AdminApiTesterPage() {
       setUpstreamOk(res.upstreamOk);
       setImplemented(res.implemented ?? true);
       setResponse(res.body);
+      setResponseRawText(
+        typeof res.rawText === "string" && res.rawText.length > 0
+          ? res.rawText
+          : prettyJson(res.body)
+      );
       setResponseHeaders(res.headers ?? null);
       setExecutedAt(res.executedAt ?? new Date().toISOString());
 
@@ -491,6 +534,7 @@ export default function AdminApiTesterPage() {
     }
   }, [
     apiKey,
+    authCompatibility,
     effectiveAuthMode,
     bodyText,
     finalPath,
@@ -516,8 +560,19 @@ export default function AdminApiTesterPage() {
     setUpstreamOk(item.status >= 200 && item.status < 300);
     setImplemented(true);
     setExecutedAt(item.at);
-    setError(null);
     setTransportError(null);
+    setResponse(null);
+    setResponseRawText("");
+    setResponseHeaders(null);
+    setAuthDebug(null);
+    setLastRequestPreview(null);
+    if (!normalizeApiKeyInput(apiKey)) {
+      setHistoryKeyNotice("Please paste your API Key again.");
+      setError("Please paste your API Key again.");
+    } else {
+      setHistoryKeyNotice(null);
+      setError(null);
+    }
   }
 
   async function copyResponse() {
@@ -541,7 +596,7 @@ export default function AdminApiTesterPage() {
       const meta = e.metaKey || e.ctrlKey;
       if (meta && e.key === "Enter") {
         e.preventDefault();
-        if (!busy && apiKey.trim()) void execute();
+        if (!busy && canRunRequest) void execute();
       }
       if (meta && e.shiftKey && (e.key === "v" || e.key === "V")) {
         e.preventDefault();
@@ -550,7 +605,7 @@ export default function AdminApiTesterPage() {
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [apiKey, busy, execute, validate]);
+  }, [apiKey, busy, canRunRequest, execute, validate]);
 
   return (
     <div className="space-y-6">
@@ -600,11 +655,28 @@ export default function AdminApiTesterPage() {
             <input
               className={adminInputClass}
               value={apiKey}
-              onChange={(e) => setApiKey(normalizeApiKeyInput(e.target.value))}
+              onChange={(e) => {
+                setApiKey(normalizeApiKeyInput(e.target.value));
+                if (historyKeyNotice) setHistoryKeyNotice(null);
+              }}
               placeholder="hl_live_… or hl_test_…"
               autoComplete="off"
+              aria-label="API Key"
+              aria-describedby="api-key-help"
             />
+            <p id="api-key-help" className="sr-only">
+              Paste a Helia live or test API key. Used for authentication headers.
+            </p>
           </label>
+
+          {historyKeyNotice ? (
+            <p
+              role="status"
+              className="rounded-xl border border-amber-500/25 bg-amber-500/10 px-4 py-3 text-sm text-amber-100/90"
+            >
+              {historyKeyNotice}
+            </p>
+          ) : null}
 
           <label className="block space-y-1.5">
             <span className="text-xs font-medium uppercase tracking-[0.12em] text-white/40">
@@ -614,16 +686,30 @@ export default function AdminApiTesterPage() {
               className={adminInputClass}
               value={authMode}
               onChange={(e) => setAuthMode(e.target.value as AuthMode)}
+              aria-label="Authentication mode"
+              aria-describedby="auth-mode-help"
             >
               <option value="both">Both (Authorization Bearer + X-API-Key)</option>
               <option value="bearer">Bearer only (Authorization)</option>
               <option value="x-api-key">X-API-Key only</option>
             </select>
-            <p className="text-[11px] text-white/40">
+            <p id="auth-mode-help" className="text-[11px] text-white/40">
               The API Key field automatically injects auth headers — no need to
               edit Headers JSON for authentication. Key is kept for this browser
               tab.
             </p>
+            {authCompatibility.warning ? (
+              <p
+                role="status"
+                className={
+                  authCompatibility.compatible
+                    ? "text-[11px] text-white/55"
+                    : "text-[11px] text-amber-200/90"
+                }
+              >
+                {authCompatibility.warning}
+              </p>
+            ) : null}
             {matchedRoute?.authentication === "api_key" &&
             authMode === "x-api-key" ? (
               <p className="text-[11px] text-amber-200/85">
@@ -720,8 +806,11 @@ export default function AdminApiTesterPage() {
                 setHeadersError(null);
               }}
               spellCheck={false}
+              aria-label="Extra request headers JSON"
+              aria-invalid={Boolean(headersError) || !headersValid}
+              aria-describedby="headers-help"
             />
-            <p className="text-[11px] text-white/35">
+            <p id="headers-help" className="text-[11px] text-white/35">
               Optional extras only (Accept, Content-Type, custom). Auth headers
               from the API Key field override any Authorization / X-API-Key here.
             </p>
@@ -780,27 +869,42 @@ export default function AdminApiTesterPage() {
               className={adminBtnSecondary}
               disabled={busy || !apiKey.trim()}
               onClick={() => void validate()}
+              aria-label="Validate API Key"
             >
               {busyAction === "validate" ? (
-                <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" aria-hidden />
               ) : (
-                <ShieldCheck className="mr-1.5 h-3.5 w-3.5" />
+                <ShieldCheck className="mr-1.5 h-3.5 w-3.5" aria-hidden />
               )}
               Validate API Key
             </button>
             <button
               type="button"
               className={adminBtnPrimary}
-              disabled={busy || !apiKey.trim() || !headersValid || !bodyValid}
+              disabled={busy || !canRunRequest}
               onClick={() => void execute()}
+              aria-label="Run request"
+              aria-describedby={
+                !authCompatibility.compatible ? "auth-mismatch-hint" : undefined
+              }
+              title={
+                !authCompatibility.compatible
+                  ? authCompatibility.warning
+                  : undefined
+              }
             >
               {busyAction === "execute" ? (
-                <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" aria-hidden />
               ) : (
-                <Play className="mr-1.5 h-3.5 w-3.5" />
+                <Play className="mr-1.5 h-3.5 w-3.5" aria-hidden />
               )}
               {busyAction === "execute" ? "Running…" : "Run request"}
             </button>
+            {!authCompatibility.compatible ? (
+              <span id="auth-mismatch-hint" className="sr-only">
+                {authCompatibility.warning}
+              </span>
+            ) : null}
           </div>
         </div>
       </AdminPanel>
@@ -888,11 +992,12 @@ export default function AdminApiTesterPage() {
                 className={adminBtnSecondary}
                 disabled={response == null}
                 onClick={() => void copyResponse()}
+                aria-label="Copy response JSON"
               >
                 {copiedResp ? (
-                  <Check className="mr-1.5 h-3.5 w-3.5" />
+                  <Check className="mr-1.5 h-3.5 w-3.5" aria-hidden />
                 ) : (
-                  <Copy className="mr-1.5 h-3.5 w-3.5" />
+                  <Copy className="mr-1.5 h-3.5 w-3.5" aria-hidden />
                 )}
                 Copy
               </button>
@@ -901,8 +1006,9 @@ export default function AdminApiTesterPage() {
                 className={adminBtnSecondary}
                 disabled={response == null}
                 onClick={downloadResponse}
+                aria-label="Download complete response JSON"
               >
-                <Download className="mr-1.5 h-3.5 w-3.5" />
+                <Download className="mr-1.5 h-3.5 w-3.5" aria-hidden />
                 Download JSON
               </button>
             </div>
@@ -985,8 +1091,9 @@ export default function AdminApiTesterPage() {
                 <li key={h.id}>
                   <button
                     type="button"
-                    className="flex w-full items-center justify-between gap-3 rounded-lg px-2 py-2 text-left hover:bg-white/[0.04]"
+                    className="flex w-full items-center justify-between gap-3 rounded-lg px-2 py-2 text-left hover:bg-white/[0.04] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent/60"
                     onClick={() => reloadFromHistory(h)}
+                    aria-label={`Restore ${h.method} ${h.path} from history`}
                   >
                     <span className="min-w-0">
                       <span className="block truncate font-mono text-xs text-white/75">
