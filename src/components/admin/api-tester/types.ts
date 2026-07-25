@@ -1,3 +1,5 @@
+import { GENERATED_ENDPOINTS } from "./generated-endpoints";
+
 export type HttpMethod = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
 
 export type EndpointDef = {
@@ -62,40 +64,8 @@ export const HTTP_METHODS: HttpMethod[] = [
   "DELETE",
 ];
 
-export const PREDEFINED_ENDPOINTS: EndpointDef[] = [
-  // API Keys
-  { group: "API Keys", method: "GET", path: "/api/apikeys" },
-  { group: "API Keys", method: "GET", path: "/api/apikeys/whoami" },
-  { group: "API Keys", method: "GET", path: "/api/apikeys/usage" },
-  { group: "API Keys", method: "GET", path: "/api/apikeys/permissions" },
-  { group: "API Keys", method: "POST", path: "/api/apikeys" },
-  { group: "API Keys", method: "POST", path: "/api/apikeys/rotate" },
-  { group: "API Keys", method: "DELETE", path: "/api/apikeys/:id" },
-  // Organizations
-  { group: "Organizations", method: "GET", path: "/api/organizations" },
-  { group: "Organizations", method: "GET", path: "/api/organizations/plans" },
-  { group: "Organizations", method: "POST", path: "/api/organizations" },
-  { group: "Organizations", method: "DELETE", path: "/api/organizations/:id" },
-  // Projects
-  { group: "Projects", method: "GET", path: "/api/projects" },
-  { group: "Projects", method: "GET", path: "/api/projects/:id" },
-  { group: "Projects", method: "POST", path: "/api/projects" },
-  { group: "Projects", method: "PATCH", path: "/api/projects/:id" },
-  { group: "Projects", method: "DELETE", path: "/api/projects/:id" },
-  // Platform
-  { group: "Platform", method: "GET", path: "/api/health" },
-  { group: "Platform", method: "GET", path: "/api/version" },
-  { group: "Platform", method: "GET", path: "/api/usage" },
-  { group: "Platform", method: "GET", path: "/api/status" },
-  // Admin
-  { group: "Admin", method: "GET", path: "/api/admin/users" },
-  { group: "Admin", method: "GET", path: "/api/admin/system" },
-  { group: "Admin", method: "GET", path: "/api/admin/logs" },
-  { group: "Admin", method: "GET", path: "/api/admin/statistics" },
-  // Documentation
-  { group: "Documentation", method: "GET", path: "/api/docs" },
-  { group: "Documentation", method: "GET", path: "/api/openapi.json" },
-];
+/** Real App Router endpoints only — regenerated via `node scripts/generate-api-tester-endpoints.mjs`. */
+export const PREDEFINED_ENDPOINTS: EndpointDef[] = GENERATED_ENDPOINTS;
 
 export function endpointKey(method: string, path: string): string {
   return `${method.toUpperCase()} ${path}`;
