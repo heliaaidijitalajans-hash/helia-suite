@@ -3,11 +3,12 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
-    "build": "next build --webpack",
+    "dev": "node scripts/generate-api-manifest.mjs && next dev",
+    "build": "node scripts/generate-api-manifest.mjs && next build --webpack",
     "start": "next start",
     "lint": "eslint",
-    "generate:api-tester-endpoints": "node scripts/generate-api-tester-endpoints.mjs"
+    "generate:api-manifest": "node scripts/generate-api-manifest.mjs",
+    "generate:api-tester-endpoints": "node scripts/generate-api-manifest.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.103.0",

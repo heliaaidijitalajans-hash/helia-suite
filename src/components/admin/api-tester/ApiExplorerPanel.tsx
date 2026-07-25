@@ -6,6 +6,18 @@ import { AdminPanel, adminInputClass } from "@/components/admin/ui";
 import { cn } from "@/lib/cn";
 import type { CatalogRoute, HttpMethod } from "./types";
 
+export type DiscoveryDebugInfo = {
+  searchRoot: string;
+  filesFound: string[];
+  routesGenerated: number;
+  endpointCount: number;
+  manifestLoaded: boolean;
+  manifestGeneratedAt: string | null;
+  source: string;
+  error: string | null;
+  router?: string;
+};
+
 /** Display order for explorer categories (only non-empty groups render). */
 const CATEGORY_ORDER = [
   "Authentication",
@@ -71,12 +83,16 @@ export function ApiExplorerPanel({
   selectedPath,
   selectedMethod,
   onSelect,
+  debug,
+  discoveryError,
 }: {
   routes: CatalogRoute[];
   loading?: boolean;
   selectedPath: string;
   selectedMethod: HttpMethod;
   onSelect: (route: CatalogRoute, method: HttpMethod) => void;
+  debug?: DiscoveryDebugInfo | null;
+  discoveryError?: string | null;
 }) {
   const [search, setSearch] = useState("");
   const [methodFilter, setMethodFilter] = useState<"all" | HttpMethod>("all");
@@ -179,6 +195,56 @@ export function ApiExplorerPanel({
         <p className="text-sm text-white/45">Scanning API routes…</p>
       ) : (
         <div className="space-y-4">
+          {debug ? (
+            <div className="rounded-xl border border-white/[0.08] bg-[#0d0d0f] px-3 py-3 font-mono text-[11px] text-white/55">
+              <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-white/35">
+                Discovery debug
+              </p>
+              <dl className="grid gap-1 sm:grid-cols-2">
+                <div>
+                  <dt className="text-white/35">Search Root</dt>
+                  <dd className="text-white/75">{debug.searchRoot || "—"}</dd>
+                </div>
+                <div>
+                  <dt className="text-white/35">Files Found</dt>
+                  <dd className="text-white/75">{debug.filesFound?.length ?? 0}</dd>
+                </div>
+                <div>
+                  <dt className="text-white/35">Routes Generated</dt>
+                  <dd className="text-white/75">{debug.routesGenerated ?? 0}</dd>
+                </div>
+                <div>
+                  <dt className="text-white/35">Manifest Loaded</dt>
+                  <dd className="text-white/75">
+                    {debug.manifestLoaded ? "Yes" : "No"}
+                    {debug.manifestGeneratedAt
+                      ? ` · ${debug.manifestGeneratedAt}`
+                      : ""}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-white/35">Endpoint Count</dt>
+                  <dd className="text-white/75">{debug.endpointCount ?? 0}</dd>
+                </div>
+                <div>
+                  <dt className="text-white/35">Source</dt>
+                  <dd className="text-white/75">{debug.source || "—"}</dd>
+                </div>
+              </dl>
+              {debug.error ? (
+                <p className="mt-2 text-amber-200/85">{debug.error}</p>
+              ) : null}
+            </div>
+          ) : null}
+
+          {!loading && routes.length === 0 ? (
+            <p className="rounded-xl border border-red-500/25 bg-red-500/10 px-4 py-3 text-sm text-red-100/90">
+              {discoveryError ||
+                debug?.error ||
+                "Discovery returned 0 endpoints. Run npm run generate:api-manifest and restart the server."}
+            </p>
+          ) : null}
+
           <div className="grid gap-2 md:grid-cols-4">
             <input
               className={cn(adminInputClass, "md:col-span-1")}

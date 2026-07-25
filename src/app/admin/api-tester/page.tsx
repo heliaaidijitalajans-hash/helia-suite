@@ -33,6 +33,7 @@ import {
   pushRecentEndpoint,
   saveHistory,
 } from "@/components/admin/api-tester/storage";
+import { loadApiCatalog } from "@/components/admin/api-tester/loadCatalog";
 import {
   applyPathParams,
   buildUrlWithQuery,
@@ -63,6 +64,16 @@ export default function AdminApiTesterPage() {
   const [routes, setRoutes] = useState<CatalogRoute[]>([]);
   const [catalogLoading, setCatalogLoading] = useState(true);
   const [catalogError, setCatalogError] = useState<string | null>(null);
+  const [discoveryDebug, setDiscoveryDebug] = useState<{
+    searchRoot: string;
+    filesFound: string[];
+    routesGenerated: number;
+    endpointCount: number;
+    manifestLoaded: boolean;
+    manifestGeneratedAt: string | null;
+    source: string;
+    error: string | null;
+  } | null>(null);
 
   const [apiKey, setApiKey] = useState("");
   const [method, setMethod] = useState<HttpMethod>("GET");
@@ -107,13 +118,21 @@ export default function AdminApiTesterPage() {
       setCatalogLoading(true);
       setCatalogError(null);
       try {
-        const res = await adminFetch<{
-          routes: CatalogRoute[];
-          count: number;
-        }>("/api/admin/tester/catalog");
+        const loaded = await loadApiCatalog();
         if (cancelled) return;
-        setRoutes(res.routes);
-        const whoami = res.routes.find((r) => r.path === "/api/apikeys/whoami");
+        setRoutes(loaded.routes);
+        setDiscoveryDebug(loaded.debug);
+        if (loaded.routes.length === 0) {
+          setCatalogError(
+            loaded.debug.error ||
+              "Discovery returned 0 endpoints. Run npm run generate:api-manifest."
+          );
+        } else {
+          setCatalogError(null);
+        }
+        const whoami = loaded.routes.find(
+          (r) => r.path === "/api/apikeys/whoami"
+        );
         if (whoami) {
           applyRouteSelection(whoami, whoami.methods[0] || "GET");
         }
@@ -122,6 +141,18 @@ export default function AdminApiTesterPage() {
           setCatalogError(
             err instanceof Error ? err.message : "Failed to load API catalog"
           );
+          setDiscoveryDebug({
+            searchRoot: "src/app/api",
+            filesFound: [],
+            routesGenerated: 0,
+            endpointCount: 0,
+            manifestLoaded: false,
+            manifestGeneratedAt: null,
+            source: "none",
+            error:
+              err instanceof Error ? err.message : "Failed to load API catalog",
+          });
+          setRoutes([]);
         }
       } finally {
         if (!cancelled) setCatalogLoading(false);
@@ -443,6 +474,8 @@ export default function AdminApiTesterPage() {
         selectedPath={pathTemplate}
         selectedMethod={method}
         onSelect={applyRouteSelection}
+        debug={discoveryDebug}
+        discoveryError={catalogError}
       />
 
       <AdminPanel

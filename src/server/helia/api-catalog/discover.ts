@@ -1,10 +1,12 @@
 /**
- * Discover every Next.js App Router API route under src/app/api.
- * Used by Admin API Tester + API Explorer (no hardcoded endpoint lists).
+ * API route catalog for Admin Tester / Explorer.
+ * Prefers the build-time api-manifest.json (always bundled).
+ * Optionally merges a live filesystem scan when src/app/api is available.
  */
 
 import fs from "node:fs";
 import path from "node:path";
+import API_MANIFEST from "./api-manifest.generated";
 
 export type HttpMethod = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
 
@@ -33,6 +35,29 @@ export type DiscoveredRoute = {
   sessionRequired: boolean;
 };
 
+export type DiscoveryDebug = {
+  searchRoot: string;
+  filesFound: string[];
+  routesGenerated: number;
+  endpointCount: number;
+  manifestLoaded: boolean;
+  manifestGeneratedAt: string | null;
+  source: "manifest" | "filesystem" | "manifest+filesystem" | "none";
+  error: string | null;
+  router: "app" | "pages" | "unknown";
+};
+
+type ManifestShape = {
+  generatedAt?: string;
+  router?: string;
+  searchRoot?: string;
+  filesFound?: string[];
+  routeCount?: number;
+  endpointCount?: number;
+  routes?: DiscoveredRoute[];
+  endpoints?: Array<{ method: string; path: string; category: string }>;
+};
+
 const METHODS: HttpMethod[] = ["GET", "POST", "PUT", "PATCH", "DELETE"];
 
 const GROUP_MAP: Record<string, string> = {
@@ -54,7 +79,7 @@ function groupFor(urlPath: string): string {
     if (sub === "analytics") return "Analytics";
     if (sub === "logs") return "Logs";
     if (sub === "health" || sub === "system-health") return "Health";
-    if (sub === "overview") return "Monitoring";
+    if (sub === "overview") return "Health";
     if (sub === "tester") return "Admin";
     if (sub === "users") return "Admin";
     if (sub === "organizations") return "Organizations";
@@ -71,22 +96,9 @@ function groupFor(urlPath: string): string {
 
   if (top === "organizations" && parts[1] === "usage") return "Usage";
   if (top === "organizations" && parts[1] === "plans") return "Organizations";
+  if (top === "docs" || top === "openapi.json") return "Documentation";
 
   return GROUP_MAP[top] || top.charAt(0).toUpperCase() + top.slice(1);
-}
-
-function extractJsDocDescription(src: string, method: HttpMethod): string | null {
-  const re = new RegExp(
-    `/\\*\\*([\\s\\S]*?)\\*/\\s*export\\s+async\\s+function\\s+${method}\\b`
-  );
-  const m = src.match(re);
-  if (!m) {
-    // File-level JSDoc before first export
-    const top = src.match(/^\/\*\*([\s\S]*?)\*\//);
-    if (!top) return null;
-    return cleanJsDoc(top[1]);
-  }
-  return cleanJsDoc(m[1]);
 }
 
 function cleanJsDoc(raw: string): string | null {
@@ -99,6 +111,19 @@ function cleanJsDoc(raw: string): string | null {
   return text || null;
 }
 
+function extractJsDocDescription(src: string, method: HttpMethod): string | null {
+  const re = new RegExp(
+    `/\\*\\*([\\s\\S]*?)\\*/\\s*export\\s+async\\s+function\\s+${method}\\b`
+  );
+  const m = src.match(re);
+  if (!m) {
+    const top = src.match(/^\/\*\*([\s\S]*?)\*\//);
+    if (!top) return null;
+    return cleanJsDoc(top[1]);
+  }
+  return cleanJsDoc(m[1]);
+}
+
 function extractQueryParams(src: string): string[] {
   const found = new Set<string>();
   const re = /searchParams\.get\(\s*["']([^"']+)["']\s*\)/g;
@@ -109,13 +134,11 @@ function extractQueryParams(src: string): string[] {
 
 function extractBodyFields(src: string): string[] {
   const found = new Set<string>();
-  // body.field or body?.field
   const re = /\bbody(?:\?)?\.(?:(\w+))/g;
   let m: RegExpExecArray | null;
   while ((m = re.exec(src)) !== null) {
     if (!["trim", "toString", "length"].includes(m[1])) found.add(m[1]);
   }
-  // typeof body.x === "string"
   const re2 = /typeof\s+body\.(\w+)/g;
   while ((m = re2.exec(src)) !== null) found.add(m[1]);
   return [...found].sort();
@@ -188,22 +211,39 @@ function inferAuth(src: string): {
   };
 }
 
-function resolveApiRoot(cwd = process.cwd()): string {
-  return path.join(cwd, "src", "app", "api");
+function resolveApiRootCandidates(cwd = process.cwd()): string[] {
+  return [
+    path.join(cwd, "src", "app", "api"),
+    path.join(cwd, "app", "api"),
+    path.resolve(cwd, "..", "src", "app", "api"),
+  ];
 }
 
-/**
- * Walk the filesystem and build the live API catalog.
- */
-export function discoverApiRoutes(cwd = process.cwd()): DiscoveredRoute[] {
-  const apiRoot = resolveApiRoot(cwd);
-  if (!fs.existsSync(apiRoot)) return [];
+function scanFilesystem(cwd = process.cwd()): {
+  apiRoot: string | null;
+  filesFound: string[];
+  routes: DiscoveredRoute[];
+  error: string | null;
+} {
+  const candidates = resolveApiRootCandidates(cwd);
+  const apiRoot = candidates.find((p) => fs.existsSync(p)) ?? null;
 
-  /** @type {Map<string, { methods: HttpMethod[]; file: string; src: string }>} */
+  if (!apiRoot) {
+    return {
+      apiRoot: candidates[0] ?? null,
+      filesFound: [],
+      routes: [],
+      error: `Filesystem scan unavailable. Tried: ${candidates.join(" | ")}`,
+    };
+  }
+
+  const rootDir: string = apiRoot;
+
   const byPath = new Map<
     string,
     { methods: HttpMethod[]; file: string; src: string }
   >();
+  const filesFound: string[] = [];
 
   function walk(dir: string) {
     for (const ent of fs.readdirSync(dir, { withFileTypes: true })) {
@@ -216,12 +256,14 @@ export function discoverApiRoutes(cwd = process.cwd()): DiscoveredRoute[] {
 
       const src = fs.readFileSync(p, "utf8");
       const rel = path
-        .relative(apiRoot, path.dirname(p))
+        .relative(rootDir, path.dirname(p))
         .split(path.sep)
         .join("/");
       const urlPath =
         "/api" + (rel ? `/${rel}` : "").replace(/\[([^\]]+)\]/g, ":$1");
       const file = path.relative(cwd, p).split(path.sep).join("/");
+      filesFound.push(file);
+
       const methods = METHODS.filter((m) =>
         new RegExp(`export\\s+async\\s+function\\s+${m}\\b`).test(src)
       );
@@ -238,31 +280,31 @@ export function discoverApiRoutes(cwd = process.cwd()): DiscoveredRoute[] {
     }
   }
 
-  walk(apiRoot);
+  try {
+    walk(rootDir);
+  } catch (err) {
+    return {
+      apiRoot: rootDir,
+      filesFound,
+      routes: [],
+      error: err instanceof Error ? err.message : "Filesystem walk failed",
+    };
+  }
 
   const routes: DiscoveredRoute[] = [];
   for (const [urlPath, meta] of byPath) {
-    meta.methods.sort(
-      (a, b) => METHODS.indexOf(a) - METHODS.indexOf(b)
-    );
+    meta.methods.sort((a, b) => METHODS.indexOf(a) - METHODS.indexOf(b));
     const auth = inferAuth(meta.src);
-    const descriptions = meta.methods
-      .map((m) => extractJsDocDescription(meta.src, m))
-      .filter(Boolean);
-    const description =
-      descriptions[0] ||
-      extractJsDocDescription(meta.src, meta.methods[0]) ||
-      null;
-
     const bodyFields = extractBodyFields(meta.src);
-    const multipart = /formData\s*\(/.test(meta.src);
-
     routes.push({
       path: urlPath,
       methods: meta.methods,
       group: groupFor(urlPath),
       file: meta.file,
-      description,
+      description:
+        meta.methods
+          .map((m) => extractJsDocDescription(meta.src, m))
+          .find(Boolean) || null,
       authentication: auth.authentication,
       permissions: auth.permissions,
       queryParameters: extractQueryParams(meta.src),
@@ -278,22 +320,147 @@ export function discoverApiRoutes(cwd = process.cwd()): DiscoveredRoute[] {
           : meta.methods.some((m) => m === "POST" || m === "PUT" || m === "PATCH")
             ? "{\n  \n}"
             : null,
-      multipart,
+      multipart: /formData\s*\(/.test(meta.src),
       apiKeySupported: auth.apiKeySupported,
       sessionRequired: auth.sessionRequired,
     });
   }
 
   routes.sort(
-    (a, b) =>
-      a.group.localeCompare(b.group) ||
-      a.path.localeCompare(b.path)
+    (a, b) => a.group.localeCompare(b.group) || a.path.localeCompare(b.path)
   );
 
-  return routes;
+  return { apiRoot: rootDir, filesFound, routes, error: null };
 }
 
-/** Match a concrete or templated path against the catalog. */
+function loadBundledManifest(): {
+  routes: DiscoveredRoute[];
+  filesFound: string[];
+  generatedAt: string | null;
+  searchRoot: string;
+  endpointCount: number;
+  loaded: boolean;
+  error: string | null;
+} {
+  const data = API_MANIFEST as ManifestShape;
+  const routes = (Array.isArray(data.routes) ? data.routes : []) as DiscoveredRoute[];
+  if (routes.length === 0) {
+    return {
+      routes: [],
+      filesFound: data.filesFound || [],
+      generatedAt: data.generatedAt || null,
+      searchRoot: data.searchRoot || "src/app/api",
+      endpointCount: data.endpointCount || 0,
+      loaded: true,
+      error:
+        "Bundled API_MANIFEST has 0 routes. Run: npm run generate:api-manifest",
+    };
+  }
+  return {
+    routes,
+    filesFound: data.filesFound || routes.map((r) => r.file),
+    generatedAt: data.generatedAt || null,
+    searchRoot: data.searchRoot || "src/app/api",
+    endpointCount:
+      data.endpointCount ||
+      routes.reduce((n, r) => n + (r.methods?.length || 0), 0),
+    loaded: true,
+    error: null,
+  };
+}
+
+/**
+ * Resolve catalog with debug metadata.
+ * Prefer bundled manifest (always available after generate).
+ * Merge/override with filesystem scan when src/app/api is readable (local dev).
+ */
+export function discoverApiRoutesWithDebug(
+  cwd = process.cwd()
+): { routes: DiscoveredRoute[]; debug: DiscoveryDebug } {
+  const manifest = loadBundledManifest();
+  const fsScan = scanFilesystem(cwd);
+
+  console.log("[api-catalog] Search root:", fsScan.apiRoot || manifest.searchRoot);
+  console.log(
+    "[api-catalog] Found route files (fs):",
+    fsScan.filesFound.length,
+    "| (manifest):",
+    manifest.filesFound.length
+  );
+  console.log(
+    "[api-catalog] Generated routes (fs):",
+    fsScan.routes.length,
+    "| (manifest):",
+    manifest.routes.length
+  );
+
+  // Prefer whichever source has more routes; usually equal in local, manifest on Vercel
+  if (fsScan.routes.length > 0) {
+    const endpointCount = fsScan.routes.reduce(
+      (n, r) => n + r.methods.length,
+      0
+    );
+    return {
+      routes: fsScan.routes,
+      debug: {
+        searchRoot: fsScan.apiRoot || manifest.searchRoot,
+        filesFound: fsScan.filesFound,
+        routesGenerated: fsScan.routes.length,
+        endpointCount,
+        manifestLoaded: manifest.loaded,
+        manifestGeneratedAt: manifest.generatedAt,
+        source: manifest.loaded ? "manifest+filesystem" : "filesystem",
+        error: null,
+        router: "app",
+      },
+    };
+  }
+
+  if (manifest.routes.length > 0) {
+    return {
+      routes: manifest.routes,
+      debug: {
+        searchRoot: manifest.searchRoot,
+        filesFound: manifest.filesFound,
+        routesGenerated: manifest.routes.length,
+        endpointCount: manifest.endpointCount,
+        manifestLoaded: true,
+        manifestGeneratedAt: manifest.generatedAt,
+        source: "manifest",
+        error: fsScan.error,
+        router: "app",
+      },
+    };
+  }
+
+  const error =
+    manifest.error ||
+    fsScan.error ||
+    "No API routes discovered from filesystem or API_MANIFEST. Run npm run generate:api-manifest";
+
+  return {
+    routes: [],
+    debug: {
+      searchRoot: fsScan.apiRoot || manifest.searchRoot,
+      filesFound: fsScan.filesFound.length
+        ? fsScan.filesFound
+        : manifest.filesFound,
+      routesGenerated: 0,
+      endpointCount: 0,
+      manifestLoaded: manifest.loaded,
+      manifestGeneratedAt: manifest.generatedAt,
+      source: "none",
+      error,
+      router: "app",
+    },
+  };
+}
+
+/** Convenience wrapper used by execute / catalog. */
+export function discoverApiRoutes(cwd = process.cwd()): DiscoveredRoute[] {
+  return discoverApiRoutesWithDebug(cwd).routes;
+}
+
 export function findRouteInCatalog(
   routes: DiscoveredRoute[],
   requestPath: string
@@ -311,7 +478,9 @@ export function findRouteInCatalog(
         r.path
           .split("/")
           .map((seg) =>
-            seg.startsWith(":") ? "[^/]+" : seg.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+            seg.startsWith(":")
+              ? "[^/]+"
+              : seg.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
           )
           .join("/") +
         "$"
