@@ -54,9 +54,10 @@ export function buildLlmContext(input: {
       ...(r.error ? { error: r.error } : {}),
     })),
     rules: [
-      "Answer like a capable ChatGPT-style assistant specialized in Helia Suite.",
-      "Use ONLY facts present in tools[].data for live metrics and inventory.",
-      "Never invent platform numbers, names, or statuses.",
+      "Answer ONLY the user's question — do not append unrelated key/usage/health stats.",
+      "ACCURACY: Use ONLY numbers present in tools[].data / ALLOWED_NUMBERS.",
+      "If totalKeys is 0, say there are zero keys — never invent example keys.",
+      "Never invent platform metrics, names, or ids.",
       "Empty collections mean zero live records — say so clearly.",
       "Use conversation history for pronouns and follow-ups (e.g. 'the newest one' / 'yenisini').",
       "Prefer natural ChatGPT-style prose; bullets only when helpful.",

@@ -1,6 +1,6 @@
 /**
  * Tool Router — maps intents → service tools (supports multi-tool calls).
- * GENERAL questions also pull a live platform snapshot so the LLM can reason.
+ * Only runs tools for the detected intents — no ambient platform dump.
  */
 
 import type {
@@ -28,19 +28,9 @@ const INTENT_TO_TOOL: Record<HeliaIntent, ToolCall["tool"]> = {
 };
 
 export function planToolCalls(intents: HeliaIntent[]): ToolCall[] {
-  const expanded = [...intents];
-
-  // Give conversational GENERAL answers ambient live context
-  if (
-    expanded.length === 1 &&
-    (expanded[0] === "GENERAL" || expanded[0] === "UNKNOWN")
-  ) {
-    expanded.push("HEALTH", "ANALYTICS", "API_KEYS");
-  }
-
   const seen = new Set<string>();
   const calls: ToolCall[] = [];
-  for (const intent of expanded) {
+  for (const intent of intents) {
     const tool = INTENT_TO_TOOL[intent];
     const key = `${tool}:${intent}`;
     if (seen.has(key)) continue;

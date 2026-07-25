@@ -82,16 +82,12 @@ const INTENT_FEATURES: Record<HeliaIntent, string[]> = {
   HEALTH: [
     "health",
     "healthy",
-    "status",
     "uptime",
     "degraded",
     "alive",
     "heartbeat",
-    "platform",
-    "system",
     "sağlık",
     "sağlıklı",
-    "durum",
     "çalışıyor",
   ],
   LOGS: [

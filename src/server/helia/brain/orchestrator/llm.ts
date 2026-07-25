@@ -7,6 +7,11 @@
 import { HELIA_ADMINISTRATOR_SYSTEM_PROMPT } from "../system-prompt";
 import type { LlmContextPacket } from "./context-builder";
 import {
+  buildGroundTruth,
+  findGroundingViolation,
+  isStrictFactualQuery,
+} from "./grounding";
+import {
   detectReplyLanguage,
   securityBlockedMessage,
   type ReplyLanguage,
@@ -36,13 +41,13 @@ function buildChatMessages(packet: LlmContextPacket): ChatMessage[] {
           "Kullanıcıya tamamen Türkçe cevap ver.",
           "ASLA şu etiketleri kullanma (markdown dahil): Durum, Özet, Öneri, Sonraki adım, **Durum:**, **Özet:**.",
           "Kötü örnek: **Durum:** Genel / **Özet:** Merhaba...",
-          "İyi örnek: Merhaba — ben Helia Suite AI. Şu an platformda X anahtar görüyorum...",
+          "İyi örnek: Merhaba — ben Helia Suite AI. API anahtarları, kullanım, sağlık ve entegrasyon kodunda yardımcı olurum. Ne sormak istersin?",
         ].join(" ")
       : [
           "Reply entirely in English.",
           "NEVER use labels (including markdown): Status, Summary, Recommendation, Next Step, **Status:**, **Summary:**.",
           "Bad: **Status:** General / **Summary:** Hello...",
-          "Good: Hi — I'm Helia Suite AI. I currently see X keys on the platform...",
+          "Good: Hi — I'm Helia Suite AI. I can help with API keys, usage, health, and integration code. What do you need?",
         ].join(" ");
 
   const messages: ChatMessage[] = [
@@ -73,6 +78,11 @@ function buildChatMessages(packet: LlmContextPacket): ChatMessage[] {
     tools: packet.tools,
   };
 
+  const truth = buildGroundTruth(packet);
+  const allowedNumbers = [...truth.numbers].sort((a, b) =>
+    a.localeCompare(b, undefined, { numeric: true })
+  );
+
   messages.push({
     role: "user",
     content: [
@@ -83,9 +93,12 @@ function buildChatMessages(packet: LlmContextPacket): ChatMessage[] {
       JSON.stringify(liveContext, null, 2),
       "```",
       "",
+      "ALLOWED_NUMBERS (you may ONLY use these numeric values for platform facts):",
+      allowedNumbers.join(", ") || "(none)",
+      "",
       lang === "tr"
-        ? "ChatGPT gibi doğal bir paragraf yaz. Bölüm başlığı / Durum-Özet şablonu YASAK. Canlı context’teki sayıları kullan."
-        : "Write a natural ChatGPT-style paragraph. Section headers / Status-Summary templates are FORBIDDEN. Use numbers from live context.",
+        ? "Sadece kullanıcının sorduğu konuyu cevapla. İstenmedikçe API anahtarı / kullanım / sağlık özeti EKLEME. Doğal paragraf; Durum/Özet YASAK. Sayı uydurma."
+        : "Answer ONLY what the user asked. Do NOT append API key / usage / health stats unless requested. Natural prose; no Status/Summary. Do not invent numbers.",
     ].join("\n"),
   });
 
@@ -119,7 +132,8 @@ async function reasonWithOpenAi(
       signal: controller.signal,
       body: JSON.stringify({
         model,
-        temperature: 0.65,
+        // Factual inventory/metrics: low temperature. Docs/code: slightly higher.
+        temperature: isStrictFactualQuery(packet) ? 0.1 : 0.45,
         max_tokens: 1800,
         messages: buildChatMessages(packet),
       }),
@@ -210,6 +224,43 @@ function normalizeAssistantProse(text: string): string | null {
   return out;
 }
 
+/**
+ * Drop trailing “platform snapshot” paragraphs the model often appends
+ * even when the user didn’t ask about keys/usage/health.
+ */
+function stripUnsolicitedPlatformDump(
+  text: string,
+  packet: LlmContextPacket
+): string {
+  const intents = new Set(packet.intents);
+  const askedLive =
+    intents.has("API_KEYS") ||
+    intents.has("USAGE") ||
+    intents.has("HEALTH") ||
+    intents.has("ANALYTICS") ||
+    intents.has("LOGS") ||
+    intents.has("PROJECTS") ||
+    intents.has("ORGANIZATIONS");
+
+  if (askedLive) return text;
+
+  const dumpCue =
+    /(şu anda platformda|canlı tarafta|platform sağlıklı|bugün hiç istek|geçen ay ise|api anahtarı bulunmuyor|live snapshot|platform is healthy|requests today|no api keys)/i;
+
+  const paragraphs = text.split(/\n{2,}/);
+  if (paragraphs.length < 2) {
+    // Single blob: if it's mostly a dump and question wasn't live-data, keep first sentence only when dumpCue matches whole thing after answer
+    return text;
+  }
+
+  const kept = paragraphs.filter((p, idx) => {
+    if (idx === 0) return true;
+    return !dumpCue.test(p);
+  });
+
+  return kept.join("\n\n").trim();
+}
+
 /** Single cohesive GPT-style answer from tool results (no Durum/Özet). */
 function composeNaturalAnswer(packet: LlmContextPacket): string {
   const lang = langOf(packet);
@@ -249,37 +300,27 @@ function composeNaturalAnswer(packet: LlmContextPacket): string {
     packet.intents.length > 0 &&
     packet.intents.every((i) => i === "GENERAL" || i === "UNKNOWN");
 
-  // —— Greeting / general: one warm GPT-style intro with live snapshot ——
+  // —— Greeting / general: short intro — NO automatic platform stats dump ——
   if (onlyGeneral && !docs && !code) {
-    const keyCount = Number(keys?.data.totalKeys ?? 0);
-    const active = Number(keys?.data.active ?? 0);
-    const status = String(health?.data.status ?? (tr ? "bilinmiyor" : "unknown"));
-    const today = Number(
-      analytics?.data.requestsToday ?? usage?.data.requestsToday ?? 0
-    );
-
     if (tr) {
       return [
-        `Merhaba — ben **Helia Suite AI**. Platformunu seninle birlikte yöneten asistanınım; API anahtarları, kullanım, sağlık, loglar, dokümantasyon ve entegrasyon kodunda yardımcı olurum.`,
+        `Merhaba — ben **Helia Suite AI**. API anahtarları, kullanım, sağlık, loglar, dokümantasyon ve entegrasyon kodunda yardımcı olurum.`,
         ``,
-        `Şu an canlı tarafta gördüğüm özet: platform **${status}**, **${keyCount}** API anahtarı (**${active}** aktif), bugün yaklaşık **${today}** istek.`,
-        ``,
-        `İstersen doğrudan sor: “Kaç API anahtarım var?”, “401 INVALID_API_KEY neden olur?”, “whoami için Node örneği yaz” veya “Son hataları göster”.`,
+        `Ne sormak istersin? Örneğin: “Kaç API anahtarım var?”, “401 INVALID_API_KEY neden olur?”, “whoami için Node örneği yaz”.`,
       ].join("\n");
     }
 
     return [
-      `Hi — I’m **Helia Suite AI**, your platform operator assistant. I help with API keys, usage, health, logs, docs, and integration code.`,
+      `Hi — I’m **Helia Suite AI**. I help with API keys, usage, health, logs, docs, and integration code.`,
       ``,
-      `Live snapshot: platform is **${status}**, **${keyCount}** API key(s) (**${active}** active), about **${today}** requests today.`,
-      ``,
-      `Ask me anything like: “How many API keys do I have?”, “Why am I getting 401 INVALID_API_KEY?”, “Write a Node whoami example”, or “Show recent errors”.`,
+      `What do you need? For example: “How many API keys do I have?”, “Why 401 INVALID_API_KEY?”, or “Write a Node whoami example”.`,
     ].join("\n");
   }
 
+  const wants = (intent: string) => intents.has(intent);
   const parts: string[] = [];
 
-  if (keys) {
+  if (keys && wants("API_KEYS")) {
     const list = Array.isArray(keys.data.keys) ? keys.data.keys : [];
     const lines = list
       .slice(0, 10)
@@ -312,7 +353,7 @@ function composeNaturalAnswer(packet: LlmContextPacket): string {
     }
   }
 
-  if (projects) {
+  if (projects && wants("PROJECTS")) {
     const list = Array.isArray(projects.data.projects)
       ? projects.data.projects
       : [];
@@ -332,7 +373,7 @@ function composeNaturalAnswer(packet: LlmContextPacket): string {
     );
   }
 
-  if (orgs) {
+  if (orgs && wants("ORGANIZATIONS")) {
     const list = Array.isArray(orgs.data.organizations)
       ? orgs.data.organizations
       : [];
@@ -352,7 +393,7 @@ function composeNaturalAnswer(packet: LlmContextPacket): string {
     );
   }
 
-  if (usage) {
+  if (usage && wants("USAGE")) {
     const totals = (usage.data.totals || {}) as Record<string, number>;
     parts.push(
       tr
@@ -369,7 +410,7 @@ function composeNaturalAnswer(packet: LlmContextPacket): string {
     );
   }
 
-  if (analytics && !usage) {
+  if (analytics && wants("ANALYTICS") && !wants("USAGE")) {
     parts.push(
       tr
         ? `Analitik: bugün **${analytics.data.requestsToday ?? 0}** istek, ay **${analytics.data.monthRequests ?? 0}** / **${analytics.data.monthErrors ?? 0}** hata (%${analytics.data.errorRate ?? 0}), **${analytics.data.activeApiKeys ?? 0}** aktif anahtar.`
@@ -377,7 +418,7 @@ function composeNaturalAnswer(packet: LlmContextPacket): string {
     );
   }
 
-  if (health) {
+  if (health && wants("HEALTH")) {
     parts.push(
       tr
         ? `Platform durumu **${health.data.status}** (uptime ${health.data.uptimeSeconds}s, sürüm ${health.data.platformVersion}).`
@@ -385,7 +426,7 @@ function composeNaturalAnswer(packet: LlmContextPacket): string {
     );
   }
 
-  if (logs) {
+  if (logs && wants("LOGS")) {
     const recent = Array.isArray(logs.data.recent) ? logs.data.recent : [];
     parts.push(
       tr
@@ -410,7 +451,7 @@ function composeNaturalAnswer(packet: LlmContextPacket): string {
     }
   }
 
-  if (docs) {
+  if (docs && wants("DOCUMENTATION")) {
     const articles = Array.isArray(docs.data.articles) ? docs.data.articles : [];
     if (!articles.length) {
       parts.push(
@@ -433,7 +474,10 @@ function composeNaturalAnswer(packet: LlmContextPacket): string {
     }
   }
 
-  if (code) {
+  if (
+    code &&
+    (wants("CODE_GENERATION") || wants("INTEGRATIONS"))
+  ) {
     parts.push(
       tr
         ? `İşte **${code.data.language || "entegrasyon"}** örneği (${code.data.endpoint || "Helia REST"}):`
@@ -463,18 +507,47 @@ export async function formatWithLlm(
   const fallback = () =>
     sanitizeAssistantOutput(composeNaturalAnswer(packet));
 
+  // Pure live-data questions → tool-composed answer is the source of truth.
+  // LLM may polish only if it stays grounded; otherwise we keep deterministic.
+  const strict = isStrictFactualQuery(packet);
+
   try {
     const ai = await reasonWithOpenAi(packet);
     if (ai) {
       const normalized = normalizeAssistantProse(ai);
-      if (normalized) {
-        return {
-          text: sanitizeAssistantOutput(normalized),
-          mode: "openai",
-        };
+      if (!normalized) {
+        return { text: fallback(), mode: "deterministic" };
       }
-      // Model slipped into Durum/Özet fluff — use our GPT-style composer instead
-      return { text: fallback(), mode: "deterministic" };
+      const focused = stripUnsolicitedPlatformDump(normalized, packet);
+      const violation = findGroundingViolation(focused, packet);
+      if (violation) {
+        console.warn("[helia-brain] grounding reject:", violation);
+        return { text: fallback(), mode: "deterministic" };
+      }
+      // For strict factual queries, prefer deterministic if LLM omitted required counts
+      // but still accept grounded LLM prose (style + accuracy).
+      if (strict) {
+        const keyTool = packet.tools.find(
+          (t) => t.intent === "API_KEYS" && t.ok
+        );
+        const asksCount =
+          /kaç|how many|count|total|adet|number of/i.test(packet.userMessage);
+        if (
+          asksCount &&
+          keyTool &&
+          packet.intents.includes("API_KEYS") &&
+          typeof keyTool.data.totalKeys === "number"
+        ) {
+          const total = String(keyTool.data.totalKeys);
+          if (!focused.includes(total)) {
+            return { text: fallback(), mode: "deterministic" };
+          }
+        }
+      }
+      return {
+        text: sanitizeAssistantOutput(focused),
+        mode: "openai",
+      };
     }
   } catch (error) {
     console.error("[helia-brain] conversational LLM failed", error);
