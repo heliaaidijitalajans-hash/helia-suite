@@ -9,10 +9,14 @@ export const runtime = "nodejs";
 export async function POST(request: Request) {
   try {
     const container = await getCloudContainer();
+
+    // Re-sync env admin on every login (Vercel cold start /tmp wipe).
+    await container.admin.ensureAdminCredentialsAccount();
+
     const body = await readJsonBody<{ email?: string; password?: string }>(
       request
     );
-    const email = typeof body.email === "string" ? body.email : "";
+    const email = typeof body.email === "string" ? body.email.trim() : "";
     const password = typeof body.password === "string" ? body.password : "";
     if (!email || !password) {
       throw new ValidationError("email and password are required");

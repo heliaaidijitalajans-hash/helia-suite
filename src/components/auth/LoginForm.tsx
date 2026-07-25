@@ -27,9 +27,15 @@ export function LoginForm() {
     setBusy(true);
     setError(null);
     try {
-      await loginWithHeliaCloud({ email, password });
+      const user = await loginWithHeliaCloud({ email, password });
       window.dispatchEvent(new Event("helia-auth-changed"));
-      router.replace(nextPath);
+      const target =
+        user.role === "admin"
+          ? nextPath.startsWith("/admin")
+            ? nextPath
+            : "/admin"
+          : nextPath;
+      router.replace(target);
       router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Login failed");

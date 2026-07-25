@@ -21,6 +21,7 @@ export type HeliaAuthUser = {
   email: string;
   displayName: string;
   emailVerified: boolean;
+  role?: "user" | "admin";
   createdAt: string;
 };
 
@@ -72,7 +73,7 @@ export async function loginWithHeliaCloud(input: {
 }): Promise<HeliaAuthUser> {
   const data = await authRequest("/api/auth/login", {
     email: input.email.trim(),
-    password: input.password,
+    password: input.password.trim(),
   });
   if (!data.tokens?.accessToken) {
     throw new Error("Login succeeded but no access token was returned.");

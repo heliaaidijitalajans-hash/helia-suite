@@ -78,6 +78,7 @@ export class AdminService {
   ) {}
 
   async bootstrapAdmins(): Promise<void> {
+    await this.ensureAdminCredentialsAccount();
     await this.promoteListedAdminEmails();
 
     // Normalize legacy users missing role
@@ -106,6 +107,67 @@ export class AdminService {
     if (!existing) {
       await this.db.settings.upsert(defaultSettings());
     }
+  }
+
+  /**
+   * Create/update the platform admin from HELIA_ADMIN_EMAIL + HELIA_ADMIN_PASSWORD.
+   * Falls back to first HELIA_ADMIN_EMAILS entry + HELIA_ADMIN_PASSWORD.
+   * Called on boot and before every login so Vercel cold starts still accept admin login.
+   */
+  async ensureAdminCredentialsAccount(): Promise<CloudUser | null> {
+    const emailFromEnv = (
+      process.env.HELIA_ADMIN_EMAIL ??
+      this.config.adminEmail ??
+      ""
+    )
+      .trim()
+      .toLowerCase();
+    const password = (
+      process.env.HELIA_ADMIN_PASSWORD ??
+      this.config.adminPassword ??
+      ""
+    ).trim();
+    const email = emailFromEnv || this.listedAdminEmails()[0] || "";
+
+    if (!email || password.length < 8) {
+      return null;
+    }
+
+    const passwordHash = await hashPassword(password);
+    const now = new Date().toISOString();
+    const found = await this.db.users.query((u) => u.email === email);
+    const current = found[0];
+
+    if (!current) {
+      const user: CloudUser = {
+        id: createId("usr"),
+        email,
+        passwordHash,
+        displayName: "Helia Admin",
+        emailVerified: true,
+        role: "admin",
+        createdAt: now,
+        updatedAt: now,
+      };
+      await this.db.users.upsert(user);
+      await this.audit.write({
+        category: "admin",
+        message: `Created platform admin account ${email}`,
+        actorUserId: user.id,
+      });
+      return user;
+    }
+
+    const next: CloudUser = {
+      ...current,
+      passwordHash,
+      role: "admin",
+      emailVerified: true,
+      updatedAt: now,
+    };
+    delete next.disabledAt;
+    await this.db.users.upsert(next);
+    return next;
   }
 
   /** Always read live env so `.env.local` / Vercel updates apply without stale cache gaps. */

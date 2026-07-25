@@ -34,8 +34,9 @@ export class AuthService {
     displayName: string;
   }): Promise<{ user: PublicUser; verificationToken?: string; tokens?: AuthTokens }> {
     const email = normalizeEmail(input.email);
+    const password = input.password.trim();
     if (!email.includes('@')) throw new ValidationError('Invalid email');
-    if (input.password.length < 8) {
+    if (password.length < 8) {
       throw new ValidationError('Password must be at least 8 characters');
     }
     const existing = await this.db.users.query((u) => u.email === email);
@@ -46,7 +47,7 @@ export class AuthService {
     const user: CloudUser = {
       id: createId('usr'),
       email,
-      passwordHash: await hashPassword(input.password),
+      passwordHash: await hashPassword(password),
       displayName: input.displayName.trim() || email.split('@')[0]!,
       emailVerified: !this.config.requireEmailVerification,
       role: 'user',
@@ -73,9 +74,10 @@ export class AuthService {
     ip?: string;
   }): Promise<{ user: PublicUser; tokens: AuthTokens }> {
     const email = normalizeEmail(input.email);
+    const password = input.password.trim();
     const users = await this.db.users.query((u) => u.email === email);
     const user = users[0];
-    if (!user || !(await verifyPassword(input.password, user.passwordHash))) {
+    if (!user || !(await verifyPassword(password, user.passwordHash))) {
       throw new UnauthorizedError('Invalid email or password');
     }
     if (user.disabledAt) {
