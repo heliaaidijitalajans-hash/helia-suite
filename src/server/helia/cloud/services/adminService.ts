@@ -18,6 +18,7 @@ import { getPlan } from "../plans/catalog";
 import type { CloudDatabase } from "../persistence/cloudDatabase";
 import type {
   AdminSettingsRecord,
+  ApiKeyEnvironment,
   ApiKeyRecord,
   CloudUser,
   Organization,
@@ -787,6 +788,80 @@ export class AdminService {
       actorUserId: actorId,
       organizationId: key.organizationId,
     });
+  }
+
+  /**
+   * Platform-admin create: persist a hashed API key into the runtime store
+   * (data/cloud/api-keys.json). Plaintext secret is returned once only.
+   */
+  async createApiKey(
+    actorId: string,
+    input: {
+      organizationId: string;
+      projectId: string;
+      name: string;
+      keyEnvironment?: ApiKeyEnvironment;
+      applicationType?: string;
+      capabilities?: string[];
+      permissions?: string[];
+    }
+  ): Promise<{ record: Omit<ApiKeyRecord, "secretHash">; secret: string }> {
+    const name = input.name.trim();
+    if (!name) throw new ValidationError("API key name is required");
+
+    const organization = await this.db.organizations.findById(
+      input.organizationId
+    );
+    if (!organization) {
+      throw new NotFoundError("Organization", input.organizationId);
+    }
+    const project = await this.db.projects.findById(input.projectId);
+    if (!project) throw new NotFoundError("Project", input.projectId);
+    if (project.organizationId !== organization.id) {
+      throw new ValidationError("Project does not belong to organization");
+    }
+
+    const env: ApiKeyEnvironment =
+      input.keyEnvironment ??
+      (project.environment === "production" ? "live" : "test");
+    const access = buildAccessPolicy({
+      applicationType: input.applicationType,
+      capabilities: input.capabilities,
+      permissions: input.permissions,
+    });
+    const material = generateApiKeyMaterial(env);
+    const now = new Date().toISOString();
+    const record: ApiKeyRecord = {
+      id: createId("key"),
+      organizationId: organization.id,
+      projectId: project.id,
+      name,
+      prefix: material.prefix,
+      keyEnvironment: env,
+      secretHash: hashApiKey(material.fullKey, this.config.apiKeyPepper),
+      lastFour: material.lastFour,
+      enabled: true,
+      createdAt: now,
+      createdByUserId: actorId,
+      usageCount: 0,
+      permissions: access.permissions,
+      applicationType: access.applicationType,
+      capabilities: access.capabilities,
+    };
+    await this.db.apiKeys.upsert(record);
+    await this.audit.write({
+      category: "application",
+      message: `Created API key ${name} (${env})`,
+      actorUserId: actorId,
+      apiKeyId: record.id,
+      organizationId: organization.id,
+      meta: {
+        projectId: project.id,
+        keyEnvironment: env,
+        prefix: material.prefix,
+      },
+    });
+    return { record: sanitizeKey(record), secret: material.fullKey };
   }
 
   async listApiKeys(input?: { q?: string; status?: string }) {

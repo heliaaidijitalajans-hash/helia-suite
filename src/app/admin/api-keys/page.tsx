@@ -5,6 +5,7 @@ import {
   AdminEmpty,
   AdminPanel,
   adminBtnDanger,
+  adminBtnPrimary,
   adminBtnSecondary,
   adminInputClass,
 } from "@/components/admin/ui";
@@ -34,6 +35,11 @@ export default function AdminApiKeysPage() {
   const [info, setInfo] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [creating, setCreating] = useState(false);
+  const [name, setName] = useState("Admin Test Key");
+  const [keyEnvironment, setKeyEnvironment] = useState<"test" | "live">(
+    "test"
+  );
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -57,6 +63,33 @@ export default function AdminApiKeysPage() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  async function createKey() {
+    setCreating(true);
+    setError(null);
+    setInfo(null);
+    try {
+      const res = await adminFetch<{
+        secret: string;
+        apiKey: { id: string; prefix: string; keyEnvironment?: string };
+      }>("/api/admin/apikeys", {
+        method: "POST",
+        body: JSON.stringify({
+          name: name.trim() || "Admin Test Key",
+          keyEnvironment,
+          applicationType: "backend",
+        }),
+      });
+      setInfo(
+        `Created ${res.apiKey.prefix}… — copy secret now: ${res.secret}`
+      );
+      await load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Create failed");
+    } finally {
+      setCreating(false);
+    }
+  }
 
   async function setEnabled(id: string, enabled: boolean) {
     setBusyId(id);
@@ -107,6 +140,48 @@ export default function AdminApiKeysPage() {
   return (
     <div className="space-y-6">
       <AdminPanel
+        title="Create API key"
+        description="Persists a hashed key into the runtime store (data/cloud/api-keys.json). Copy the secret once — it is never stored in plaintext."
+      >
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+          <label className="block min-w-0 flex-1 space-y-1.5">
+            <span className="text-xs font-medium uppercase tracking-[0.12em] text-white/40">
+              Name
+            </span>
+            <input
+              className={adminInputClass}
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="e.g. Admin Test Key"
+            />
+          </label>
+          <label className="block space-y-1.5 sm:w-40">
+            <span className="text-xs font-medium uppercase tracking-[0.12em] text-white/40">
+              Environment
+            </span>
+            <select
+              className={adminInputClass}
+              value={keyEnvironment}
+              onChange={(e) =>
+                setKeyEnvironment(e.target.value as "test" | "live")
+              }
+            >
+              <option value="test">hl_test_</option>
+              <option value="live">hl_live_</option>
+            </select>
+          </label>
+          <button
+            type="button"
+            className={adminBtnPrimary}
+            disabled={creating || !name.trim()}
+            onClick={() => void createKey()}
+          >
+            {creating ? "Creating…" : "Create key"}
+          </button>
+        </div>
+      </AdminPanel>
+
+      <AdminPanel
         title="API Keys"
         description="Global key management — usage, capabilities, owners, and applications."
         actions={
@@ -140,7 +215,7 @@ export default function AdminApiKeysPage() {
         ) : rows.length === 0 ? (
           <AdminEmpty
             title="No API keys"
-            description="Keys issued in the customer API Platform appear here."
+            description="Create a key above — it is written into the runtime API key store immediately."
           />
         ) : (
           <div className="overflow-x-auto">
@@ -158,7 +233,10 @@ export default function AdminApiKeysPage() {
               </thead>
               <tbody>
                 {rows.map((k) => (
-                  <tr key={k.id} className="border-b border-white/[0.04] align-top">
+                  <tr
+                    key={k.id}
+                    className="border-b border-white/[0.04] align-top"
+                  >
                     <td className="py-3 pr-4">
                       <p className="font-medium text-white">{k.name}</p>
                       <p className="font-mono text-xs text-white/45">
