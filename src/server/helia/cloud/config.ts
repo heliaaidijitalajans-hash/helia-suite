@@ -6,6 +6,7 @@
 import { z } from "zod";
 import path from "node:path";
 import os from "node:os";
+import { cleanEnvValue } from "@/server/helia/env";
 
 const booleanFromEnv = z
   .union([z.boolean(), z.string()])
@@ -79,10 +80,12 @@ export function loadCloudConfig(): CloudConfig {
     rateLimitMax: process.env.CLOUD_RATE_LIMIT_MAX ?? 300,
     requireEmailVerification:
       process.env.CLOUD_REQUIRE_EMAIL_VERIFICATION ?? false,
-    adminEmails: process.env.HELIA_ADMIN_EMAILS ?? "",
-    adminEmail: process.env.HELIA_ADMIN_EMAIL ?? "",
-    adminPassword: process.env.HELIA_ADMIN_PASSWORD ?? "",
-    adminBootstrapSecret: process.env.HELIA_ADMIN_BOOTSTRAP_SECRET ?? "",
+    adminEmails: cleanEnvValue(process.env.HELIA_ADMIN_EMAILS),
+    adminEmail: cleanEnvValue(process.env.HELIA_ADMIN_EMAIL),
+    adminPassword: cleanEnvValue(process.env.HELIA_ADMIN_PASSWORD),
+    adminBootstrapSecret: cleanEnvValue(
+      process.env.HELIA_ADMIN_BOOTSTRAP_SECRET
+    ),
     version: process.env.CLOUD_VERSION ?? "1.0.0",
   });
 

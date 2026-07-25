@@ -2,7 +2,7 @@
 
 import { FormEvent, useMemo, useState } from "react";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 import {
   loginWithHeliaCloud,
@@ -10,7 +10,6 @@ import {
 } from "@/services/cloud/auth";
 
 export function LoginForm() {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const nextPath = useMemo(
     () => safeAuthNextPath(searchParams.get("next")),
@@ -35,8 +34,9 @@ export function LoginForm() {
             ? nextPath
             : "/admin"
           : nextPath;
-      router.replace(target);
-      router.refresh();
+      // Full navigation so the HttpOnly session cookie is sent to /admin RSC.
+      // Soft router.replace can race and bounce back to /login.
+      window.location.assign(target);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Login failed");
     } finally {

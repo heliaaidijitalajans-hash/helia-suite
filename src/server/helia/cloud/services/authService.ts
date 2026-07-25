@@ -21,6 +21,7 @@ import type {
   PublicUser,
 } from '../types';
 import { addDaysIso, hashToken, randomToken, toPublicUser } from '../utils';
+import { cleanEnvValue } from '@/server/helia/env';
 
 export class AuthService {
   constructor(
@@ -92,18 +93,36 @@ export class AuthService {
     if (!ok) {
       throw new UnauthorizedError('Invalid email or password');
     }
+    return this.completeLogin(user, input.userAgent, input.ip);
+  }
+
+  /**
+   * Issue a session for an already-authenticated CloudUser
+   * (e.g. admin env credential match — skip password hash).
+   */
+  async loginAsUser(
+    user: CloudUser,
+    opts?: { userAgent?: string; ip?: string },
+  ): Promise<{ user: PublicUser; tokens: AuthTokens }> {
+    return this.completeLogin(user, opts?.userAgent, opts?.ip);
+  }
+
+  private async completeLogin(
+    user: CloudUser,
+    userAgent?: string,
+    ip?: string,
+  ): Promise<{ user: PublicUser; tokens: AuthTokens }> {
     if (user.disabledAt) {
       throw new AppError('Account disabled', { statusCode: 403, code: 'ACCOUNT_DISABLED' });
     }
     if (this.config.requireEmailVerification && !user.emailVerified) {
       throw new AppError('Email not verified', { statusCode: 403, code: 'EMAIL_UNVERIFIED' });
     }
-    const tokens = await this.issueSession(user, input.userAgent, input.ip);
+    const tokens = await this.issueSession(user, userAgent, ip);
     await this.db.users.patch(user.id, {
       lastLoginAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     });
-    // Return fresh public user (includes role)
     const fresh = (await this.db.users.findById(user.id)) ?? user;
     return { user: toPublicUser(fresh), tokens };
   }
@@ -199,17 +218,113 @@ export class AuthService {
       throw new UnauthorizedError('Invalid access token');
     }
     if (payload.typ !== 'access') throw new UnauthorizedError('Invalid access token type');
-    const session = await this.db.sessions.findById(payload.sid);
-    if (!session || session.revokedAt || session.expiresAt < new Date().toISOString()) {
+
+    // Re-read disk — Vercel /tmp is per-instance; memory can be empty after cold start.
+    await this.db.users.reload();
+    await this.db.sessions.reload();
+
+    let session = await this.db.sessions.findById(payload.sid);
+    if (session?.revokedAt) {
       throw new UnauthorizedError('Session expired');
     }
-    const user = await this.db.users.findById(payload.sub);
+    // Access JWT is source of truth for TTL; recreate wiped/expired session rows.
+    if (session && session.expiresAt < new Date().toISOString()) {
+      session = undefined;
+    }
+
+    let user =
+      (session ? await this.db.users.findById(session.userId) : null) ??
+      (await this.db.users.findById(payload.sub));
+
+    if (!user && typeof payload.email === 'string' && payload.email) {
+      const email = normalizeEmail(payload.email);
+      const found = await this.db.users.query((u) => u.email === email);
+      user = found[0] ?? null;
+    }
+
+    // Serverless recovery: JWT still valid but /tmp user+session wiped.
+    if (!user) {
+      user = await this.rehydrateUserFromAccessPayload(payload);
+    }
     if (!user) throw new UnauthorizedError('User not found');
     if (user.disabledAt) {
       throw new AppError('Account disabled', { statusCode: 403, code: 'ACCOUNT_DISABLED' });
     }
+
+    if (!session) {
+      session = await this.rehydrateSessionFromAccessPayload(payload, user);
+    }
+
     await this.db.sessions.patch(session.id, { lastUsedAt: new Date().toISOString() });
     return { user, session };
+  }
+
+  private listedAdminEmails(): string[] {
+    const primary = cleanEnvValue(this.config.adminEmail).toLowerCase();
+    const listed = cleanEnvValue(this.config.adminEmails)
+      .split(',')
+      .map((e) => cleanEnvValue(e).toLowerCase())
+      .filter(Boolean);
+    return [...new Set([primary, ...listed].filter(Boolean))];
+  }
+
+  private isAdminAccessPayload(payload: JwtAccessPayload): boolean {
+    if (payload.role === 'admin') return true;
+    const email =
+      typeof payload.email === 'string' ? normalizeEmail(payload.email) : '';
+    return Boolean(email && this.listedAdminEmails().includes(email));
+  }
+
+  /**
+   * Recreate the admin (or listed) user with the JWT `sub` so the access
+   * token keeps working after ephemeral storage wipe.
+   */
+  private async rehydrateUserFromAccessPayload(
+    payload: JwtAccessPayload,
+  ): Promise<CloudUser | null> {
+    if (!this.isAdminAccessPayload(payload)) return null;
+    const email =
+      typeof payload.email === 'string' ? normalizeEmail(payload.email) : '';
+    if (!email || !payload.sub) return null;
+
+    const password = cleanEnvValue(
+      this.config.adminPassword || this.config.adminBootstrapSecret || '',
+    );
+    const passwordHash = await hashPassword(
+      password.length >= 8 ? password : randomToken(24),
+    );
+    const now = new Date().toISOString();
+    const user: CloudUser = {
+      id: payload.sub,
+      email,
+      passwordHash,
+      displayName: 'Helia Admin',
+      emailVerified: true,
+      role: 'admin',
+      createdAt: now,
+      updatedAt: now,
+    };
+    await this.db.users.upsert(user);
+    return user;
+  }
+
+  private async rehydrateSessionFromAccessPayload(
+    payload: JwtAccessPayload,
+    user: CloudUser,
+  ): Promise<CloudSession> {
+    const now = new Date().toISOString();
+    const session: CloudSession = {
+      id: payload.sid || createId('sess'),
+      userId: user.id,
+      refreshTokenHash: hashToken(randomToken(48)),
+      createdAt: now,
+      expiresAt: new Date(
+        Date.now() + this.config.jwtRefreshTtlSeconds * 1000,
+      ).toISOString(),
+      lastUsedAt: now,
+    };
+    await this.db.sessions.upsert(session);
+    return session;
   }
 
   async getUser(userId: string): Promise<PublicUser> {

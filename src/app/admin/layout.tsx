@@ -30,6 +30,10 @@ async function assertAdmin() {
 
   try {
     const container = await getCloudContainer();
+    // Keep admin account present on this instance before JWT/session checks
+    // (Vercel /tmp is empty on cold starts / other regions).
+    await container.admin.ensureAdminCredentialsAccount();
+
     const { user } = await container.auth.authenticateAccessToken(token);
 
     // Re-apply HELIA_ADMIN_EMAILS on every gate (fixes "registered after boot").

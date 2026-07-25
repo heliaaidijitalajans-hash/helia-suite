@@ -23,20 +23,35 @@ export async function POST(request: Request) {
     // Always (re)create admin from env before attempting login.
     await container.admin.ensureAdminCredentialsAccount();
 
-    try {
-      return await finishLogin(container, email, password, request, ua);
-    } catch (firstError) {
-      // Admin env credentials: force-sync account and retry once.
-      if (container.admin.matchesAdminEnvCredentials(email, password)) {
-        await container.admin.ensureAdminCredentialsAccount();
-        try {
-          return await finishLogin(container, email, password, request, ua);
-        } catch {
-          throw firstError;
-        }
+    // Admin env match → skip DB password hash (avoids quote/hash drift).
+    if (container.admin.matchesAdminEnvCredentials(email, password)) {
+      const admin = await container.admin.ensureAdminCredentialsAccount();
+      if (!admin) {
+        throw new AppError(
+          "Admin credentials are set but account could not be created",
+          { statusCode: 500, code: "ADMIN_ENSURE_FAILED" }
+        );
       }
-      throw firstError;
+      const result = await container.auth.loginAsUser(admin, {
+        ...(ua ? { userAgent: ua } : {}),
+      });
+      if (!result.tokens?.accessToken) {
+        throw new AppError("Login succeeded but no access token was issued", {
+          statusCode: 500,
+          code: "LOGIN_TOKEN_MISSING",
+        });
+      }
+      return jsonOkWithAccessCookie(
+        {
+          user: toPublicUser(admin),
+          tokens: result.tokens,
+        },
+        result.tokens.accessToken,
+        { request }
+      );
     }
+
+    return await finishLogin(container, email, password, request, ua);
   } catch (error) {
     return jsonError(error);
   }
