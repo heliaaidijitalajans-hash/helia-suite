@@ -13,6 +13,7 @@ import {
 import { KpiCard } from "@/components/dashboard/KpiCard";
 import { AdminEmpty, AdminPanel } from "@/components/admin/ui";
 import { adminFetch } from "@/services/admin/http";
+import { usePlatformLocale } from "@/components/platform/PlatformLocaleProvider";
 
 type Overview = {
   totals: {
@@ -42,6 +43,7 @@ function formatUptime(seconds: number): string {
 }
 
 export default function AdminDashboardPage() {
+  const { ui, locale } = usePlatformLocale();
   const [data, setData] = useState<Overview | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -53,18 +55,18 @@ export default function AdminDashboardPage() {
       const res = await adminFetch<{ overview: Overview }>("/api/admin/overview");
       setData(res.overview);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load overview");
+      setError(err instanceof Error ? err.message : ui.common.error);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [ui.common.error]);
 
   useEffect(() => {
     void load();
   }, [load]);
 
   if (loading) {
-    return <p className="text-sm text-white/45">Loading admin overview…</p>;
+    return <p className="text-sm text-white/45">{ui.adminHome.loading}</p>;
   }
   if (error) {
     return (
@@ -79,53 +81,54 @@ export default function AdminDashboardPage() {
     <div className="space-y-6">
       <div>
         <p className="text-xs font-medium uppercase tracking-[0.14em] text-accent/80">
-          Platform
+          {ui.shell.platform}
         </p>
         <h2 className="mt-1 text-2xl font-semibold tracking-tight text-white">
-          Operations overview
+          {ui.adminHome.title}
         </h2>
         <p className="mt-2 text-sm text-white/45">
-          Live totals from Helia Cloud. Version {data.platformVersion}.
+          {ui.adminHome.subtitle}{" "}
+          {locale === "tr" ? "Sürüm" : "Version"} {data.platformVersion}.
         </p>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <KpiCard label="Users" value={String(data.totals.users)} icon={Users} />
+        <KpiCard label={ui.adminHome.users} value={String(data.totals.users)} icon={Users} />
         <KpiCard
-          label="Organizations"
+          label={ui.adminHome.organizations}
           value={String(data.totals.organizations)}
           icon={Building2}
           delay={0.04}
         />
         <KpiCard
-          label="Projects"
+          label={ui.adminHome.projects}
           value={String(data.totals.projects)}
           icon={FolderKanban}
           delay={0.08}
         />
         <KpiCard
-          label="Active API Keys"
+          label={ui.adminHome.activeKeys}
           value={String(data.totals.activeApiKeys)}
-          hint={`${data.totals.apiKeys} total`}
+          hint={`${data.totals.apiKeys} ${locale === "tr" ? "toplam" : "total"}`}
           icon={KeyRound}
           delay={0.12}
         />
         <KpiCard
-          label="Requests today"
+          label={ui.adminHome.requestsToday}
           value={String(data.requestsToday)}
-          hint={`${data.monthRequests} this month`}
+          hint={`${data.monthRequests} ${locale === "tr" ? "bu ay" : "this month"}`}
           icon={Activity}
           delay={0.16}
         />
         <KpiCard
-          label="Error rate"
+          label={locale === "tr" ? "Hata oranı" : "Error rate"}
           value={`${data.errorRate}%`}
-          hint={`${data.monthErrors} errors this month`}
+          hint={`${data.monthErrors} ${ui.adminHome.monthErrors.toLowerCase()}`}
           icon={AlertTriangle}
           delay={0.2}
         />
         <KpiCard
-          label="Uptime"
+          label={ui.adminHome.uptime}
           value={formatUptime(data.uptimeSeconds)}
           icon={Timer}
           delay={0.24}
@@ -134,13 +137,21 @@ export default function AdminDashboardPage() {
 
       <div className="grid gap-6 lg:grid-cols-2">
         <AdminPanel
-          title="Latest activity"
-          description="Derived from logins, API key usage, and audit events."
+          title={ui.adminHome.latestActivity}
+          description={
+            locale === "tr"
+              ? "Girişler, API anahtarı kullanımı ve denetim olaylarından."
+              : "Derived from logins, API key usage, and audit events."
+          }
         >
           {data.latestActivity.length === 0 ? (
             <AdminEmpty
-              title="No activity yet"
-              description="Activity appears when users sign in or API keys are used."
+              title={ui.adminHome.emptyActivity}
+              description={
+                locale === "tr"
+                  ? "Kullanıcılar giriş yaptığında veya API anahtarları kullanıldığında görünür."
+                  : "Activity appears when users sign in or API keys are used."
+              }
             />
           ) : (
             <ul className="space-y-3">
@@ -156,7 +167,7 @@ export default function AdminDashboardPage() {
                     </p>
                   </div>
                   <time className="shrink-0 text-xs text-white/40">
-                    {new Date(item.at).toLocaleString()}
+                    {new Date(item.at).toLocaleString(locale === "tr" ? "tr-TR" : "en-US")}
                   </time>
                 </li>
               ))}
@@ -165,13 +176,25 @@ export default function AdminDashboardPage() {
         </AdminPanel>
 
         <AdminPanel
-          title="Recent deployments"
-          description="Deployment history when a release pipeline is connected."
+          title={ui.adminHome.recentDeployments}
+          description={
+            locale === "tr"
+              ? "Sürüm hattı bağlandığında dağıtım geçmişi."
+              : "Deployment history when a release pipeline is connected."
+          }
         >
           {data.recentDeployments.length === 0 ? (
             <AdminEmpty
-              title="No deployments recorded"
-              description="Connect a deployment source later. Nothing is invented here."
+              title={
+                locale === "tr"
+                  ? "Kayıtlı dağıtım yok"
+                  : "No deployments recorded"
+              }
+              description={
+                locale === "tr"
+                  ? "Daha sonra bir dağıtım kaynağı bağlayın. Burada uydurma veri yok."
+                  : "Connect a deployment source later. Nothing is invented here."
+              }
             />
           ) : (
             <ul className="space-y-3">
@@ -179,7 +202,7 @@ export default function AdminDashboardPage() {
                 <li key={d.id} className="text-sm text-white/80">
                   {d.label}{" "}
                   <span className="text-white/40">
-                    · {new Date(d.at).toLocaleString()}
+                    · {new Date(d.at).toLocaleString(locale === "tr" ? "tr-TR" : "en-US")}
                   </span>
                 </li>
               ))}

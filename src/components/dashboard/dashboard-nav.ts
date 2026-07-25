@@ -8,31 +8,62 @@ import {
   UserRound,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
+import type { Locale } from "@/config/i18n";
+import { getPlatformUi } from "@/lib/platform-ui-dict";
+
+export type DashboardNavKey =
+  | "overview"
+  | "apiKeys"
+  | "usage"
+  | "documentation"
+  | "integrations"
+  | "profile"
+  | "settings";
 
 export type DashboardNavItem = {
   href: string;
+  key: DashboardNavKey;
   label: string;
   icon: LucideIcon;
 };
 
-/** Customer dashboard routes — always under /dashboard (not /{locale}/…). */
-export const dashboardNav: DashboardNavItem[] = [
-  { href: "/dashboard", label: "Overview", icon: LayoutDashboard },
-  { href: "/dashboard/api-keys", label: "API Keys", icon: KeyRound },
-  { href: "/dashboard/usage", label: "Usage", icon: ChartNoAxesCombined },
-  { href: "/dashboard/documentation", label: "Documentation", icon: BookOpen },
-  { href: "/dashboard/integrations", label: "Integrations", icon: Plug },
-  { href: "/dashboard/profile", label: "Kişisel Bilgiler", icon: UserRound },
-  { href: "/dashboard/settings", label: "Settings", icon: Settings },
+const DASHBOARD_NAV_DEFS: Array<{
+  href: string;
+  key: DashboardNavKey;
+  icon: LucideIcon;
+}> = [
+  { href: "/dashboard", key: "overview", icon: LayoutDashboard },
+  { href: "/dashboard/api-keys", key: "apiKeys", icon: KeyRound },
+  { href: "/dashboard/usage", key: "usage", icon: ChartNoAxesCombined },
+  { href: "/dashboard/documentation", key: "documentation", icon: BookOpen },
+  { href: "/dashboard/integrations", key: "integrations", icon: Plug },
+  { href: "/dashboard/profile", key: "profile", icon: UserRound },
+  { href: "/dashboard/settings", key: "settings", icon: Settings },
 ];
 
-export function dashboardTitleForPath(pathname: string): string {
-  const item = dashboardNav.find(
+/** Customer dashboard routes — always under /dashboard (not /{locale}/…). */
+export function getDashboardNav(locale: Locale): DashboardNavItem[] {
+  const labels = getPlatformUi(locale).dashboardNav;
+  return DASHBOARD_NAV_DEFS.map((item) => ({
+    ...item,
+    label: labels[item.key],
+  }));
+}
+
+/** @deprecated Prefer getDashboardNav(locale) */
+export const dashboardNav = getDashboardNav("en");
+
+export function dashboardTitleForPath(
+  pathname: string,
+  locale: Locale = "en"
+): string {
+  const nav = getDashboardNav(locale);
+  const item = nav.find(
     (n) =>
       n.href === pathname ||
       (n.href !== "/dashboard" && pathname.startsWith(n.href))
   );
   if (item) return item.label;
-  if (pathname === "/dashboard") return "Overview";
-  return "Dashboard";
+  if (pathname === "/dashboard") return getPlatformUi(locale).dashboardNav.overview;
+  return getPlatformUi(locale).shell.platform;
 }

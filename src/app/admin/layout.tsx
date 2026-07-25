@@ -2,6 +2,11 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import type { Metadata } from "next";
 import { AdminShell } from "@/components/admin/AdminShell";
+import { PlatformLocaleProvider } from "@/components/platform/PlatformLocaleProvider";
+import {
+  HELIA_UI_LOCALE_COOKIE,
+  parseUiLocale,
+} from "@/lib/platform-locale";
 import { getCloudContainer } from "@/server/helia/runtime";
 import { resolvePlatformRole } from "@/server/helia/cloud/utils";
 
@@ -51,5 +56,11 @@ export default async function AdminLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   await assertAdmin();
-  return <AdminShell>{children}</AdminShell>;
+  const jar = await cookies();
+  const locale = parseUiLocale(jar.get(HELIA_UI_LOCALE_COOKIE)?.value);
+  return (
+    <PlatformLocaleProvider locale={locale}>
+      <AdminShell>{children}</AdminShell>
+    </PlatformLocaleProvider>
+  );
 }

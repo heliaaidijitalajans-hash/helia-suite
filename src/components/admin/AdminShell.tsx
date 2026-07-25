@@ -7,11 +7,13 @@ import { cn } from "@/lib/cn";
 import { adminTitleForPath } from "./admin-nav";
 import { AdminSidebar } from "./AdminSidebar";
 import { AdminTopBar } from "./AdminTopBar";
+import { usePlatformLocale } from "@/components/platform/PlatformLocaleProvider";
 
 export function AdminShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
+  const { locale, ui } = usePlatformLocale();
   const [mobileOpen, setMobileOpen] = useState(false);
-  const title = adminTitleForPath(pathname);
+  const title = adminTitleForPath(pathname, locale);
 
   useEffect(() => {
     setMobileOpen(false);
@@ -35,7 +37,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             className="fixed inset-0 z-40 bg-black/65 backdrop-blur-sm lg:hidden"
-            aria-label="Close menu"
+            aria-label={ui.shell.closeMenu}
             onClick={() => setMobileOpen(false)}
           />
         ) : null}
@@ -61,7 +63,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
         <main className="relative flex-1 px-4 py-6 md:px-8 md:py-8">
           <div className="mx-auto max-w-6xl pb-10">
             <motion.div
-              key={pathname}
+              key={`${pathname}-${locale}`}
               initial={{ opacity: 0, y: 14 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.38, ease: [0.22, 1, 0.36, 1] }}

@@ -1,19 +1,32 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { cn } from "@/lib/cn";
 import { defaultLocale, isLocale, type Locale } from "@/config/i18n";
+import { setUiLocaleCookie } from "@/lib/platform-locale";
+import { usePlatformLocaleOptional } from "@/components/platform/PlatformLocaleProvider";
 
 const options: { code: Locale; label: string }[] = [
   { code: "en", label: "EN" },
   { code: "tr", label: "TR" },
 ];
 
+function isPlatformPath(pathname: string): boolean {
+  return (
+    pathname === "/dashboard" ||
+    pathname.startsWith("/dashboard/") ||
+    pathname === "/admin" ||
+    pathname.startsWith("/admin/") ||
+    pathname === "/login" ||
+    pathname.startsWith("/login/")
+  );
+}
+
 /**
- * Language switch without breaking dashboard routes.
- * Dashboard stays on /dashboard/* (no /en/api-keys or /tr/profile).
- * Public pages switch /en/pricing ↔ /tr/pricing.
+ * Language switch without breaking dashboard/admin routes.
+ * Public: /en/pricing ↔ /tr/pricing
+ * Platform: same path + helia_ui_locale cookie + refresh
  */
 export function languageSwitchHref(
   pathname: string,
@@ -21,8 +34,7 @@ export function languageSwitchHref(
 ): string {
   const segments = pathname.split("/").filter(Boolean);
 
-  // Keep platform routes unlocalized — prevents 404s from missing locale pages.
-  if (segments[0] === "dashboard") {
+  if (isPlatformPath(pathname)) {
     return pathname.startsWith("/") ? pathname : `/${pathname}`;
   }
 
@@ -41,8 +53,25 @@ function activeLocaleFromPath(pathname: string): Locale {
 
 export function LanguageSwitcher({ className }: { className?: string }) {
   const pathname = usePathname();
-  const active = activeLocaleFromPath(pathname);
-  const onDashboard = pathname === "/dashboard" || pathname.startsWith("/dashboard/");
+  const router = useRouter();
+  const platform = usePlatformLocaleOptional();
+  const onPlatform = isPlatformPath(pathname);
+  const active = onPlatform
+    ? (platform?.locale ?? defaultLocale)
+    : activeLocaleFromPath(pathname);
+
+  function switchTo(code: Locale) {
+    if (onPlatform) {
+      if (platform) {
+        platform.setLocale(code);
+      } else {
+        setUiLocaleCookie(code);
+        router.refresh();
+      }
+      return;
+    }
+    // public pages use Link href
+  }
 
   return (
     <div
@@ -51,20 +80,41 @@ export function LanguageSwitcher({ className }: { className?: string }) {
         className
       )}
       role="group"
-      aria-label="Language"
+      aria-label={platform?.ui.shell.language ?? "Language"}
     >
       {options.map(({ code, label }) => {
         const href = languageSwitchHref(pathname, code);
+        const isActive = active === code;
+
+        if (onPlatform) {
+          return (
+            <button
+              key={code}
+              type="button"
+              onClick={() => switchTo(code)}
+              className={cn(
+                "rounded-full px-2.5 py-1 transition-colors",
+                isActive
+                  ? "bg-white/10 text-foreground"
+                  : "text-white/50 hover:text-white/80"
+              )}
+              aria-pressed={isActive}
+              lang={code}
+            >
+              {label}
+            </button>
+          );
+        }
+
         return (
           <Link
             key={code}
             href={href}
             className={cn(
               "rounded-full px-2.5 py-1 transition-colors",
-              (!onDashboard && active === code) || (onDashboard && code === defaultLocale)
+              isActive
                 ? "bg-white/10 text-foreground"
-                : "text-white/50 hover:text-white/80",
-              onDashboard && code !== defaultLocale ? "opacity-60" : ""
+                : "text-white/50 hover:text-white/80"
             )}
             hrefLang={code}
           >

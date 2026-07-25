@@ -6,6 +6,7 @@ import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { logoutHeliaCloud } from "@/services/cloud/auth";
+import { usePlatformLocale } from "@/components/platform/PlatformLocaleProvider";
 
 export function DashboardTopBar({
   title,
@@ -15,6 +16,7 @@ export function DashboardTopBar({
   onMenuClick: () => void;
 }) {
   const router = useRouter();
+  const { ui } = usePlatformLocale();
   const [busy, setBusy] = useState(false);
 
   async function handleLogout() {
@@ -36,7 +38,7 @@ export function DashboardTopBar({
           type="button"
           onClick={onMenuClick}
           className="flex h-10 w-10 items-center justify-center rounded-xl border border-white/10 bg-white/[0.03] text-white/80 transition-colors hover:border-accent/30 hover:bg-white/[0.06] hover:text-white lg:hidden"
-          aria-label="Open menu"
+          aria-label={ui.shell.openMenu}
         >
           <Menu className="h-5 w-5" strokeWidth={1.5} />
         </button>
@@ -50,7 +52,7 @@ export function DashboardTopBar({
             {title}
           </h1>
           <p className="hidden text-xs text-white/40 sm:block">
-            Helia API Platform
+            {ui.shell.heliaApiPlatform}
           </p>
         </motion.div>
       </div>
@@ -58,14 +60,14 @@ export function DashboardTopBar({
         <button
           type="button"
           className="hidden h-10 w-10 items-center justify-center rounded-xl border border-white/10 bg-white/[0.03] text-white/55 transition-all hover:border-white/15 hover:text-white/85 sm:flex"
-          aria-label="Search"
+          aria-label={ui.shell.search}
         >
           <Search className="h-4 w-4" strokeWidth={1.5} />
         </button>
         <button
           type="button"
           className="relative flex h-10 w-10 items-center justify-center rounded-xl border border-white/10 bg-white/[0.03] text-white/55 transition-all hover:border-white/15 hover:text-white/85"
-          aria-label="Notifications"
+          aria-label={ui.shell.notifications}
         >
           <Bell className="h-4 w-4" strokeWidth={1.5} />
         </button>
@@ -74,16 +76,16 @@ export function DashboardTopBar({
           onClick={() => void handleLogout()}
           disabled={busy}
           className="flex h-10 w-10 items-center justify-center rounded-xl border border-white/10 bg-white/[0.03] text-white/55 transition-all hover:border-red-400/35 hover:text-red-100/90 disabled:opacity-60"
-          aria-label="Logout"
-          title="Logout"
+          aria-label={ui.shell.logout}
+          title={ui.shell.logout}
         >
           <LogOut className="h-4 w-4" strokeWidth={1.5} />
         </button>
         <Link
           href="/dashboard/profile"
           className="ml-1 flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-accent/90 to-amber-700/80 text-xs font-bold text-[#0A0A0B] shadow-[0_0_20px_-4px_rgba(212,175,55,0.55)] ring-2 ring-white/10 transition-opacity hover:opacity-90"
-          title="Kişisel Bilgiler"
-          aria-label="Open profile"
+          title={ui.dashboardNav.profile}
+          aria-label={ui.shell.openProfile}
         >
           H
         </Link>

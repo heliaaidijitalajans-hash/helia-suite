@@ -4,7 +4,8 @@ import Link from "next/link";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/cn";
 import { SITE_NAME } from "@/config/site";
-import { adminNav } from "./admin-nav";
+import { getAdminNav } from "./admin-nav";
+import { usePlatformLocale } from "@/components/platform/PlatformLocaleProvider";
 
 export function AdminSidebar({
   pathname,
@@ -13,6 +14,9 @@ export function AdminSidebar({
   pathname: string;
   onNavigate?: () => void;
 }) {
+  const { locale, ui } = usePlatformLocale();
+  const nav = getAdminNav(locale);
+
   return (
     <div className="flex h-full flex-col border-r border-white/[0.08] bg-[#0d0d0f]/95 backdrop-blur-xl">
       <div className="flex h-16 items-center gap-2 border-b border-white/[0.06] px-5">
@@ -24,12 +28,12 @@ export function AdminSidebar({
             {SITE_NAME}
           </p>
           <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-white/35">
-            Admin Console
+            {ui.shell.adminConsole}
           </p>
         </div>
       </div>
-      <nav className="flex-1 space-y-1 overflow-y-auto p-3" aria-label="Admin">
-        {adminNav.map((item, i) => {
+      <nav className="flex-1 space-y-1 overflow-y-auto p-3" aria-label={ui.shell.adminConsole}>
+        {nav.map((item, i) => {
           const active =
             item.href === "/admin"
               ? pathname === "/admin"
@@ -69,7 +73,7 @@ export function AdminSidebar({
       </nav>
       <div className="border-t border-white/[0.06] p-4">
         <p className="text-center text-[11px] leading-relaxed text-white/30">
-          Internal operators only
+          {ui.shell.internalOnly}
         </p>
       </div>
     </div>

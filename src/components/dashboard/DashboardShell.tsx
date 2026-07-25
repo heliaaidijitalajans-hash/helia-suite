@@ -7,6 +7,7 @@ import { cn } from "@/lib/cn";
 import { dashboardTitleForPath } from "./dashboard-nav";
 import { DashboardSidebar } from "./DashboardSidebar";
 import { DashboardTopBar } from "./DashboardTopBar";
+import { usePlatformLocale } from "@/components/platform/PlatformLocaleProvider";
 
 export function DashboardShell({
   children,
@@ -16,8 +17,9 @@ export function DashboardShell({
   footer?: ReactNode;
 }) {
   const pathname = usePathname();
+  const { locale, ui } = usePlatformLocale();
   const [mobileOpen, setMobileOpen] = useState(false);
-  const title = dashboardTitleForPath(pathname);
+  const title = dashboardTitleForPath(pathname, locale);
 
   useEffect(() => {
     setMobileOpen(false);
@@ -42,13 +44,12 @@ export function DashboardShell({
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
             className="fixed inset-0 z-40 bg-black/65 backdrop-blur-sm lg:hidden"
-            aria-label="Close menu"
+            aria-label={ui.shell.closeMenu}
             onClick={() => setMobileOpen(false)}
           />
         ) : null}
       </AnimatePresence>
 
-      {/* Fixed sidebar — full height under site header; does not share row with footer */}
       <aside
         className={cn(
           "fixed bottom-0 left-0 top-16 z-50 w-[min(17.5rem,88vw)] transition-transform duration-300 ease-out md:top-20 lg:translate-x-0",
@@ -61,7 +62,6 @@ export function DashboardShell({
         />
       </aside>
 
-      {/* Content column only — offset by sidebar on lg+; footer lives here */}
       <div className="relative flex min-h-[calc(100vh-4rem)] flex-col lg:pl-[17.5rem] md:min-h-[calc(100vh-5rem)]">
         <DashboardTopBar
           title={title}
@@ -70,7 +70,7 @@ export function DashboardShell({
         <main className="relative flex-1 px-4 py-6 md:px-8 md:py-8">
           <div className="mx-auto max-w-6xl pb-8 md:pb-10">
             <motion.div
-              key={pathname}
+              key={`${pathname}-${locale}`}
               initial={{ opacity: 0, y: 14 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.38, ease: [0.22, 1, 0.36, 1] }}

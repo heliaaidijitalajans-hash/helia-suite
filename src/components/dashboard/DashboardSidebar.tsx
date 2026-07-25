@@ -4,7 +4,8 @@ import Link from "next/link";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/cn";
 import { SITE_NAME } from "@/config/site";
-import { dashboardNav } from "./dashboard-nav";
+import { getDashboardNav } from "./dashboard-nav";
+import { usePlatformLocale } from "@/components/platform/PlatformLocaleProvider";
 
 export function DashboardSidebar({
   pathname,
@@ -13,6 +14,9 @@ export function DashboardSidebar({
   pathname: string;
   onNavigate?: () => void;
 }) {
+  const { locale, ui } = usePlatformLocale();
+  const nav = getDashboardNav(locale);
+
   return (
     <div className="flex h-full flex-col border-r border-white/[0.08] bg-[#0d0d0f]/95 backdrop-blur-xl">
       <div className="flex h-16 items-center gap-2 border-b border-white/[0.06] px-5">
@@ -24,12 +28,12 @@ export function DashboardSidebar({
             {SITE_NAME}
           </p>
           <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-white/35">
-            Platform
+            {ui.shell.platform}
           </p>
         </div>
       </div>
-      <nav className="flex-1 space-y-1 p-3" aria-label="Dashboard">
-        {dashboardNav.map((item, i) => {
+      <nav className="flex-1 space-y-1 p-3" aria-label={ui.shell.platform}>
+        {nav.map((item, i) => {
           const active =
             item.href === "/dashboard"
               ? pathname === "/dashboard"
@@ -69,7 +73,7 @@ export function DashboardSidebar({
       </nav>
       <div className="border-t border-white/[0.06] p-4">
         <p className="text-center text-[11px] leading-relaxed text-white/30">
-          Helia API Platform
+          {ui.shell.heliaApiPlatform}
         </p>
       </div>
     </div>

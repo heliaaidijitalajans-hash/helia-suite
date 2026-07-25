@@ -1,11 +1,16 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
+import { cookies } from "next/headers";
 import { FloatingWhatsApp } from "@/components/FloatingWhatsApp";
 import { Footer } from "@/components/Footer";
 import { Header } from "@/components/Header";
 import { DashboardShell } from "@/components/dashboard/DashboardShell";
 import { AdminForbiddenBanner } from "@/components/dashboard/AdminForbiddenBanner";
-import { defaultLocale } from "@/config/i18n";
+import { PlatformLocaleProvider } from "@/components/platform/PlatformLocaleProvider";
+import {
+  HELIA_UI_LOCALE_COOKIE,
+  parseUiLocale,
+} from "@/lib/platform-locale";
 import { getDictionary } from "@/lib/i18n";
 
 export const metadata: Metadata = {
@@ -13,23 +18,25 @@ export const metadata: Metadata = {
   description: "Helia API Platform — API keys, usage, and integrations",
 };
 
-export default function DashboardLayout({
+export default async function DashboardLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const dict = getDictionary(defaultLocale);
+  const jar = await cookies();
+  const locale = parseUiLocale(jar.get(HELIA_UI_LOCALE_COOKIE)?.value);
+  const dict = getDictionary(locale);
 
   return (
-    <>
-      <Header locale={defaultLocale} dict={dict} />
-      <DashboardShell footer={<Footer locale={defaultLocale} dict={dict} />}>
+    <PlatformLocaleProvider locale={locale}>
+      <Header locale={locale} dict={dict} />
+      <DashboardShell footer={<Footer locale={locale} dict={dict} />}>
         <Suspense fallback={null}>
           <AdminForbiddenBanner />
         </Suspense>
         {children}
       </DashboardShell>
       <FloatingWhatsApp ariaLabel={dict.header.whatsappCta} />
-    </>
+    </PlatformLocaleProvider>
   );
 }

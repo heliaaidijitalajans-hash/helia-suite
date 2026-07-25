@@ -11,42 +11,49 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/cn";
-
-const PILLARS = [
-  { label: "API Keys", icon: KeyRound },
-  { label: "Monitoring", icon: Radar },
-  { label: "Integrations", icon: Plug },
-  { label: "Documentation", icon: BookOpen },
-] as const;
-
-const ONBOARDING = [
-  {
-    step: "1",
-    title: "Generate API Key",
-    body: "Issue a capability-scoped key for your workspace.",
-    href: "/dashboard/api-keys",
-  },
-  {
-    step: "2",
-    title: "Read Documentation",
-    body: "Learn auth, REST, SDK, webhooks, and rate limits.",
-    href: "/dashboard/documentation",
-  },
-  {
-    step: "3",
-    title: "Integrate",
-    body: "Connect Helia to Next.js, Node, Flutter, and more.",
-    href: "/dashboard/integrations",
-  },
-  {
-    step: "4",
-    title: "Monitor Usage",
-    body: "Track requests and usage for your workspace.",
-    href: "/dashboard/usage",
-  },
-] as const;
+import { usePlatformLocale } from "@/components/platform/PlatformLocaleProvider";
 
 export default function DashboardOverviewPage() {
+  const { ui, locale } = usePlatformLocale();
+  const h = ui.dashboardHome;
+
+  const pillars = [
+    { label: h.pillarApiKeys, icon: KeyRound },
+    { label: h.pillarMonitoring, icon: Radar },
+    { label: h.pillarIntegrations, icon: Plug },
+    { label: h.pillarDocs, icon: BookOpen },
+  ] as const;
+
+  const onboarding = [
+    {
+      step: "1",
+      title: h.step1Title,
+      body: h.step1Body,
+      href: "/dashboard/api-keys",
+    },
+    {
+      step: "2",
+      title: h.step2Title,
+      body: h.step2Body,
+      href: "/dashboard/documentation",
+    },
+    {
+      step: "3",
+      title: h.step3Title,
+      body: h.step3Body,
+      href: "/dashboard/integrations",
+    },
+    {
+      step: "4",
+      title: h.step4Title,
+      body: h.step4Body,
+      href: "/dashboard/usage",
+    },
+  ] as const;
+
+  const openLabel = locale === "tr" ? "Aç" : "Open";
+  const stepLabel = locale === "tr" ? "Adım" : "Step";
+
   return (
     <div className="mx-auto w-full max-w-4xl space-y-12">
       <motion.div
@@ -56,17 +63,16 @@ export default function DashboardOverviewPage() {
         className="space-y-5 text-center"
       >
         <p className="text-xs font-semibold uppercase tracking-[0.16em] text-accent/90">
-          Helia API Platform
+          {h.eyebrow}
         </p>
         <h2 className="text-3xl font-semibold tracking-tight text-white md:text-4xl">
-          Welcome to Helia
+          {h.title}
         </h2>
         <p className="mx-auto max-w-2xl text-sm leading-relaxed text-white/55 md:text-base">
-          Helia is an AI platform for your products. Manage API keys, monitor
-          usage, and connect applications — from one customer portal.
+          {h.body}
         </p>
         <ul className="mx-auto flex max-w-2xl flex-wrap items-center justify-center gap-2 pt-1">
-          {PILLARS.map(({ label, icon: Icon }) => (
+          {pillars.map(({ label, icon: Icon }) => (
             <li
               key={label}
               className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 text-xs text-white/70"
@@ -81,21 +87,21 @@ export default function DashboardOverviewPage() {
             href="/dashboard/api-keys"
             className="min-h-11 px-6 text-sm font-semibold"
           >
-            Generate API Key
+            {h.ctaKeys}
           </Button>
           <Button
             href="/dashboard/documentation"
             variant="secondary"
             className="min-h-11 border-white/12 px-6 text-sm font-semibold"
           >
-            Documentation
+            {ui.dashboardNav.documentation}
           </Button>
           <Button
             href="/dashboard/integrations"
             variant="ghost"
             className="min-h-11 px-6 text-sm font-semibold"
           >
-            Integrations
+            {ui.dashboardNav.integrations}
           </Button>
         </div>
       </motion.div>
@@ -103,14 +109,16 @@ export default function DashboardOverviewPage() {
       <section className="space-y-4">
         <div className="flex items-end justify-between gap-3">
           <div>
-            <h3 className="text-sm font-semibold text-white">Get started</h3>
+            <h3 className="text-sm font-semibold text-white">
+              {h.onboardingTitle}
+            </h3>
             <p className="mt-1 text-xs text-white/40">
-              Generate API Key → Read Documentation → Integrate → Monitor Usage
+              {h.step1Title} → {h.step2Title} → {h.step3Title} → {h.step4Title}
             </p>
           </div>
         </div>
         <ol className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-          {ONBOARDING.map((item, i) => (
+          {onboarding.map((item, i) => (
             <motion.li
               key={item.step}
               initial={{ opacity: 0, y: 10 }}
@@ -125,7 +133,7 @@ export default function DashboardOverviewPage() {
                 )}
               >
                 <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-accent/80">
-                  Step {item.step}
+                  {stepLabel} {item.step}
                 </span>
                 <span className="mt-2 text-sm font-medium text-white">
                   {item.title}
@@ -134,7 +142,7 @@ export default function DashboardOverviewPage() {
                   {item.body}
                 </span>
                 <span className="mt-3 inline-flex items-center gap-1 text-[11px] font-medium text-white/50 group-hover:text-accent">
-                  Open
+                  {openLabel}
                   <ArrowRight className="h-3 w-3" strokeWidth={2} />
                 </span>
               </Link>
@@ -149,9 +157,11 @@ export default function DashboardOverviewPage() {
           className="rounded-xl border border-white/[0.08] bg-[#161618]/90 p-5 transition-colors hover:border-accent/25"
         >
           <BookOpen className="h-5 w-5 text-accent" strokeWidth={1.5} />
-          <p className="mt-3 text-sm font-semibold text-white">Documentation</p>
+          <p className="mt-3 text-sm font-semibold text-white">
+            {ui.dashboardNav.documentation}
+          </p>
           <p className="mt-1 text-xs leading-relaxed text-white/45">
-            Authentication, REST API, SDK, webhooks, examples, and rate limits.
+            {h.step2Body}
           </p>
         </Link>
         <Link
@@ -159,9 +169,11 @@ export default function DashboardOverviewPage() {
           className="rounded-xl border border-white/[0.08] bg-[#161618]/90 p-5 transition-colors hover:border-accent/25"
         >
           <Plug className="h-5 w-5 text-accent" strokeWidth={1.5} />
-          <p className="mt-3 text-sm font-semibold text-white">Integrations</p>
+          <p className="mt-3 text-sm font-semibold text-white">
+            {ui.dashboardNav.integrations}
+          </p>
           <p className="mt-1 text-xs leading-relaxed text-white/45">
-            Next.js, Node.js, Express, Flutter, React Native, and custom REST.
+            {h.step3Body}
           </p>
         </Link>
       </section>

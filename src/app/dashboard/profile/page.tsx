@@ -21,6 +21,8 @@ import {
   type HeliaPublicUser,
   type ProfilePreferences,
 } from "@/services/cloud";
+import { usePlatformLocale } from "@/components/platform/PlatformLocaleProvider";
+import { isLocale, type Locale } from "@/config/i18n";
 
 const COUNTRIES = [
   { code: "TR", label: "Türkiye" },
@@ -37,8 +39,6 @@ const COUNTRIES = [
 const LANGUAGES = [
   { code: "tr", label: "Türkçe" },
   { code: "en", label: "English" },
-  { code: "de", label: "Deutsch" },
-  { code: "fr", label: "Français" },
 ] as const;
 
 const TIME_ZONES = [
@@ -55,6 +55,7 @@ const TIME_ZONES = [
 
 export default function ProfilePage() {
   const router = useRouter();
+  const { locale, setLocale, ui } = usePlatformLocale();
   const fileRef = useRef<HTMLInputElement>(null);
   const [user, setUser] = useState<HeliaPublicUser | null>(null);
   const [logoutBusy, setLogoutBusy] = useState(false);
@@ -103,13 +104,16 @@ export default function ProfilePage() {
     value: ProfilePreferences[K]
   ) {
     setPrefs((prev) => ({ ...prev, [key]: value }));
+    if (key === "language" && typeof value === "string" && isLocale(value)) {
+      setLocale(value as Locale);
+    }
   }
 
   async function handleSaveProfile(e: React.FormEvent) {
     e.preventDefault();
     if (!user) return;
     if (!fullName.trim()) {
-      setError("Full name is required.");
+      setError(locale === "tr" ? "Ad soyad zorunlu." : "Full name is required.");
       return;
     }
     setSaving(true);
@@ -118,6 +122,7 @@ export default function ProfilePage() {
     try {
       const nextPrefs: ProfilePreferences = {
         ...prefs,
+        language: locale,
         companyName: prefs.companyName.trim(),
         phoneNumber: prefs.phoneNumber.trim(),
       };
@@ -125,9 +130,11 @@ export default function ProfilePage() {
       setPrefs(nextPrefs);
       // displayName is session identity; keep local form value for this session.
       setUser({ ...user, displayName: fullName.trim() });
-      setInfo("Profile details saved.");
+      setInfo(
+        locale === "tr" ? "Profil kaydedildi." : "Profile details saved."
+      );
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not save profile");
+      setError(err instanceof Error ? err.message : ui.common.error);
     } finally {
       setSaving(false);
     }
@@ -331,10 +338,10 @@ export default function ProfilePage() {
                   ))}
                 </select>
               </CloudField>
-              <CloudField label="Language">
+              <CloudField label={ui.shell.language}>
                 <select
                   className={cloudInputClass}
-                  value={prefs.language}
+                  value={locale}
                   onChange={(e) => updatePref("language", e.target.value)}
                 >
                   {LANGUAGES.map((lang) => (
@@ -376,7 +383,7 @@ export default function ProfilePage() {
               className={cloudBtnPrimaryClass}
               disabled={saving || !user}
             >
-              {saving ? "Saving…" : "Save profile"}
+              {saving ? ui.common.saving : ui.common.save}
             </button>
           </form>
         )}
