@@ -1,11 +1,14 @@
 import { NextResponse } from "next/server";
-import { resolveHeliaAuthContext } from "@/lib/auth/helia-session";
 import {
   deleteScopedConversation,
   getScopedConversation,
   renameScopedConversation,
 } from "@/services/brain/server";
 import { clearBrainConversation } from "@/lib/api/brain";
+import {
+  brainRouteErrorResponse,
+  requireAdminBrainContext,
+} from "@/services/brain/admin-gate";
 
 export const runtime = "nodejs";
 
@@ -21,7 +24,7 @@ export async function GET(request: Request, { params }: Params) {
       );
     }
 
-    const auth = await resolveHeliaAuthContext(request.headers);
+    const auth = await requireAdminBrainContext(request);
     const conversation = await getScopedConversation(auth, id);
     if (!conversation) {
       return NextResponse.json(
@@ -39,14 +42,8 @@ export async function GET(request: Request, { params }: Params) {
       messages: conversation.messages,
     });
   } catch (error) {
-    const message =
-      error instanceof Error
-        ? error.message
-        : "Failed to load conversation";
-    return NextResponse.json(
-      { ok: false, error: { message, code: "CONVERSATION_GET_FAILED" } },
-      { status: 502 }
-    );
+    const { body, status } = brainRouteErrorResponse(error);
+    return NextResponse.json(body, { status });
   }
 }
 
@@ -74,7 +71,7 @@ export async function PATCH(request: Request, { params }: Params) {
       );
     }
 
-    const auth = await resolveHeliaAuthContext(request.headers);
+    const auth = await requireAdminBrainContext(request);
     const conversation = await renameScopedConversation(auth, id, title);
     if (!conversation) {
       return NextResponse.json(
@@ -96,14 +93,8 @@ export async function PATCH(request: Request, { params }: Params) {
       },
     });
   } catch (error) {
-    const message =
-      error instanceof Error
-        ? error.message
-        : "Failed to rename conversation";
-    return NextResponse.json(
-      { ok: false, error: { message, code: "CONVERSATION_RENAME_FAILED" } },
-      { status: 502 }
-    );
+    const { body, status } = brainRouteErrorResponse(error);
+    return NextResponse.json(body, { status });
   }
 }
 
@@ -117,7 +108,7 @@ export async function DELETE(request: Request, { params }: Params) {
       );
     }
 
-    const auth = await resolveHeliaAuthContext(request.headers);
+    const auth = await requireAdminBrainContext(request);
     const deleted = await deleteScopedConversation(auth, id);
     if (!deleted) {
       return NextResponse.json(
@@ -137,13 +128,7 @@ export async function DELETE(request: Request, { params }: Params) {
 
     return NextResponse.json({ ok: true, deleted: true });
   } catch (error) {
-    const message =
-      error instanceof Error
-        ? error.message
-        : "Failed to delete conversation";
-    return NextResponse.json(
-      { ok: false, error: { message, code: "CONVERSATION_DELETE_FAILED" } },
-      { status: 502 }
-    );
+    const { body, status } = brainRouteErrorResponse(error);
+    return NextResponse.json(body, { status });
   }
 }

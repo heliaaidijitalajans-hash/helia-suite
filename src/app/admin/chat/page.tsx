@@ -9,9 +9,9 @@ import HeliaChatPageClient from "@/app/dashboard/helia-chat/HeliaChatPageClient"
 export default function AdminChatPage() {
   return (
     <HeliaChatPageClient
-      intro="Ask Helia Brain about platform usage, errors, API keys, and health. Answers use live Admin data when available — never invented metrics."
-      emptyTitle="Ask Helia Brain"
-      emptyDescription="Try: “Show today's API usage”, “How many active API Keys exist?”, or “Is the platform healthy?”"
+      intro="Helia Suite AI Administrator — platform operations, APIs, documentation, and integrations. Answers use live Admin data when available."
+      emptyTitle="Helia Suite AI Administrator"
+      emptyDescription="Ask about usage, health, API Keys, errors, documentation, or request production-ready integration code."
     />
   );
 }

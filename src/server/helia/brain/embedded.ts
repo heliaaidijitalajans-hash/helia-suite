@@ -1,7 +1,6 @@
 /**
  * Embedded Helia Brain ask — runs in-process inside Next.js (no :4090).
- * Preserves the BrainAnswer contract used by Helia Chat.
- * Prefer real platform facts for Admin Console questions.
+ * Routes through Helia Suite AI Administrator (not a general chatbot).
  */
 
 import { createId } from "@/server/helia/utils/id";
@@ -12,10 +11,7 @@ import type {
   BrainConversationSession,
   BrainStreamHandlers,
 } from "@/lib/api/brain-types";
-import {
-  answerFromPlatformData,
-  INSUFFICIENT_DATA_MESSAGE,
-} from "./platform-context";
+import { askHeliaAdministrator } from "./administrator";
 
 type MemoryStore = {
   sessions: Map<string, BrainConversationSession>;
@@ -65,108 +61,17 @@ export async function askBrainEmbedded(
   body: BrainAskRequestBody,
   handlers: BrainStreamHandlers = {}
 ): Promise<BrainAskResult> {
-  const askedAt = new Date().toISOString();
   const session = ensureSession(body.conversationId, body.adminId);
   const questionId = createId("brainq");
   const answerId = createId("brainans");
-  const answeredAt = new Date().toISOString();
   const text = body.text.trim();
 
-  let answer: BrainAnswer;
-  try {
-    const platform = await answerFromPlatformData(text);
-    if (platform) {
-      answer = {
-        id: answerId,
-        conversationId: session.id,
-        questionId,
-        intent: platform.intent,
-        askedAt,
-        answeredAt,
-        resolvedQuestion: text,
-        summary: platform.summary,
-        reasoning: platform.insufficientData
-          ? "No matching platform telemetry was available for this question."
-          : "Answered from live Helia Cloud admin platform data.",
-        evidence: platform.evidence,
-        confidence: platform.confidence,
-        recommendedAction: platform.recommendedAction ?? "",
-        businessImpact: platform.insufficientData
-          ? "Cannot advise without observed data."
-          : "Operators can act on observed platform metrics.",
-        technicalImpact: platform.insufficientData
-          ? "Missing metric or empty store."
-          : "Values read from embedded Cloud stores.",
-        insufficientData: platform.insufficientData,
-        suggestedFollowUps: [
-          "Show today's API usage",
-          "How many active API Keys exist?",
-          "Is the platform healthy?",
-        ],
-        personality: "professional_calm_sre",
-      };
-    } else {
-      answer = {
-        id: answerId,
-        conversationId: session.id,
-        questionId,
-        intent: "unknown",
-        askedAt,
-        answeredAt,
-        resolvedQuestion: text,
-        summary: INSUFFICIENT_DATA_MESSAGE,
-        reasoning:
-          "No platform intent matched and no fabricated answer is allowed.",
-        evidence: [
-          {
-            source: "conversation",
-            reference: session.id,
-            detail: "Unmatched question against platform data intents",
-            observedAt: answeredAt,
-          },
-        ],
-        confidence: 1,
-        recommendedAction:
-          "Ask about usage, errors, API keys, health, or today's activity.",
-        businessImpact: "No action without verified data.",
-        technicalImpact: "Intent router returned no platform match.",
-        insufficientData: true,
-        suggestedFollowUps: [
-          "Show today's API usage",
-          "List recent errors",
-          "Is the platform healthy?",
-        ],
-        personality: "professional_calm_sre",
-      };
-    }
-  } catch {
-    answer = {
-      id: answerId,
-      conversationId: session.id,
-      questionId,
-      intent: "error",
-      askedAt,
-      answeredAt,
-      resolvedQuestion: text,
-      summary: INSUFFICIENT_DATA_MESSAGE,
-      reasoning: "Platform data lookup failed.",
-      evidence: [
-        {
-          source: "platform",
-          reference: "lookup",
-          detail: "Exception while reading admin platform data",
-          observedAt: answeredAt,
-        },
-      ],
-      confidence: 1,
-      recommendedAction: "Retry shortly or check Admin → System Health.",
-      businessImpact: "Cannot answer until platform data is readable.",
-      technicalImpact: "Embedded Brain platform-context error.",
-      insufficientData: true,
-      suggestedFollowUps: ["Is the platform healthy?"],
-      personality: "professional_calm_sre",
-    };
-  }
+  const answer: BrainAnswer = await askHeliaAdministrator({
+    text,
+    conversationId: session.id,
+    questionId,
+    answerId,
+  });
 
   session.turns.push({
     questionId,
@@ -175,11 +80,11 @@ export async function askBrainEmbedded(
     intent: answer.intent,
     answerId,
     summary: answer.summary,
-    askedAt,
+    askedAt: answer.askedAt,
     topics: [],
     entities: [],
   });
-  session.updatedAt = answeredAt;
+  session.updatedAt = answer.answeredAt;
   store().sessions.set(session.id, session);
 
   handlers.onChunk?.(answer.summary);

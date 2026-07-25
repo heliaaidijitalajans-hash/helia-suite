@@ -1,12 +1,15 @@
 import { NextResponse } from "next/server";
-import { resolveHeliaAuthContext } from "@/lib/auth/helia-session";
 import { askBrainForUser } from "@/services/brain/server";
+import {
+  brainRouteErrorResponse,
+  requireAdminBrainContext,
+} from "@/services/brain/admin-gate";
 
 export const runtime = "nodejs";
 
 export async function POST(request: Request) {
   try {
-    const auth = await resolveHeliaAuthContext(request.headers);
+    const auth = await requireAdminBrainContext(request);
     const body = (await request.json().catch(() => null)) as {
       content?: string;
       conversationId?: string | null;
@@ -30,19 +33,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ ok: true, ...result });
   } catch (error) {
-    const message =
-      error instanceof Error ? error.message : "Failed to reach Helia Brain";
-    const unauthorized =
-      /session missing|log in|unauthorized/i.test(message);
-    return NextResponse.json(
-      {
-        ok: false,
-        error: {
-          message,
-          code: unauthorized ? "UNAUTHORIZED" : "BRAIN_ASK_FAILED",
-        },
-      },
-      { status: unauthorized ? 401 : 502 }
-    );
+    const { body, status } = brainRouteErrorResponse(error);
+    return NextResponse.json(body, { status });
   }
 }

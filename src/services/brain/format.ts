@@ -16,13 +16,26 @@ export function titleFromContent(content: string): string {
 
 /** Map Helia Brain structured answer → chat bubble text (UI-stable). */
 export function formatBrainAnswerContent(answer: BrainAnswer): string {
-  if (answer.insufficientData) {
-    const summary = answer.summary.trim();
-    return summary || "I don't have enough information.";
+  const summary = answer.summary.trim();
+  if (!summary) {
+    return "No live data available.";
   }
-  const parts = [answer.summary.trim()];
+  // Administrator replies are already sectioned (Status / Summary / …).
+  if (
+    /^Status\n/m.test(summary) ||
+    /^Summary\n/m.test(summary) ||
+    summary === "This operation is blocked by the Helia security policy." ||
+    summary === "No documentation found." ||
+    summary === "No live data available."
+  ) {
+    return summary;
+  }
+  if (answer.insufficientData) {
+    return summary;
+  }
+  const parts = [summary];
   if (answer.recommendedAction?.trim()) {
-    parts.push(`Recommended action: ${answer.recommendedAction.trim()}`);
+    parts.push(`Recommendation\n${answer.recommendedAction.trim()}`);
   }
   return parts.join("\n\n");
 }
