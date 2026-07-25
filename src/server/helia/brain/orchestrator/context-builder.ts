@@ -4,9 +4,11 @@
  */
 
 import type { ConversationMemory, ToolResult } from "./types";
+import { detectReplyLanguage, type ReplyLanguage } from "./language";
 
 export type LlmContextPacket = {
   userMessage: string;
+  replyLanguage: ReplyLanguage;
   intents: string[];
   memory: {
     lastIntents: string[];
@@ -29,8 +31,10 @@ export function buildLlmContext(input: {
   memory: ConversationMemory;
   toolResults: ToolResult[];
 }): LlmContextPacket {
+  const replyLanguage = detectReplyLanguage(input.userMessage);
   return {
     userMessage: input.userMessage,
+    replyLanguage,
     intents: input.intents,
     memory: {
       lastIntents: input.memory.lastIntents,
@@ -53,8 +57,9 @@ export function buildLlmContext(input: {
       "Use ONLY numbers and facts present in tools[].data.",
       "Never invent platform metrics.",
       "If a tool returns empty collections, report zero / empty — that is valid live data.",
-      "For follow-ups like 'the newest one', use memory.newestApiKeyId and tools API key lists.",
-      "Format professionally with Status / Summary / Recommendation / Next Step when helpful.",
+      "For follow-ups like 'the newest one' / 'yenisini', use memory.newestApiKeyId and tools API key lists.",
+      "Format professionally with Status/Summary (EN) or Durum/Özet (TR).",
+      `Reply language must be: ${replyLanguage === "tr" ? "Turkish" : "English"}.`,
       "If tools are documentation/general, answer as Helia documentation assistant.",
     ],
   };

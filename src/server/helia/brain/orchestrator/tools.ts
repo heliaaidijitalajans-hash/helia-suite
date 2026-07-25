@@ -7,6 +7,10 @@ import { resolvePlatformRole } from "@/server/helia/cloud/utils";
 import { HELIA_DOC_INDEX } from "../documentation-index";
 import { EXAMPLES as CODE_EXAMPLES } from "./code-catalog";
 import { matchSecurityPolicy } from "../security-policy";
+import {
+  detectReplyLanguage,
+  securityBlockedMessage,
+} from "./language";
 import type { ConversationMemory, HeliaIntent, ToolResult } from "./types";
 
 async function isAdmin(userId: string): Promise<boolean> {
@@ -312,6 +316,7 @@ export async function runCodeGenerationTool(
 }
 
 export async function runSecurityTool(query: string): Promise<ToolResult> {
+  const lang = detectReplyLanguage(query);
   const blocked = matchSecurityPolicy(query);
   return {
     tool: "SecurityService",
@@ -319,9 +324,11 @@ export async function runSecurityTool(query: string): Promise<ToolResult> {
     ok: true,
     data: {
       blocked: Boolean(blocked),
-      message:
-        blocked ||
-        "No blocked security operation detected for this request.",
+      message: blocked
+        ? securityBlockedMessage(lang)
+        : lang === "tr"
+          ? "Bu istek için engellenen bir güvenlik işlemi yok."
+          : "No blocked security operation detected for this request.",
     },
   };
 }

@@ -11,6 +11,7 @@ import { createId } from "@/server/helia/utils/id";
 import type { BrainAnswer } from "@/lib/api/brain-types";
 import { buildLlmContext } from "./context-builder";
 import { detectIntents } from "./intent-engine";
+import { detectReplyLanguage } from "./language";
 import { formatWithLlm } from "./llm";
 import {
   getConversationMemory,
@@ -69,7 +70,7 @@ export async function runHeliaOrchestrator(
     formattedText: text,
     reasoning: `orchestrator intents=${intents.join(",")} tools=${toolResults
       .map((t) => t.tool)
-      .join("+")} llm=${mode}`,
+      .join("+")} llm=${mode} lang=${packet.replyLanguage}`,
     insufficientData: false,
   };
 }
@@ -112,11 +113,18 @@ export async function orchestrateBrainAnswer(input: {
     businessImpact: "",
     technicalImpact: "",
     insufficientData: result.insufficientData,
-    suggestedFollowUps: [
-      "How many API Keys do I have?",
-      "Show today's usage",
-      "Is the platform healthy?",
-    ],
+    suggestedFollowUps:
+      detectReplyLanguage(input.text) === "tr"
+        ? [
+            "Kaç API anahtarım var?",
+            "Bugünkü kullanımı göster",
+            "Platform sağlıklı mı?",
+          ]
+        : [
+            "How many API Keys do I have?",
+            "Show today's usage",
+            "Is the platform healthy?",
+          ],
     personality: "professional_calm_sre",
   };
 }

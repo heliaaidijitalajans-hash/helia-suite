@@ -25,6 +25,13 @@ const INTENT_FEATURES: Record<HeliaIntent, string[]> = {
     "secret",
     "prefix",
     "whoami",
+    "anahtar",
+    "anahtarlar",
+    "anahtarı",
+    "yenile",
+    "döndür",
+    "izin",
+    "yetki",
   ],
   PROJECTS: [
     "project",
@@ -34,6 +41,10 @@ const INTENT_FEATURES: Record<HeliaIntent, string[]> = {
     "staging",
     "production",
     "development",
+    "proje",
+    "projeler",
+    "projesi",
+    "ortam",
   ],
   ORGANIZATIONS: [
     "organization",
@@ -44,6 +55,10 @@ const INTENT_FEATURES: Record<HeliaIntent, string[]> = {
     "company",
     "workspace",
     "plan",
+    "organizasyon",
+    "organizasyonlar",
+    "kurum",
+    "şirket",
   ],
   USAGE: [
     "usage",
@@ -57,6 +72,12 @@ const INTENT_FEATURES: Record<HeliaIntent, string[]> = {
     "bandwidth",
     "brain",
     "monitoring",
+    "kullanım",
+    "istek",
+    "istekler",
+    "bugün",
+    "aylık",
+    "kota",
   ],
   HEALTH: [
     "health",
@@ -68,6 +89,10 @@ const INTENT_FEATURES: Record<HeliaIntent, string[]> = {
     "heartbeat",
     "platform",
     "system",
+    "sağlık",
+    "sağlıklı",
+    "durum",
+    "çalışıyor",
   ],
   LOGS: [
     "log",
@@ -79,6 +104,11 @@ const INTENT_FEATURES: Record<HeliaIntent, string[]> = {
     "failure",
     "exception",
     "incident",
+    "hata",
+    "hatalar",
+    "günlük",
+    "loglar",
+    "kayıt",
   ],
   DOCUMENTATION: [
     "doc",
@@ -93,6 +123,11 @@ const INTENT_FEATURES: Record<HeliaIntent, string[]> = {
     "webhook",
     "auth",
     "authentication",
+    "dokümantasyon",
+    "belge",
+    "açıkla",
+    "nasıl",
+    "nedir",
   ],
   INTEGRATIONS: [
     "integration",
@@ -103,6 +138,9 @@ const INTENT_FEATURES: Record<HeliaIntent, string[]> = {
     "webhook",
     "connect",
     "sdk",
+    "entegrasyon",
+    "entegrasyonlar",
+    "bağlantı",
   ],
   ANALYTICS: [
     "analytics",
@@ -114,6 +152,9 @@ const INTENT_FEATURES: Record<HeliaIntent, string[]> = {
     "chart",
     "rate",
     "errorrate",
+    "analitik",
+    "metrik",
+    "istatistik",
   ],
   CODE_GENERATION: [
     "code",
@@ -134,6 +175,10 @@ const INTENT_FEATURES: Record<HeliaIntent, string[]> = {
     "react",
     "vue",
     "angular",
+    "kod",
+    "örnek",
+    "örneği",
+    "üret",
   ],
   SECURITY: [
     "env",
@@ -149,6 +194,8 @@ const INTENT_FEATURES: Record<HeliaIntent, string[]> = {
     "database",
     "credential",
     "cookie",
+    "şifre",
+    "gizli",
   ],
   GENERAL: [
     "help",
@@ -160,6 +207,12 @@ const INTENT_FEATURES: Record<HeliaIntent, string[]> = {
     "can",
     "you",
     "do",
+    "merhaba",
+    "selam",
+    "yardım",
+    "neler",
+    "yapabilirsin",
+    "teşekkür",
   ],
   UNKNOWN: [],
 };
@@ -181,12 +234,21 @@ const FOLLOW_UP_CUES = [
   "disable",
   "delete",
   "one",
+  "onu",
+  "bunu",
+  "şunu",
+  "yenisini",
+  "sonuncuyu",
+  "aynısını",
+  "tekrar",
+  "kaç",
 ];
 
 function tokenize(text: string): string[] {
   return text
-    .toLowerCase()
-    .replace(/[^a-z0-9_\s]/g, " ")
+    .toLocaleLowerCase("tr-TR")
+    .normalize("NFC")
+    .replace(/[^a-z0-9çğıöşü_\s]/gi, " ")
     .split(/\s+/)
     .map((t) => t.trim())
     .filter((t) => t.length > 1);
@@ -261,7 +323,14 @@ export function detectIntents(
 
   if (selected.length === 0) {
     // Soft documentation / general assist — never hard-fail to UNKNOWN alone
-    if (tokens.has("how") || tokens.has("what") || tokens.has("explain")) {
+    if (
+      tokens.has("how") ||
+      tokens.has("what") ||
+      tokens.has("explain") ||
+      tokens.has("nasıl") ||
+      tokens.has("nedir") ||
+      tokens.has("açıkla")
+    ) {
       return ["DOCUMENTATION"];
     }
     return ["GENERAL"];
