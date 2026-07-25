@@ -1,39 +1,25 @@
 /**
- * Scans src/app/api route.ts files and regenerates the Admin API Tester catalog.
- * Run: node scripts/generate-api-tester-endpoints.mjs
+ * Optional audit helper. Live catalog comes from discoverApiRoutes()
+ * via GET /api/admin/tester/catalog — no hardcoded endpoint lists.
  *
- * Catalog policy: only routes that EXIST and accept customer API keys
- * (authenticateApiKey). Session-only / admin-only / public auth routes are
- * omitted from the Tester suggestions (they still appear in the audit printout).
+ * Run: node scripts/generate-api-tester-endpoints.mjs
  */
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { createRequire } from "node:module";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(__dirname, "..");
-const apiRoot = path.join(root, "src", "app", "api");
-const outFile = path.join(
-  root,
-  "src",
-  "components",
-  "admin",
-  "api-tester",
-  "generated-endpoints.ts"
-);
 
+// Prefer compiled/runtime discovery note — print filesystem scan via inline JS
+const apiRoot = path.join(root, "src", "app", "api");
 const METHODS = ["GET", "POST", "PUT", "PATCH", "DELETE"];
 
-/**
- * @typedef {{ method: string, path: string, file: string, src: string }} RouteHit
- */
+/** @type {{ path: string, methods: string[], file: string }[]} */
+const routes = [];
+const byPath = new Map();
 
-/** @type {RouteHit[]} */
-const results = [];
-
-/**
- * @param {string} dir
- */
 function walk(dir) {
   for (const ent of fs.readdirSync(dir, { withFileTypes: true })) {
     const p = path.join(dir, ent.name);
@@ -42,154 +28,40 @@ function walk(dir) {
       continue;
     }
     if (ent.name !== "route.ts" && ent.name !== "route.js") continue;
-
     const src = fs.readFileSync(p, "utf8");
     const rel = path.relative(apiRoot, path.dirname(p)).split(path.sep).join("/");
     const urlPath =
-      "/api" +
-      (rel ? `/${rel}` : "").replace(/\[([^\]]+)\]/g, ":$1");
+      "/api" + (rel ? `/${rel}` : "").replace(/\[([^\]]+)\]/g, ":$1");
     const file = path.relative(root, p).split(path.sep).join("/");
-
-    for (const m of METHODS) {
-      const re = new RegExp(`export\\s+async\\s+function\\s+${m}\\b`);
-      if (re.test(src)) {
-        results.push({ method: m, path: urlPath, file, src });
+    const methods = METHODS.filter((m) =>
+      new RegExp(`export\\s+async\\s+function\\s+${m}\\b`).test(src)
+    );
+    if (!methods.length) continue;
+    const existing = byPath.get(urlPath);
+    if (existing) {
+      for (const m of methods) {
+        if (!existing.methods.includes(m)) existing.methods.push(m);
       }
+    } else {
+      byPath.set(urlPath, { path: urlPath, methods: [...methods], file });
     }
   }
 }
 
-/**
- * @param {string} urlPath
- */
-function groupFor(urlPath) {
-  const parts = urlPath.replace(/^\/api\//, "").split("/");
-  const top = parts[0] || "Other";
-  const map = {
-    auth: "Auth",
-    apikeys: "API Keys",
-    organizations: "Organizations",
-    projects: "Projects",
-    brain: "Brain",
-    admin: "Admin",
-  };
-  return map[top] || top.charAt(0).toUpperCase() + top.slice(1);
-}
-
-/**
- * @param {RouteHit} r
- */
-function classify(r) {
-  const s = r.src;
-  const usesApiKeyAuth =
-    /authenticateApiKey\s*\(/.test(s) && !/requireAdminUser\s*\(/.test(s);
-  // Admin tester validate/execute call authenticateApiKey on a pasted key in the body,
-  // but the route itself is gated by requireAdminUser — not customer API-key auth.
-  const adminSession =
-    /requireAdminUser\s*\(/.test(s) || /requireAdminBrainContext\s*\(/.test(s);
-  const userSession = /requireCloudUser\s*\(/.test(s) && !adminSession;
-  const sessionRequired = adminSession || userSession;
-  const apiKeySupported = usesApiKeyAuth;
-  const publicNoAuth =
-    !adminSession &&
-    !userSession &&
-    !usesApiKeyAuth &&
-    !/requireCloudUser|requireAdminUser|requireAdminBrainContext|authenticateApiKey/.test(
-      s
-    );
-
-  let status = "Reachable";
-  let unreachableWhy = "";
-
-  if (apiKeySupported) {
-    status = "Reachable (API key Bearer)";
-  } else if (publicNoAuth) {
-    status = "Reachable (no auth)";
-  } else if (adminSession) {
-    status =
-      "Unreachable via API Tester key — requires admin session JWT/cookie";
-    unreachableWhy =
-      "Handler uses requireAdminUser / requireAdminBrainContext; pasted hl_* keys are not JWTs";
-  } else if (userSession) {
-    status =
-      "Unreachable via API Tester key — requires user session JWT/cookie";
-    unreachableWhy =
-      "Handler uses requireCloudUser; normalizeAccessToken rejects hl_live_/hl_test_ Bearer tokens";
-  }
-
-  return {
-    method: r.method,
-    path: r.path,
-    file: r.file,
-    exists: true,
-    apiKeySupported,
-    sessionRequired: adminSession || userSession,
-    adminSession,
-    userSession,
-    publicNoAuth,
-    status,
-    unreachableWhy,
-    includeInTester: apiKeySupported,
-  };
-}
-
 walk(apiRoot);
-
-results.sort(
-  (a, b) => a.path.localeCompare(b.path) || a.method.localeCompare(b.method)
-);
-
-const seen = new Set();
-/** @type {ReturnType<typeof classify>[]} */
-const audit = [];
-for (const r of results) {
-  const k = `${r.method} ${r.path}`;
-  if (seen.has(k)) continue;
-  seen.add(k);
-  audit.push(classify(r));
+for (const r of byPath.values()) {
+  r.methods.sort((a, b) => METHODS.indexOf(a) - METHODS.indexOf(b));
+  routes.push(r);
 }
+routes.sort((a, b) => a.path.localeCompare(b.path));
 
-const forTester = audit.filter((a) => a.includeInTester);
-
-const lines = [
-  "/**",
-  " * AUTO-GENERATED by scripts/generate-api-tester-endpoints.mjs",
-  " * Do not edit by hand — re-run after adding/removing API routes.",
-  " *",
-  " * Only routes that exist AND accept customer API keys (authenticateApiKey).",
-  " * Session-only / admin-only routes are excluded (they fail when the Tester",
-  " * sends hl_live_/hl_test_ as Bearer).",
-  " */",
-  "",
-  "export type GeneratedEndpoint = {",
-  "  group: string;",
-  '  method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";',
-  "  path: string;",
-  "};",
-  "",
-  "export const GENERATED_ENDPOINTS: GeneratedEndpoint[] = [",
-  ...forTester.map(
-    (r) =>
-      `  { group: ${JSON.stringify(groupFor(r.path))}, method: ${JSON.stringify(r.method)}, path: ${JSON.stringify(r.path)} },`
-  ),
-  "];",
-  "",
-  `export const GENERATED_ENDPOINT_COUNT = ${forTester.length};`,
-  "",
-];
-
-fs.writeFileSync(outFile, lines.join("\n"), "utf8");
-
-console.log(`Tester catalog: ${forTester.length} API-key endpoint(s)`);
-console.log(`Full audit: ${audit.length} handler(s)\n`);
-console.log(
-  "| Method | Endpoint | Exists | API Key Supported | Session Required | Status |"
-);
-console.log(
-  "|--------|----------|--------|-------------------|------------------|--------|"
-);
-for (const a of audit) {
-  console.log(
-    `| ${a.method} | \`${a.path}\` | Yes | ${a.apiKeySupported ? "Yes" : "No"} | ${a.sessionRequired ? "Yes" : "No"} | ${a.status} |`
-  );
+console.log(`Discovered ${routes.length} API route paths under src/app/api:\n`);
+for (const r of routes) {
+  console.log(`  ${r.methods.join("|").padEnd(24)} ${r.path}`);
 }
+console.log(
+  `\nAdmin UI loads this catalog live from GET /api/admin/tester/catalog (no commit required).`
+);
+
+// Keep require available for tooling that may extend this script later.
+void createRequire;

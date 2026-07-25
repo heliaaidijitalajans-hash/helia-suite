@@ -1,15 +1,47 @@
-import { GENERATED_ENDPOINTS } from "./generated-endpoints";
-
 export type HttpMethod = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
 
-export type EndpointDef = {
-  method: HttpMethod;
+export type AuthType =
+  | "api_key"
+  | "session"
+  | "admin_session"
+  | "public"
+  | "mixed"
+  | "unknown";
+
+/** Live catalog entry from /api/admin/tester/catalog (filesystem discovery). */
+export type CatalogRoute = {
   path: string;
+  methods: HttpMethod[];
   group: string;
-  label?: string;
+  file: string;
+  description: string | null;
+  authentication: AuthType;
+  permissions: string[];
+  queryParameters: string[];
+  pathParameters: string[];
+  bodyFields: string[];
+  bodySchemaHint: string | null;
+  multipart: boolean;
+  apiKeySupported: boolean;
+  sessionRequired: boolean;
 };
 
-export type QueryParam = { id: string; key: string; value: string; enabled: boolean };
+export type CatalogResponse = {
+  ok: true;
+  generatedAt: string;
+  count: number;
+  groups: string[];
+  routes: CatalogRoute[];
+};
+
+export type QueryParam = {
+  id: string;
+  key: string;
+  value: string;
+  enabled: boolean;
+};
+
+export type PathParam = { id: string; key: string; value: string };
 
 export type HistoryEntry = {
   id: string;
@@ -18,6 +50,7 @@ export type HistoryEntry = {
   path: string;
   pathTemplate: string;
   query: QueryParam[];
+  pathParams: PathParam[];
   headersText: string;
   bodyText: string;
   status: number;
@@ -49,21 +82,20 @@ export type ExecuteResult = {
   status: number;
   latencyMs: number;
   sizeBytes: number;
-  /** Whether the proxied upstream HTTP response was 2xx. */
   upstreamOk: boolean;
+  implemented?: boolean;
+  message?: string;
   body: unknown;
   rawText?: string;
   executedAt: string;
   request: { method: string; path: string };
 };
 
-/** True when response body has `ok: false` (Helia envelope). */
 export function bodyReportsFailure(body: unknown): boolean {
   if (!body || typeof body !== "object") return false;
   return (body as { ok?: unknown }).ok === false;
 }
 
-/** True when response body has `ok: true`. */
 export function bodyReportsSuccess(body: unknown): boolean {
   if (!body || typeof body !== "object") return false;
   return (body as { ok?: unknown }).ok === true;
@@ -77,11 +109,21 @@ export const HTTP_METHODS: HttpMethod[] = [
   "DELETE",
 ];
 
-/** Real App Router endpoints only — regenerated via `node scripts/generate-api-tester-endpoints.mjs`. */
-export const PREDEFINED_ENDPOINTS: EndpointDef[] = GENERATED_ENDPOINTS;
-
 export function endpointKey(method: string, path: string): string {
   return `${method.toUpperCase()} ${path}`;
+}
+
+export function applyPathParams(
+  template: string,
+  params: PathParam[]
+): string {
+  const map = Object.fromEntries(
+    params.map((p) => [p.key, p.value.trim()])
+  );
+  return template.replace(/:([A-Za-z_][A-Za-z0-9_]*)/g, (_, key: string) => {
+    const v = map[key];
+    return v ? encodeURIComponent(v) : `:${key}`;
+  });
 }
 
 export function buildUrlWithQuery(
@@ -127,4 +169,30 @@ export function isValidJson(text: string): boolean {
   } catch {
     return false;
   }
+}
+
+export function matchCatalogRoute(
+  routes: CatalogRoute[],
+  requestPath: string
+): CatalogRoute | null {
+  const pathOnly = (requestPath.split("?")[0] || "").trim();
+  const exact = routes.find((r) => r.path === pathOnly);
+  if (exact) return exact;
+  for (const r of routes) {
+    if (!r.path.includes(":")) continue;
+    const pattern = new RegExp(
+      "^" +
+        r.path
+          .split("/")
+          .map((seg) =>
+            seg.startsWith(":")
+              ? "[^/]+"
+              : seg.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+          )
+          .join("/") +
+        "$"
+    );
+    if (pattern.test(pathOnly)) return r;
+  }
+  return null;
 }

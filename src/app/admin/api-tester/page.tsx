@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import {
   Check,
   Copy,
@@ -19,9 +20,13 @@ import { adminFetch } from "@/services/admin/http";
 import { cn } from "@/lib/cn";
 import { EndpointCombobox } from "@/components/admin/api-tester/EndpointCombobox";
 import { QueryParamsEditor } from "@/components/admin/api-tester/QueryParamsEditor";
+import { PathParamsEditor } from "@/components/admin/api-tester/PathParamsEditor";
 import { CodeExportPanel } from "@/components/admin/api-tester/CodeExportPanel";
-import { ResultBanner, TransportErrorCard } from "@/components/admin/api-tester/StatusCards";
-import { JsonHighlight } from "@/components/admin/api-tester/JsonHighlight";
+import {
+  ResultBanner,
+  TransportErrorCard,
+} from "@/components/admin/api-tester/StatusCards";
+import { CollapsibleJson } from "@/components/admin/api-tester/CollapsibleJson";
 import type { CodegenInput } from "@/components/admin/api-tester/codegen";
 import {
   loadHistory,
@@ -29,19 +34,22 @@ import {
   saveHistory,
 } from "@/components/admin/api-tester/storage";
 import {
+  applyPathParams,
   buildUrlWithQuery,
   formatBytes,
   isValidJson,
+  matchCatalogRoute,
   prettyJson,
+  type CatalogRoute,
   type ExecuteResult,
   type HistoryEntry,
   type HttpMethod,
+  type PathParam,
   type QueryParam,
   type ValidateResult,
 } from "@/components/admin/api-tester/types";
 
 const DEFAULT_HEADERS = '{\n  "Accept": "application/json"\n}';
-const DEFAULT_BODY = "{\n  \n}";
 
 function nid(prefix: string) {
   return `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
@@ -52,12 +60,19 @@ function needsBody(method: HttpMethod) {
 }
 
 export default function AdminApiTesterPage() {
+  const [routes, setRoutes] = useState<CatalogRoute[]>([]);
+  const [catalogLoading, setCatalogLoading] = useState(true);
+  const [catalogError, setCatalogError] = useState<string | null>(null);
+
   const [apiKey, setApiKey] = useState("");
   const [method, setMethod] = useState<HttpMethod>("GET");
-  const [path, setPath] = useState("/api/apikeys/whoami");
+  const [pathTemplate, setPathTemplate] = useState("/api/apikeys/whoami");
+  const [pathParams, setPathParams] = useState<PathParam[]>([]);
   const [query, setQuery] = useState<QueryParam[]>([]);
   const [headersText, setHeadersText] = useState(DEFAULT_HEADERS);
-  const [bodyText, setBodyText] = useState(DEFAULT_BODY);
+  const [bodyText, setBodyText] = useState("{\n  \n}");
+  const [multipartNote, setMultipartNote] = useState(false);
+
   const [validation, setValidation] = useState<ValidateResult | null>(null);
   const [response, setResponse] = useState<unknown>(null);
   const [status, setStatus] = useState<number | null>(null);
@@ -65,6 +80,7 @@ export default function AdminApiTesterPage() {
   const [sizeBytes, setSizeBytes] = useState<number | null>(null);
   const [executedAt, setExecutedAt] = useState<string | null>(null);
   const [upstreamOk, setUpstreamOk] = useState<boolean | null>(null);
+  const [implemented, setImplemented] = useState<boolean | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [transportError, setTransportError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -77,16 +93,95 @@ export default function AdminApiTesterPage() {
   const [bodyError, setBodyError] = useState<string | null>(null);
 
   useEffect(() => {
-    setHistory(loadHistory());
+    setHistory(
+      loadHistory().map((h) => ({
+        ...h,
+        pathParams: h.pathParams ?? [],
+      }))
+    );
   }, []);
 
-  const finalPath = useMemo(
-    () => buildUrlWithQuery(path, query),
-    [path, query]
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      setCatalogLoading(true);
+      setCatalogError(null);
+      try {
+        const res = await adminFetch<{
+          routes: CatalogRoute[];
+          count: number;
+        }>("/api/admin/tester/catalog");
+        if (cancelled) return;
+        setRoutes(res.routes);
+        const whoami = res.routes.find((r) => r.path === "/api/apikeys/whoami");
+        if (whoami) {
+          applyRouteSelection(whoami, whoami.methods[0] || "GET");
+        }
+      } catch (err) {
+        if (!cancelled) {
+          setCatalogError(
+            err instanceof Error ? err.message : "Failed to load API catalog"
+          );
+        }
+      } finally {
+        if (!cancelled) setCatalogLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  function applyRouteSelection(route: CatalogRoute, nextMethod: HttpMethod) {
+    setPathTemplate(route.path);
+    setMethod(nextMethod);
+    setPathParams(
+      route.pathParameters.map((key) => ({
+        id: nid("p"),
+        key,
+        value: "",
+      }))
+    );
+    setQuery(
+      route.queryParameters.map((key) => ({
+        id: nid("q"),
+        key,
+        value: "",
+        enabled: true,
+      }))
+    );
+    if (needsBody(nextMethod) && route.bodySchemaHint) {
+      setBodyText(route.bodySchemaHint);
+    } else if (!needsBody(nextMethod)) {
+      setBodyText("{\n  \n}");
+    }
+    setMultipartNote(route.multipart);
+  }
+
+  const resolvedPath = useMemo(
+    () => applyPathParams(pathTemplate, pathParams),
+    [pathTemplate, pathParams]
   );
 
-  const responseText = useMemo(() => prettyJson(response), [response]);
+  const finalPath = useMemo(
+    () => buildUrlWithQuery(resolvedPath, query),
+    [resolvedPath, query]
+  );
 
+  const matchedRoute = useMemo(
+    () => matchCatalogRoute(routes, resolvedPath),
+    [routes, resolvedPath]
+  );
+
+  const notImplemented =
+    !catalogLoading &&
+    routes.length > 0 &&
+    Boolean(resolvedPath.startsWith("/api/")) &&
+    !matchedRoute &&
+    !resolvedPath.includes(":");
+
+  const responseText = useMemo(() => prettyJson(response), [response]);
   const headersValid = isValidJson(headersText);
   const bodyValid =
     !needsBody(method) || !bodyText.trim() || isValidJson(bodyText);
@@ -111,9 +206,7 @@ export default function AdminApiTesterPage() {
 
   const codegenInput: CodegenInput | null = useMemo(() => {
     if (typeof window === "undefined") return null;
-    const headers: Record<string, string> = {
-      ...parsedHeaders,
-    };
+    const headers: Record<string, string> = { ...parsedHeaders };
     if (apiKey.trim()) {
       if (!headers.Authorization && !headers.authorization) {
         headers.Authorization = `Bearer ${apiKey.trim()}`;
@@ -122,7 +215,11 @@ export default function AdminApiTesterPage() {
         headers["X-API-Key"] = apiKey.trim();
       }
     }
-    if (needsBody(method) && !headers["Content-Type"] && !headers["content-type"]) {
+    if (
+      needsBody(method) &&
+      !headers["Content-Type"] &&
+      !headers["content-type"]
+    ) {
       headers["Content-Type"] = "application/json";
     }
     return {
@@ -140,7 +237,7 @@ export default function AdminApiTesterPage() {
     setError(null);
     setTransportError(null);
     try {
-      const res = await adminFetch<ValidateResult & { ok: true }>(
+      const res = await adminFetch<ValidateResult>(
         "/api/admin/tester/validate",
         {
           method: "POST",
@@ -170,6 +267,34 @@ export default function AdminApiTesterPage() {
     setTransportError(null);
     setHeadersError(null);
     setBodyError(null);
+
+    if (notImplemented) {
+      setStatus(404);
+      setLatencyMs(0);
+      setSizeBytes(0);
+      setUpstreamOk(false);
+      setImplemented(false);
+      setResponse({
+        ok: false,
+        error: {
+          code: "NOT_IMPLEMENTED",
+          message: "This endpoint is not implemented.",
+          path: resolvedPath,
+        },
+      });
+      setExecutedAt(new Date().toISOString());
+      setBusy(false);
+      setBusyAction(null);
+      return;
+    }
+
+    if (pathParams.some((p) => !p.value.trim())) {
+      setError("Fill all path parameters before running the request.");
+      setBusy(false);
+      setBusyAction(null);
+      return;
+    }
+
     try {
       if (!isValidJson(headersText)) {
         setHeadersError("Headers must be valid JSON");
@@ -190,27 +315,22 @@ export default function AdminApiTesterPage() {
         }
       }
 
-      const pathTemplate = path.trim();
-      // Envelope ok is always true when the tester proxy itself succeeds.
-      // Upstream HTTP outcome lives in `status` + `upstreamOk` (not envelope ok).
-      const res = await adminFetch<ExecuteResult>(
-        "/api/admin/tester/execute",
-        {
-          method: "POST",
-          body: JSON.stringify({
-            apiKey,
-            method,
-            path: finalPath,
-            headers,
-            jsonBody,
-          }),
-        }
-      );
+      const res = await adminFetch<ExecuteResult>("/api/admin/tester/execute", {
+        method: "POST",
+        body: JSON.stringify({
+          apiKey,
+          method,
+          path: finalPath,
+          headers,
+          jsonBody,
+        }),
+      });
 
       setStatus(res.status);
       setLatencyMs(res.latencyMs);
       setSizeBytes(res.sizeBytes);
       setUpstreamOk(res.upstreamOk);
+      setImplemented(res.implemented ?? true);
       setResponse(res.body);
       setExecutedAt(res.executedAt ?? new Date().toISOString());
 
@@ -223,6 +343,7 @@ export default function AdminApiTesterPage() {
         path: finalPath,
         pathTemplate,
         query,
+        pathParams,
         headersText,
         bodyText,
         status: res.status,
@@ -235,37 +356,48 @@ export default function AdminApiTesterPage() {
         return next;
       });
     } catch (err) {
-      const message =
-        err instanceof Error ? err.message : "Request failed";
+      const message = err instanceof Error ? err.message : "Request failed";
       const isClientValidation =
-        /Headers must be valid JSON|Body must be valid JSON/i.test(message);
+        /Headers must be valid JSON|Body must be valid JSON|path parameters/i.test(
+          message
+        );
       const isTransport =
         !isClientValidation &&
         (/failed to fetch|networkerror|network request failed|timeout|dns|abort|load failed|fetch failed/i.test(
           message
         ) ||
           err instanceof TypeError);
-      if (isTransport) {
-        setTransportError(message);
-      } else {
-        setError(message);
-      }
+      if (isTransport) setTransportError(message);
+      else setError(message);
     } finally {
       setBusy(false);
       setBusyAction(null);
     }
-  }, [apiKey, bodyText, finalPath, headersText, method, path, query]);
+  }, [
+    apiKey,
+    bodyText,
+    finalPath,
+    headersText,
+    method,
+    notImplemented,
+    pathParams,
+    pathTemplate,
+    query,
+    resolvedPath,
+  ]);
 
   function reloadFromHistory(item: HistoryEntry) {
     setMethod(item.method);
-    setPath(item.pathTemplate || item.path.split("?")[0] || item.path);
+    setPathTemplate(item.pathTemplate || item.path.split("?")[0] || item.path);
     setQuery(item.query ?? []);
+    setPathParams(item.pathParams ?? []);
     setHeadersText(item.headersText || DEFAULT_HEADERS);
-    setBodyText(item.bodyText || DEFAULT_BODY);
+    setBodyText(item.bodyText || "{\n  \n}");
     setStatus(item.status);
     setLatencyMs(item.latencyMs);
     setSizeBytes(item.sizeBytes);
     setUpstreamOk(item.status >= 200 && item.status < 300);
+    setImplemented(true);
     setExecutedAt(item.at);
     setError(null);
     setTransportError(null);
@@ -278,34 +410,13 @@ export default function AdminApiTesterPage() {
   }
 
   function downloadResponse() {
-    const blob = new Blob([responseText || ""], {
-      type: "application/json",
-    });
+    const blob = new Blob([responseText || ""], { type: "application/json" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
     a.download = `helia-api-response-${Date.now()}.json`;
     a.click();
     URL.revokeObjectURL(url);
-  }
-
-  function formatBody() {
-    if (!bodyText.trim()) return;
-    try {
-      setBodyText(JSON.stringify(JSON.parse(bodyText), null, 2));
-      setBodyError(null);
-    } catch {
-      setBodyError("Body must be valid JSON");
-    }
-  }
-
-  function formatHeaders() {
-    try {
-      setHeadersText(JSON.stringify(JSON.parse(headersText), null, 2));
-      setHeadersError(null);
-    } catch {
-      setHeadersError("Headers must be valid JSON");
-    }
   }
 
   useEffect(() => {
@@ -328,8 +439,21 @@ export default function AdminApiTesterPage() {
     <div className="space-y-6">
       <AdminPanel
         title="API Tester"
-        description="Postman-style Helia API console — validate keys, craft requests, inspect responses, and export code. Shortcuts: ⌘/Ctrl+Enter run · ⌘/Ctrl+Shift+V validate."
+        description="Postman-style console — endpoints discovered live from src/app/api. Shortcuts: ⌘/Ctrl+Enter run · ⌘/Ctrl+Shift+V validate."
+        actions={
+          <Link href="/admin/api-explorer" className={adminBtnSecondary}>
+            API Explorer
+          </Link>
+        }
       >
+        {catalogLoading ? (
+          <p className="mb-4 text-sm text-white/45">Discovering API routes…</p>
+        ) : null}
+        {catalogError ? (
+          <p className="mb-4 rounded-xl border border-red-500/25 bg-red-500/10 px-4 py-3 text-sm text-red-100/90">
+            {catalogError}
+          </p>
+        ) : null}
         {error ? (
           <p className="mb-4 rounded-xl border border-amber-500/25 bg-amber-500/10 px-4 py-3 text-sm text-amber-100/90">
             {error}
@@ -339,6 +463,11 @@ export default function AdminApiTesterPage() {
           <div className="mb-4">
             <TransportErrorCard message={transportError} />
           </div>
+        ) : null}
+        {notImplemented ? (
+          <p className="mb-4 rounded-xl border border-orange-500/25 bg-orange-500/10 px-4 py-3 text-sm text-orange-50">
+            This endpoint is not implemented.
+          </p>
         ) : null}
 
         <div className="space-y-5">
@@ -356,17 +485,29 @@ export default function AdminApiTesterPage() {
           </label>
 
           <EndpointCombobox
+            routes={routes}
             method={method}
-            path={path}
-            onMethodChange={setMethod}
-            onPathChange={setPath}
+            path={pathTemplate}
+            onMethodChange={(m) => {
+              setMethod(m);
+              if (matchedRoute?.bodySchemaHint && needsBody(m)) {
+                setBodyText(matchedRoute.bodySchemaHint);
+              }
+            }}
+            onPathChange={setPathTemplate}
+            onPickRoute={applyRouteSelection}
           />
 
           <p className="rounded-lg border border-white/[0.06] bg-white/[0.02] px-3 py-2 font-mono text-[11px] text-white/50">
-            Final URL:{" "}
-            <span className="text-white/80">{finalPath}</span>
+            Final URL: <span className="text-white/80">{finalPath}</span>
+            {routes.length > 0 ? (
+              <span className="ml-2 text-white/35">
+                · {routes.length} discovered routes
+              </span>
+            ) : null}
           </p>
 
+          <PathParamsEditor params={pathParams} onChange={setPathParams} />
           <QueryParamsEditor params={query} onChange={setQuery} />
 
           <label className="block space-y-1.5">
@@ -377,7 +518,16 @@ export default function AdminApiTesterPage() {
               <button
                 type="button"
                 className={adminBtnSecondary}
-                onClick={formatHeaders}
+                onClick={() => {
+                  try {
+                    setHeadersText(
+                      JSON.stringify(JSON.parse(headersText), null, 2)
+                    );
+                    setHeadersError(null);
+                  } catch {
+                    setHeadersError("Headers must be valid JSON");
+                  }
+                }}
               >
                 Pretty format
               </button>
@@ -397,15 +547,6 @@ export default function AdminApiTesterPage() {
               }}
               spellCheck={false}
             />
-            {headersError || !headersValid ? (
-              <p className="text-xs text-red-300/90">
-                {headersError || "Invalid JSON"}
-              </p>
-            ) : (
-              <p className="text-[11px] text-white/35">
-                Add Authorization, Content-Type, X-API-Key, or any custom header.
-              </p>
-            )}
           </label>
 
           {needsBody(method) ? (
@@ -417,7 +558,16 @@ export default function AdminApiTesterPage() {
                 <button
                   type="button"
                   className={adminBtnSecondary}
-                  onClick={formatBody}
+                  onClick={() => {
+                    try {
+                      setBodyText(
+                        JSON.stringify(JSON.parse(bodyText), null, 2)
+                      );
+                      setBodyError(null);
+                    } catch {
+                      setBodyError("Body must be valid JSON");
+                    }
+                  }}
                 >
                   Pretty format
                 </button>
@@ -437,9 +587,10 @@ export default function AdminApiTesterPage() {
                 }}
                 spellCheck={false}
               />
-              {bodyError || !bodyValid ? (
-                <p className="text-xs text-red-300/90">
-                  {bodyError || "Invalid JSON"}
+              {multipartNote ? (
+                <p className="text-xs text-amber-200/80">
+                  This route uses multipart/formData — send files via a dedicated
+                  multipart client if required.
                 </p>
               ) : null}
             </label>
@@ -486,33 +637,16 @@ export default function AdminApiTesterPage() {
               <dt className="text-xs uppercase text-white/35">Organization</dt>
               <dd className="mt-1 text-white/85">
                 {validation.organization.name}
-                <span className="mt-0.5 block font-mono text-[11px] text-white/40">
-                  {validation.organization.id}
-                  {validation.organization.status
-                    ? ` · ${validation.organization.status}`
-                    : ""}
-                </span>
               </dd>
             </div>
             <div>
               <dt className="text-xs uppercase text-white/35">Project</dt>
-              <dd className="mt-1 text-white/85">
-                {validation.project.name}
-                <span className="mt-0.5 block text-[11px] text-white/40">
-                  {validation.project.environment}
-                </span>
-              </dd>
+              <dd className="mt-1 text-white/85">{validation.project.name}</dd>
             </div>
             <div>
               <dt className="text-xs uppercase text-white/35">Application</dt>
               <dd className="mt-1 text-white/85">
                 {validation.application.name}
-                {validation.application.prefix ? (
-                  <span className="mt-0.5 block font-mono text-[11px] text-white/40">
-                    {validation.application.prefix}…{validation.application.lastFour}
-                    {validation.application.enabled === false ? " · disabled" : ""}
-                  </span>
-                ) : null}
               </dd>
             </div>
             <div>
@@ -531,34 +665,6 @@ export default function AdminApiTesterPage() {
               <dt className="text-xs uppercase text-white/35">Plan</dt>
               <dd className="mt-1 text-white/85">
                 {validation.plan.name || validation.organization.planId}
-                {validation.plan.limits &&
-                Object.keys(validation.plan.limits).length > 0 ? (
-                  <span className="mt-0.5 block font-mono text-[11px] text-white/40">
-                    {Object.entries(validation.plan.limits)
-                      .map(([k, v]) => `${k}:${v}`)
-                      .join(" · ")}
-                  </span>
-                ) : null}
-              </dd>
-            </div>
-            <div>
-              <dt className="text-xs uppercase text-white/35">Rate limits</dt>
-              <dd className="mt-1 text-white/85">
-                {validation.rateLimits.max} / {validation.rateLimits.windowMs}ms
-              </dd>
-            </div>
-            <div>
-              <dt className="text-xs uppercase text-white/35">Usage count</dt>
-              <dd className="mt-1 text-white/85">
-                {validation.application.usageCount}
-              </dd>
-            </div>
-            <div>
-              <dt className="text-xs uppercase text-white/35">Last used</dt>
-              <dd className="mt-1 text-white/85">
-                {validation.application.lastUsedAt
-                  ? new Date(validation.application.lastUsedAt).toLocaleString()
-                  : "—"}
               </dd>
             </div>
           </dl>
@@ -581,7 +687,7 @@ export default function AdminApiTesterPage() {
                 ) : (
                   <Copy className="mr-1.5 h-3.5 w-3.5" />
                 )}
-                Copy Response
+                Copy
               </button>
               <button
                 type="button"
@@ -596,13 +702,19 @@ export default function AdminApiTesterPage() {
           }
         >
           <div className="mb-4 space-y-3">
-            <ResultBanner
-              status={status}
-              latencyMs={latencyMs}
-              sizeBytes={sizeBytes}
-              body={response}
-              upstreamOk={upstreamOk}
-            />
+            {implemented === false ? (
+              <div className="rounded-xl border border-orange-500/25 bg-orange-500/10 px-4 py-3 text-sm text-orange-50">
+                This endpoint is not implemented.
+              </div>
+            ) : (
+              <ResultBanner
+                status={status}
+                latencyMs={latencyMs}
+                sizeBytes={sizeBytes}
+                body={response}
+                upstreamOk={upstreamOk}
+              />
+            )}
             <div className="flex flex-wrap gap-4 text-xs text-white/50">
               <span>
                 Status:{" "}
@@ -623,16 +735,18 @@ export default function AdminApiTesterPage() {
               <span>
                 Timestamp:{" "}
                 <span className="font-mono text-white/80">
-                  {executedAt
-                    ? new Date(executedAt).toLocaleString()
-                    : "—"}
+                  {executedAt ? new Date(executedAt).toLocaleString() : "—"}
                 </span>
               </span>
             </div>
           </div>
-          <pre className="max-h-[480px] overflow-auto rounded-xl border border-white/10 bg-[#0d0d0f] p-4 font-mono text-xs leading-relaxed">
-            <JsonHighlight text={responseText} />
-          </pre>
+          {response != null ? (
+            <CollapsibleJson value={response} />
+          ) : (
+            <p className="text-xs text-white/40">
+              Run a request to see JSON here.
+            </p>
+          )}
         </AdminPanel>
 
         <AdminPanel
@@ -678,7 +792,7 @@ export default function AdminApiTesterPage() {
 
       <AdminPanel
         title="Export & code generator"
-        description="Working snippets from the current request — cURL, Fetch, Axios, Python, Go, PHP, C#."
+        description="Working snippets from the current request."
       >
         <CodeExportPanel input={codegenInput} />
       </AdminPanel>

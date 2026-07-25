@@ -18,6 +18,7 @@ export type PlatformUiDict = {
     applications: string;
     apiKeys: string;
     apiTester: string;
+    apiExplorer: string;
     logs: string;
     analytics: string;
     systemHealth: string;
@@ -102,6 +103,7 @@ const en: PlatformUiDict = {
     applications: "Applications",
     apiKeys: "API Keys",
     apiTester: "API Tester",
+    apiExplorer: "API Explorer",
     logs: "Logs",
     analytics: "Analytics",
     systemHealth: "System Health",
@@ -186,6 +188,7 @@ const tr: PlatformUiDict = {
     applications: "Uygulamalar",
     apiKeys: "API Anahtarları",
     apiTester: "API Test Aracı",
+    apiExplorer: "API Gezgini",
     logs: "Kayıtlar",
     analytics: "Analitik",
     systemHealth: "Sistem sağlığı",

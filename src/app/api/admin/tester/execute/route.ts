@@ -1,6 +1,7 @@
 /**
  * Admin API Tester — execute same-origin /api/* requests with a pasted customer key.
  * Path is restricted to this deployment origin (no open SSRF).
+ * Unknown paths return "This endpoint is not implemented." without calling upstream.
  */
 
 import {
@@ -10,6 +11,10 @@ import {
   requireAdminUser,
 } from "@/server/helia/http";
 import { ValidationError } from "@/server/helia/utils/errors";
+import {
+  discoverApiRoutes,
+  findRouteInCatalog,
+} from "@/server/helia/api-catalog/discover";
 
 export const runtime = "nodejs";
 
@@ -26,7 +31,6 @@ function normalizePath(raw: string): string {
   if (!trimmed.startsWith("/")) {
     throw new ValidationError("Path must start with /");
   }
-  // Reject protocol-relative / absolute URLs
   if (trimmed.startsWith("//") || /^https?:/i.test(trimmed)) {
     throw new ValidationError("Absolute URLs are not allowed");
   }
@@ -54,12 +58,64 @@ export async function POST(request: Request) {
     const apiKey = body.apiKey?.trim();
     const method = (body.method ?? "GET").toUpperCase();
     const path = normalizePath(body.path?.trim() || "/api/apikeys/whoami");
+    const pathOnly = path.split("?")[0] || path;
 
     if (!apiKey) throw new ValidationError("API key is required");
     if (!ALLOWED_METHODS.has(method)) {
       throw new ValidationError(
         "Method must be GET, POST, PUT, PATCH, or DELETE"
       );
+    }
+
+    const catalog = discoverApiRoutes();
+    const matched = findRouteInCatalog(catalog, pathOnly);
+    if (!matched) {
+      return jsonOk({
+        status: 404,
+        latencyMs: 0,
+        sizeBytes: 0,
+        upstreamOk: false,
+        implemented: false,
+        message: "This endpoint is not implemented.",
+        headers: {},
+        body: {
+          ok: false,
+          error: {
+            code: "NOT_IMPLEMENTED",
+            message: "This endpoint is not implemented.",
+            path: pathOnly,
+          },
+        },
+        rawText: "",
+        executedAt: new Date().toISOString(),
+        request: { method, path },
+      });
+    }
+
+    const methodAllowed = matched.methods.includes(
+      method as "GET" | "POST" | "PUT" | "PATCH" | "DELETE"
+    );
+    if (!methodAllowed) {
+      return jsonOk({
+        status: 405,
+        latencyMs: 0,
+        sizeBytes: 0,
+        upstreamOk: false,
+        implemented: true,
+        message: `Method ${method} is not supported for ${matched.path}. Allowed: ${matched.methods.join(", ")}`,
+        headers: {},
+        body: {
+          ok: false,
+          error: {
+            code: "METHOD_NOT_ALLOWED",
+            message: `Method ${method} is not supported for this endpoint.`,
+            allowed: matched.methods,
+          },
+        },
+        rawText: "",
+        executedAt: new Date().toISOString(),
+        request: { method, path },
+      });
     }
 
     const origin = new URL(request.url).origin;
@@ -69,7 +125,6 @@ export async function POST(request: Request) {
       ...(body.headers ?? {}),
     };
 
-    // Prefer explicit X-API-Key if provided; keep Bearer for gateway compatibility
     if (!headers["X-API-Key"] && !headers["x-api-key"]) {
       headers["X-API-Key"] = apiKey;
     }
@@ -99,19 +154,22 @@ export async function POST(request: Request) {
       json = null;
     }
 
-    // Do NOT set top-level `ok` to the upstream result — jsonOk already sets
-    // envelope `ok: true` when this proxy itself succeeded. Overwriting it with
-    // upstream `res.ok === false` made adminFetch throw "Request failed (200)".
     return jsonOk({
       status: res.status,
       latencyMs,
       sizeBytes,
       upstreamOk: res.ok,
+      implemented: true,
       headers: Object.fromEntries(res.headers.entries()),
       body: json ?? text,
       rawText: text,
       executedAt: new Date().toISOString(),
       request: { method, path },
+      route: {
+        path: matched.path,
+        file: matched.file,
+        authentication: matched.authentication,
+      },
     });
   } catch (error) {
     return jsonError(error);

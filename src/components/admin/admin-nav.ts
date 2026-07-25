@@ -10,6 +10,7 @@ import {
   Settings,
   AppWindow,
   Users,
+  BookOpen,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import type { Locale } from "@/config/i18n";
@@ -23,6 +24,7 @@ export type AdminNavKey =
   | "applications"
   | "apiKeys"
   | "apiTester"
+  | "apiExplorer"
   | "logs"
   | "analytics"
   | "systemHealth"
@@ -47,6 +49,7 @@ const ADMIN_NAV_DEFS: Array<{
   { href: "/admin/applications", key: "applications", icon: AppWindow },
   { href: "/admin/api-keys", key: "apiKeys", icon: KeyRound },
   { href: "/admin/api-tester", key: "apiTester", icon: FlaskConical },
+  { href: "/admin/api-explorer", key: "apiExplorer", icon: BookOpen },
   { href: "/admin/logs", key: "logs", icon: ScrollText },
   { href: "/admin/analytics", key: "analytics", icon: ChartNoAxesCombined },
   { href: "/admin/system-health", key: "systemHealth", icon: HeartPulse },

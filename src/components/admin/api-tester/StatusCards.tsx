@@ -27,6 +27,16 @@ const ERROR_META: Record<
     recommendation:
       "Confirm the path, replace :id placeholders, and verify the resource exists.",
   },
+  405: {
+    title: "Method Not Allowed",
+    recommendation:
+      "Use one of the methods discovered for this route in the catalog.",
+  },
+  422: {
+    title: "Validation Error",
+    recommendation:
+      "Fix request body / query fields to match the expected schema.",
+  },
   429: {
     title: "Too Many Requests",
     recommendation:
