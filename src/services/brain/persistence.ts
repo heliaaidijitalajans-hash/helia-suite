@@ -86,3 +86,31 @@ export async function savePersistedConversation(
     "utf8"
   );
 }
+
+export async function deletePersistedConversation(
+  scope: BrainScope,
+  conversationId: string
+): Promise<boolean> {
+  try {
+    await fs.unlink(conversationPath(scope, conversationId));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export async function renamePersistedConversation(
+  scope: BrainScope,
+  conversationId: string,
+  title: string
+): Promise<PersistedConversation | null> {
+  const existing = await getPersistedConversation(scope, conversationId);
+  if (!existing) return null;
+  const next: PersistedConversation = {
+    ...existing,
+    title: title.trim() || existing.title,
+    updatedAt: new Date().toISOString(),
+  };
+  await savePersistedConversation(next);
+  return next;
+}

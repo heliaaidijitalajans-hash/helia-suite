@@ -1,6 +1,6 @@
 "use client";
 
-import { MessageSquarePlus } from "lucide-react";
+import { MessageSquarePlus, Pencil, Trash2 } from "lucide-react";
 import { cn } from "@/lib/cn";
 import type { ChatConversationSummary } from "./types";
 
@@ -9,12 +9,16 @@ export function ChatSidebar({
   activeId = null,
   onSelect,
   onNewChat,
+  onRename,
+  onDelete,
   className,
 }: {
   conversations: ChatConversationSummary[];
   activeId?: string | null;
   onSelect?: (id: string) => void;
   onNewChat?: () => void;
+  onRename?: (id: string, title: string) => void;
+  onDelete?: (id: string) => void;
   className?: string;
 }) {
   return (
@@ -49,12 +53,12 @@ export function ChatSidebar({
             {conversations.map((item) => {
               const active = item.id === activeId;
               return (
-                <li key={item.id}>
+                <li key={item.id} className="group relative">
                   <button
                     type="button"
                     onClick={() => onSelect?.(item.id)}
                     className={cn(
-                      "w-full rounded-xl px-3 py-2.5 text-left transition-colors",
+                      "w-full rounded-xl px-3 py-2.5 pr-16 text-left transition-colors",
                       active
                         ? "bg-white/[0.07] text-white ring-1 ring-accent/20"
                         : "text-white/55 hover:bg-white/[0.04] hover:text-white/85"
@@ -69,6 +73,50 @@ export function ChatSidebar({
                       </span>
                     ) : null}
                   </button>
+                  {onRename || onDelete ? (
+                    <div className="absolute right-1.5 top-1.5 flex gap-0.5 opacity-100 md:opacity-0 md:group-hover:opacity-100">
+                      {onRename ? (
+                        <button
+                          type="button"
+                          title="Rename"
+                          aria-label={`Rename ${item.title}`}
+                          className="rounded-md p-1.5 text-white/40 hover:bg-white/10 hover:text-white"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            const next = window.prompt(
+                              "Rename conversation",
+                              item.title
+                            );
+                            if (next && next.trim() && next.trim() !== item.title) {
+                              onRename(item.id, next.trim());
+                            }
+                          }}
+                        >
+                          <Pencil className="h-3.5 w-3.5" strokeWidth={1.75} />
+                        </button>
+                      ) : null}
+                      {onDelete ? (
+                        <button
+                          type="button"
+                          title="Delete"
+                          aria-label={`Delete ${item.title}`}
+                          className="rounded-md p-1.5 text-white/40 hover:bg-red-500/15 hover:text-red-200"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (
+                              window.confirm(
+                                `Delete conversation “${item.title}”?`
+                              )
+                            ) {
+                              onDelete(item.id);
+                            }
+                          }}
+                        >
+                          <Trash2 className="h-3.5 w-3.5" strokeWidth={1.75} />
+                        </button>
+                      ) : null}
+                    </div>
+                  ) : null}
                 </li>
               );
             })}

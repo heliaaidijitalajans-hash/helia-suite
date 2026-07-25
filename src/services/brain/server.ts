@@ -16,6 +16,8 @@ import {
   getPersistedConversation,
   listPersistedConversations,
   savePersistedConversation,
+  deletePersistedConversation,
+  renamePersistedConversation,
 } from "./persistence";
 import type {
   AskBrainServiceInput,
@@ -49,6 +51,35 @@ export async function getScopedConversation(
       userId: auth.user.id,
     },
     conversationId
+  );
+}
+
+function scopeFromAuth(auth: HeliaAuthContext) {
+  return {
+    organizationId: auth.organization.id,
+    projectId: auth.project.id,
+    userId: auth.user.id,
+  };
+}
+
+export async function deleteScopedConversation(
+  auth: HeliaAuthContext,
+  conversationId: string
+): Promise<boolean> {
+  const existing = await getScopedConversation(auth, conversationId);
+  if (!existing) return false;
+  return deletePersistedConversation(scopeFromAuth(auth), conversationId);
+}
+
+export async function renameScopedConversation(
+  auth: HeliaAuthContext,
+  conversationId: string,
+  title: string
+): Promise<PersistedConversation | null> {
+  return renamePersistedConversation(
+    scopeFromAuth(auth),
+    conversationId,
+    title
   );
 }
 

@@ -86,3 +86,39 @@ export async function sendBrainMessage(
     assistantMessage: data.assistantMessage,
   };
 }
+
+export async function renameConversation(
+  conversationId: string,
+  title: string
+): Promise<ChatConversationSummary> {
+  const res = await fetch(
+    `/api/brain/conversations/${encodeURIComponent(conversationId)}`,
+    {
+      method: "PATCH",
+      headers: brainHeaders(true),
+      credentials: "same-origin",
+      body: JSON.stringify({ title }),
+      cache: "no-store",
+    }
+  );
+  const data = await parseJson<{
+    ok: true;
+    conversation: ChatConversationSummary;
+  }>(res);
+  return data.conversation;
+}
+
+export async function deleteConversation(
+  conversationId: string
+): Promise<void> {
+  const res = await fetch(
+    `/api/brain/conversations/${encodeURIComponent(conversationId)}`,
+    {
+      method: "DELETE",
+      headers: brainHeaders(),
+      credentials: "same-origin",
+      cache: "no-store",
+    }
+  );
+  await parseJson<{ ok: true; deleted: boolean }>(res);
+}

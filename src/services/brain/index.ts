@@ -8,4 +8,6 @@ export {
   fetchConversationMessages,
   fetchConversations,
   sendBrainMessage,
+  renameConversation,
+  deleteConversation,
 } from "./client";

@@ -18,6 +18,10 @@ export function ChatLayout({
   onSelectConversation,
   onNewChat,
   onSend,
+  onRenameConversation,
+  onDeleteConversation,
+  emptyTitle,
+  emptyDescription,
   className,
 }: {
   conversations: ChatConversationSummary[];
@@ -27,6 +31,10 @@ export function ChatLayout({
   onSelectConversation?: (id: string) => void;
   onNewChat?: () => void;
   onSend?: (payload: ChatSendPayload) => void | Promise<void>;
+  onRenameConversation?: (id: string, title: string) => void;
+  onDeleteConversation?: (id: string) => void;
+  emptyTitle?: string;
+  emptyDescription?: string;
   className?: string;
 }) {
   return (
@@ -41,10 +49,17 @@ export function ChatLayout({
         activeId={activeConversationId}
         onSelect={onSelectConversation}
         onNewChat={onNewChat}
+        onRename={onRenameConversation}
+        onDelete={onDeleteConversation}
         className="max-h-44 md:max-h-none"
       />
       <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-        <Conversation messages={messages} loading={loading} />
+        <Conversation
+          messages={messages}
+          loading={loading}
+          emptyTitle={emptyTitle}
+          emptyDescription={emptyDescription}
+        />
         <MessageInput
           conversationId={activeConversationId}
           loading={loading}

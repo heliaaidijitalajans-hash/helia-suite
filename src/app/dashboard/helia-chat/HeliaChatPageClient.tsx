@@ -1,7 +1,6 @@
 /**
- * Preserved customer-dashboard Helia Chat page (unused).
- * Route /dashboard/helia-chat redirects to Overview.
- * Mount this client page from the Helia Admin Console when ready.
+ * Helia Chat — shared client surface.
+ * Mounted from Admin Panel (/admin/chat). Customer dashboard redirects away.
  */
 
 "use client";
@@ -9,7 +8,15 @@
 import { ChatLayout } from "@/components/chat";
 import { useHeliaChat } from "@/hooks/useHeliaChat";
 
-export default function HeliaChatPageClient() {
+export default function HeliaChatPageClient({
+  intro,
+  emptyTitle,
+  emptyDescription,
+}: {
+  intro?: string;
+  emptyTitle?: string;
+  emptyDescription?: string;
+} = {}) {
   const {
     conversations,
     activeConversationId,
@@ -19,15 +26,16 @@ export default function HeliaChatPageClient() {
     sendMessage,
     selectConversation,
     startNewChat,
+    renameConversation,
+    deleteConversation,
     retry,
   } = useHeliaChat({ product: "helia-suite" });
 
   return (
     <div className="mx-auto w-full max-w-6xl space-y-4">
-      <p className="text-sm leading-relaxed text-white/50">
-        Talk with Helia AI from your workspace. Messages use your logged-in
-        Helia session and Helia Brain.
-      </p>
+      {intro ? (
+        <p className="text-sm leading-relaxed text-white/50">{intro}</p>
+      ) : null}
 
       {error ? (
         <div
@@ -53,6 +61,10 @@ export default function HeliaChatPageClient() {
         onSelectConversation={(id) => void selectConversation(id)}
         onNewChat={startNewChat}
         onSend={(payload) => void sendMessage(payload)}
+        onRenameConversation={(id, title) => void renameConversation(id, title)}
+        onDeleteConversation={(id) => void deleteConversation(id)}
+        emptyTitle={emptyTitle}
+        emptyDescription={emptyDescription}
       />
     </div>
   );

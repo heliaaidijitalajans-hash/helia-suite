@@ -1,6 +1,7 @@
 /**
  * Embedded Helia Brain ask — runs in-process inside Next.js (no :4090).
  * Preserves the BrainAnswer contract used by Helia Chat.
+ * Prefer real platform facts for Admin Console questions.
  */
 
 import { createId } from "@/server/helia/utils/id";
@@ -11,6 +12,10 @@ import type {
   BrainConversationSession,
   BrainStreamHandlers,
 } from "@/lib/api/brain-types";
+import {
+  answerFromPlatformData,
+  INSUFFICIENT_DATA_MESSAGE,
+} from "./platform-context";
 
 type MemoryStore = {
   sessions: Map<string, BrainConversationSession>;
@@ -65,52 +70,108 @@ export async function askBrainEmbedded(
   const questionId = createId("brainq");
   const answerId = createId("brainans");
   const answeredAt = new Date().toISOString();
+  const text = body.text.trim();
 
-  const summary =
-    `Helia received: “${body.text.trim()}”. ` +
-    `This Suite deployment runs Helia Cloud + Brain routes in-process on your Vercel domain ` +
-    `(no separate :4090/:4091 services). ` +
-    `Operational telemetry from Inspector subsystems is limited in this embedded mode; ` +
-    `connect product context via Organizations and API Keys in the dashboard.`;
-
-  const answer: BrainAnswer = {
-    id: answerId,
-    conversationId: session.id,
-    questionId,
-    intent: "unknown",
-    askedAt,
-    answeredAt,
-    resolvedQuestion: body.text.trim(),
-    summary,
-    reasoning:
-      "Embedded Helia Brain preserves the Suite chat contract while Cloud APIs run inside Next.js.",
-    evidence: [
-      {
-        source: "conversation",
-        reference: session.id,
-        detail: "In-process Helia Suite Brain session",
-        observedAt: answeredAt,
-      },
-    ],
-    confidence: 0.55,
-    recommendedAction:
-      "Use Organizations and API Keys for tenant context; ask follow-ups in this thread.",
-    businessImpact: "Chat remains available on a single Vercel deployment domain.",
-    technicalImpact:
-      "No localhost Cloud/Inspector ports; browser calls same-origin /api/brain/* only.",
-    insufficientData: true,
-    suggestedFollowUps: [
-      "What organizations do I have?",
-      "How do I create an API key?",
-      "Show my current usage.",
-    ],
-    personality: "professional_calm_sre",
-  };
+  let answer: BrainAnswer;
+  try {
+    const platform = await answerFromPlatformData(text);
+    if (platform) {
+      answer = {
+        id: answerId,
+        conversationId: session.id,
+        questionId,
+        intent: platform.intent,
+        askedAt,
+        answeredAt,
+        resolvedQuestion: text,
+        summary: platform.summary,
+        reasoning: platform.insufficientData
+          ? "No matching platform telemetry was available for this question."
+          : "Answered from live Helia Cloud admin platform data.",
+        evidence: platform.evidence,
+        confidence: platform.confidence,
+        recommendedAction: platform.recommendedAction ?? "",
+        businessImpact: platform.insufficientData
+          ? "Cannot advise without observed data."
+          : "Operators can act on observed platform metrics.",
+        technicalImpact: platform.insufficientData
+          ? "Missing metric or empty store."
+          : "Values read from embedded Cloud stores.",
+        insufficientData: platform.insufficientData,
+        suggestedFollowUps: [
+          "Show today's API usage",
+          "How many active API Keys exist?",
+          "Is the platform healthy?",
+        ],
+        personality: "professional_calm_sre",
+      };
+    } else {
+      answer = {
+        id: answerId,
+        conversationId: session.id,
+        questionId,
+        intent: "unknown",
+        askedAt,
+        answeredAt,
+        resolvedQuestion: text,
+        summary: INSUFFICIENT_DATA_MESSAGE,
+        reasoning:
+          "No platform intent matched and no fabricated answer is allowed.",
+        evidence: [
+          {
+            source: "conversation",
+            reference: session.id,
+            detail: "Unmatched question against platform data intents",
+            observedAt: answeredAt,
+          },
+        ],
+        confidence: 1,
+        recommendedAction:
+          "Ask about usage, errors, API keys, health, or today's activity.",
+        businessImpact: "No action without verified data.",
+        technicalImpact: "Intent router returned no platform match.",
+        insufficientData: true,
+        suggestedFollowUps: [
+          "Show today's API usage",
+          "List recent errors",
+          "Is the platform healthy?",
+        ],
+        personality: "professional_calm_sre",
+      };
+    }
+  } catch {
+    answer = {
+      id: answerId,
+      conversationId: session.id,
+      questionId,
+      intent: "error",
+      askedAt,
+      answeredAt,
+      resolvedQuestion: text,
+      summary: INSUFFICIENT_DATA_MESSAGE,
+      reasoning: "Platform data lookup failed.",
+      evidence: [
+        {
+          source: "platform",
+          reference: "lookup",
+          detail: "Exception while reading admin platform data",
+          observedAt: answeredAt,
+        },
+      ],
+      confidence: 1,
+      recommendedAction: "Retry shortly or check Admin → System Health.",
+      businessImpact: "Cannot answer until platform data is readable.",
+      technicalImpact: "Embedded Brain platform-context error.",
+      insufficientData: true,
+      suggestedFollowUps: ["Is the platform healthy?"],
+      personality: "professional_calm_sre",
+    };
+  }
 
   session.turns.push({
     questionId,
-    question: body.text.trim(),
-    resolvedQuestion: body.text.trim(),
+    question: text,
+    resolvedQuestion: text,
     intent: answer.intent,
     answerId,
     summary: answer.summary,

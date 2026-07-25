@@ -1,6 +1,11 @@
 import { NextResponse } from "next/server";
 import { resolveHeliaAuthContext } from "@/lib/auth/helia-session";
-import { getScopedConversation } from "@/services/brain/server";
+import {
+  deleteScopedConversation,
+  getScopedConversation,
+  renameScopedConversation,
+} from "@/services/brain/server";
+import { clearBrainConversation } from "@/lib/api/brain";
 
 export const runtime = "nodejs";
 
@@ -40,6 +45,104 @@ export async function GET(request: Request, { params }: Params) {
         : "Failed to load conversation";
     return NextResponse.json(
       { ok: false, error: { message, code: "CONVERSATION_GET_FAILED" } },
+      { status: 502 }
+    );
+  }
+}
+
+export async function PATCH(request: Request, { params }: Params) {
+  try {
+    const { id } = await params;
+    if (!id) {
+      return NextResponse.json(
+        { ok: false, error: { message: "id required", code: "VALIDATION" } },
+        { status: 400 }
+      );
+    }
+
+    const body = (await request.json().catch(() => null)) as {
+      title?: string;
+    } | null;
+    const title = typeof body?.title === "string" ? body.title.trim() : "";
+    if (!title) {
+      return NextResponse.json(
+        {
+          ok: false,
+          error: { message: "title is required", code: "VALIDATION" },
+        },
+        { status: 400 }
+      );
+    }
+
+    const auth = await resolveHeliaAuthContext(request.headers);
+    const conversation = await renameScopedConversation(auth, id, title);
+    if (!conversation) {
+      return NextResponse.json(
+        {
+          ok: false,
+          error: { message: "Conversation not found", code: "NOT_FOUND" },
+        },
+        { status: 404 }
+      );
+    }
+
+    return NextResponse.json({
+      ok: true,
+      conversation: {
+        id: conversation.id,
+        title: conversation.title,
+        preview: conversation.preview,
+        updatedAt: conversation.updatedAt,
+      },
+    });
+  } catch (error) {
+    const message =
+      error instanceof Error
+        ? error.message
+        : "Failed to rename conversation";
+    return NextResponse.json(
+      { ok: false, error: { message, code: "CONVERSATION_RENAME_FAILED" } },
+      { status: 502 }
+    );
+  }
+}
+
+export async function DELETE(request: Request, { params }: Params) {
+  try {
+    const { id } = await params;
+    if (!id) {
+      return NextResponse.json(
+        { ok: false, error: { message: "id required", code: "VALIDATION" } },
+        { status: 400 }
+      );
+    }
+
+    const auth = await resolveHeliaAuthContext(request.headers);
+    const deleted = await deleteScopedConversation(auth, id);
+    if (!deleted) {
+      return NextResponse.json(
+        {
+          ok: false,
+          error: { message: "Conversation not found", code: "NOT_FOUND" },
+        },
+        { status: 404 }
+      );
+    }
+
+    try {
+      await clearBrainConversation(id);
+    } catch {
+      // Persistence delete is source of truth; in-memory clear is best-effort.
+    }
+
+    return NextResponse.json({ ok: true, deleted: true });
+  } catch (error) {
+    const message =
+      error instanceof Error
+        ? error.message
+        : "Failed to delete conversation";
+    return NextResponse.json(
+      { ok: false, error: { message, code: "CONVERSATION_DELETE_FAILED" } },
       { status: 502 }
     );
   }

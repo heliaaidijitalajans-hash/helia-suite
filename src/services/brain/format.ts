@@ -16,6 +16,10 @@ export function titleFromContent(content: string): string {
 
 /** Map Helia Brain structured answer → chat bubble text (UI-stable). */
 export function formatBrainAnswerContent(answer: BrainAnswer): string {
+  if (answer.insufficientData) {
+    const summary = answer.summary.trim();
+    return summary || "I don't have enough information.";
+  }
   const parts = [answer.summary.trim()];
   if (answer.recommendedAction?.trim()) {
     parts.push(`Recommended action: ${answer.recommendedAction.trim()}`);

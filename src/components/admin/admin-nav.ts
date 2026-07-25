@@ -5,6 +5,7 @@ import {
   HeartPulse,
   KeyRound,
   LayoutDashboard,
+  MessageSquare,
   ScrollText,
   Settings,
   AppWindow,
@@ -20,6 +21,7 @@ export type AdminNavItem = {
 
 export const adminNav: AdminNavItem[] = [
   { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/admin/chat", label: "Helia Chat", icon: MessageSquare },
   { href: "/admin/users", label: "Users", icon: Users },
   { href: "/admin/organizations", label: "Organizations", icon: Building2 },
   { href: "/admin/applications", label: "Applications", icon: AppWindow },

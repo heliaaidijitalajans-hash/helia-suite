@@ -10,6 +10,8 @@ import {
   fetchConversationMessages,
   fetchConversations,
   sendBrainMessage,
+  renameConversation as renameConversationApi,
+  deleteConversation as deleteConversationApi,
 } from "@/services/brain";
 
 export type UseHeliaChatOptions = {
@@ -56,6 +58,40 @@ export function useHeliaChat(options: UseHeliaChatOptions = {}) {
     setError(null);
     lastPayloadRef.current = null;
   }, []);
+
+  const renameConversation = useCallback(
+    async (id: string, title: string) => {
+      setError(null);
+      try {
+        await renameConversationApi(id, title);
+        await refreshConversations();
+      } catch (err) {
+        setError(
+          err instanceof Error ? err.message : "Failed to rename conversation"
+        );
+      }
+    },
+    [refreshConversations]
+  );
+
+  const deleteConversation = useCallback(
+    async (id: string) => {
+      setError(null);
+      try {
+        await deleteConversationApi(id);
+        if (activeConversationId === id) {
+          setActiveConversationId(null);
+          setMessages([]);
+        }
+        await refreshConversations();
+      } catch (err) {
+        setError(
+          err instanceof Error ? err.message : "Failed to delete conversation"
+        );
+      }
+    },
+    [activeConversationId, refreshConversations]
+  );
 
   const sendMessage = useCallback(
     async (payload: ChatSendPayload) => {
@@ -138,6 +174,8 @@ export function useHeliaChat(options: UseHeliaChatOptions = {}) {
     sendMessage,
     selectConversation,
     startNewChat,
+    renameConversation,
+    deleteConversation,
     retry,
     refreshConversations,
     clearError: () => setError(null),
