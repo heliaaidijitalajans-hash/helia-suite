@@ -31,7 +31,7 @@ export type ApiManifest = {
 };
 
 const API_MANIFEST = {
-  "generatedAt": "2026-07-25T17:08:58.034Z",
+  "generatedAt": "2026-07-25T18:15:14.742Z",
   "router": "app",
   "searchRoot": "src/app/api",
   "filesFound": [
@@ -73,7 +73,7 @@ const API_MANIFEST = {
     "src/app/api/projects/route.ts"
   ],
   "routeCount": 36,
-  "endpointCount": 46,
+  "endpointCount": 47,
   "routes": [
     {
       "path": "/api/admin/bootstrap-promote",
@@ -145,7 +145,7 @@ const API_MANIFEST = {
       ],
       "group": "Admin",
       "file": "src/app/api/admin/tester/execute/route.ts",
-      "description": "Admin API Tester — execute same-origin /api/* requests with a pasted customer key. Path is restricted to this deployment origin (no open SSRF). Unknown paths return \"This endpoint is not implemented.\" without calling upstream.",
+      "description": "Admin API Tester — execute same-origin /api/* with pasted customer API key. Auth headers are applied server-side from apiKey + authMode (not left to manual JSON).",
       "authentication": "admin_session",
       "permissions": [
         "admin"
@@ -154,12 +154,13 @@ const API_MANIFEST = {
       "pathParameters": [],
       "bodyFields": [
         "apiKey",
+        "authMode",
         "headers",
         "jsonBody",
         "method",
         "path"
       ],
-      "bodySchemaHint": "{\n  \"apiKey\": \"\",\n  \"headers\": \"\",\n  \"jsonBody\": \"\",\n  \"method\": \"\",\n  \"path\": \"\"\n}",
+      "bodySchemaHint": "{\n  \"apiKey\": \"\",\n  \"authMode\": \"\",\n  \"headers\": \"\",\n  \"jsonBody\": \"\",\n  \"method\": \"\",\n  \"path\": \"\"\n}",
       "multipart": false,
       "apiKeySupported": false,
       "sessionRequired": true
@@ -280,11 +281,12 @@ const API_MANIFEST = {
     {
       "path": "/api/admin/apikeys",
       "methods": [
-        "GET"
+        "GET",
+        "POST"
       ],
       "group": "API Keys",
       "file": "src/app/api/admin/apikeys/route.ts",
-      "description": null,
+      "description": "Create an API key from the Admin Panel and persist it into the runtime store (data/cloud/api-keys.json) with HMAC secretHash — same path whoami uses.",
       "authentication": "admin_session",
       "permissions": [
         "admin"
@@ -294,8 +296,15 @@ const API_MANIFEST = {
         "status"
       ],
       "pathParameters": [],
-      "bodyFields": [],
-      "bodySchemaHint": null,
+      "bodyFields": [
+        "applicationType",
+        "capabilities",
+        "keyEnvironment",
+        "name",
+        "permissions",
+        "projectId"
+      ],
+      "bodySchemaHint": "{\n  \"applicationType\": \"\",\n  \"capabilities\": \"\",\n  \"keyEnvironment\": \"\",\n  \"name\": \"\",\n  \"permissions\": \"\",\n  \"projectId\": \"\"\n}",
       "multipart": false,
       "apiKeySupported": false,
       "sessionRequired": true
@@ -404,7 +413,7 @@ const API_MANIFEST = {
       ],
       "group": "API Keys",
       "file": "src/app/api/apikeys/whoami/route.ts",
-      "description": "Was GET /v1/whoami on Helia Cloud gateway.",
+      "description": "Auth-related headers actually present on the incoming Request (redacted). */ function receivedAuthHeaders(request: Request): Record<string, string | null> { const authorization = request.headers.get(\"authorization\"); const xApiKey = request.headers.get(\"x-api-key\"); return { authorization: authorization ? authorization.startsWith(\"Bearer \") ? `Bearer ${redactToken(authorization.slice(\"Bearer \".length))}` : \"***\" : null, \"x-api-key\": redactToken(xApiKey), }; } /** Was GET /v1/whoami on Helia Cloud gateway.",
       "authentication": "api_key",
       "permissions": [
         "api_key"
@@ -895,6 +904,11 @@ const API_MANIFEST = {
     },
     {
       "method": "GET",
+      "path": "/api/admin/apikeys",
+      "category": "API Keys"
+    },
+    {
+      "method": "POST",
       "path": "/api/admin/apikeys",
       "category": "API Keys"
     },
