@@ -110,9 +110,12 @@ export class AdminService {
   }
 
   /**
-   * Create/update the platform admin from HELIA_ADMIN_EMAIL + HELIA_ADMIN_PASSWORD.
-   * Falls back to first HELIA_ADMIN_EMAILS entry + HELIA_ADMIN_PASSWORD.
-   * Called on boot and before every login so Vercel cold starts still accept admin login.
+   * Create/update the platform admin from env credentials.
+   * Password resolution order:
+   *   HELIA_ADMIN_PASSWORD → HELIA_ADMIN_BOOTSTRAP_SECRET
+   * Email resolution order:
+   *   HELIA_ADMIN_EMAIL → first HELIA_ADMIN_EMAILS entry
+   * Called on boot and before every login (Vercel /tmp wipe safe).
    */
   async ensureAdminCredentialsAccount(): Promise<CloudUser | null> {
     const emailFromEnv = (
@@ -125,6 +128,8 @@ export class AdminService {
     const password = (
       process.env.HELIA_ADMIN_PASSWORD ??
       this.config.adminPassword ??
+      process.env.HELIA_ADMIN_BOOTSTRAP_SECRET ??
+      this.config.adminBootstrapSecret ??
       ""
     ).trim();
     const email = emailFromEnv || this.listedAdminEmails()[0] || "";
@@ -132,6 +137,9 @@ export class AdminService {
     if (!email || password.length < 8) {
       return null;
     }
+
+    // Always re-read users from disk before mutating (avoids stale memory).
+    await this.db.users.reload();
 
     const passwordHash = await hashPassword(password);
     const now = new Date().toISOString();
@@ -168,6 +176,29 @@ export class AdminService {
     delete next.disabledAt;
     await this.db.users.upsert(next);
     return next;
+  }
+
+  /** True when email/password match the configured admin env credentials. */
+  matchesAdminEnvCredentials(emailRaw: string, passwordRaw: string): boolean {
+    const emailFromEnv = (
+      process.env.HELIA_ADMIN_EMAIL ??
+      this.config.adminEmail ??
+      ""
+    )
+      .trim()
+      .toLowerCase();
+    const adminEmail = emailFromEnv || this.listedAdminEmails()[0] || "";
+    const adminPassword = (
+      process.env.HELIA_ADMIN_PASSWORD ??
+      this.config.adminPassword ??
+      process.env.HELIA_ADMIN_BOOTSTRAP_SECRET ??
+      this.config.adminBootstrapSecret ??
+      ""
+    ).trim();
+    const email = emailRaw.trim().toLowerCase();
+    const password = passwordRaw.trim();
+    if (!adminEmail || adminPassword.length < 8) return false;
+    return email === adminEmail && password === adminPassword;
   }
 
   /** Always read live env so `.env.local` / Vercel updates apply without stale cache gaps. */

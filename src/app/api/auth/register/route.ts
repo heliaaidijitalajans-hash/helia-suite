@@ -8,12 +8,14 @@ export const runtime = "nodejs";
 export async function POST(request: Request) {
   try {
     const container = await getCloudContainer();
+    await container.admin.ensureAdminCredentialsAccount();
+
     const body = await readJsonBody<{
       email?: string;
       password?: string;
       displayName?: string;
     }>(request);
-    const email = typeof body.email === "string" ? body.email : "";
+    const email = typeof body.email === "string" ? body.email.trim() : "";
     const password = typeof body.password === "string" ? body.password : "";
     const displayName =
       typeof body.displayName === "string"
@@ -22,6 +24,29 @@ export async function POST(request: Request) {
     if (!email || !password) {
       throw new ValidationError("email and password are required");
     }
+
+    // If this email already exists, treat as login (fixes re-register / 409 confusion).
+    await container.db.users.reload();
+    const existing = await container.db.users.query(
+      (u) => u.email === email.trim().toLowerCase()
+    );
+    if (existing[0]) {
+      const result = await container.auth.login({
+        email,
+        password,
+        ...(request.headers.get("user-agent")
+          ? { userAgent: request.headers.get("user-agent")! }
+          : {}),
+      });
+      const ensured = await container.admin.ensureListedAdmin(result.user.id);
+      const { toPublicUser } = await import("@/server/helia/cloud/utils");
+      return jsonOkWithAccessCookie(
+        { user: toPublicUser(ensured), tokens: result.tokens },
+        result.tokens.accessToken,
+        { status: 200, request }
+      );
+    }
+
     const result = await container.auth.register({
       email,
       password,

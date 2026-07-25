@@ -81,10 +81,17 @@ export class CloudDocumentStore<T extends { id: string }> {
     return this.data.filter(predicate);
   }
 
+  /** Drop memory cache and re-read from disk (login/auth safety). */
+  async reload(): Promise<void> {
+    this.loaded = false;
+    this.data = [];
+    await this.init();
+  }
+
   private async persist(): Promise<void> {
     this.writeQueue = this.writeQueue.then(async () => {
       const tmp = `${this.filePath}.${process.pid}.tmp`;
-      await writeFile(tmp, JSON.stringify(this.data, null, 0), 'utf8');
+      await writeFile(tmp, JSON.stringify(this.data, null, 0), "utf8");
       await rename(tmp, this.filePath);
     });
     await this.writeQueue;

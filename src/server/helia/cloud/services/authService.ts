@@ -75,9 +75,21 @@ export class AuthService {
   }): Promise<{ user: PublicUser; tokens: AuthTokens }> {
     const email = normalizeEmail(input.email);
     const password = input.password.trim();
+    if (!email || !password) {
+      throw new UnauthorizedError('Invalid email or password');
+    }
+
+    // Always re-read users before auth (avoids stale in-memory cache).
+    await this.db.users.reload();
+
     const users = await this.db.users.query((u) => u.email === email);
     const user = users[0];
-    if (!user || !(await verifyPassword(password, user.passwordHash))) {
+    if (!user) {
+      throw new UnauthorizedError('Invalid email or password');
+    }
+
+    const ok = await verifyPassword(password, user.passwordHash);
+    if (!ok) {
       throw new UnauthorizedError('Invalid email or password');
     }
     if (user.disabledAt) {
@@ -91,7 +103,9 @@ export class AuthService {
       lastLoginAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     });
-    return { user: toPublicUser(user), tokens };
+    // Return fresh public user (includes role)
+    const fresh = (await this.db.users.findById(user.id)) ?? user;
+    return { user: toPublicUser(fresh), tokens };
   }
 
   async verifyEmail(token: string): Promise<PublicUser> {

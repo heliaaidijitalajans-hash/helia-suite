@@ -2,17 +2,13 @@ import { jsonError, readJsonBody } from "@/server/helia/http";
 import { jsonOkWithAccessCookie } from "@/server/helia/auth-cookies";
 import { getCloudContainer } from "@/server/helia/runtime";
 import { toPublicUser } from "@/server/helia/cloud/utils";
-import { ValidationError } from "@/server/helia/utils/errors";
+import { AppError, ValidationError } from "@/server/helia/utils/errors";
 
 export const runtime = "nodejs";
 
 export async function POST(request: Request) {
   try {
     const container = await getCloudContainer();
-
-    // Re-sync env admin on every login (Vercel cold start /tmp wipe).
-    await container.admin.ensureAdminCredentialsAccount();
-
     const body = await readJsonBody<{ email?: string; password?: string }>(
       request
     );
@@ -21,25 +17,58 @@ export async function POST(request: Request) {
     if (!email || !password) {
       throw new ValidationError("email and password are required");
     }
-    const result = await container.auth.login({
-      email,
-      password,
-      ...(request.headers.get("user-agent")
-        ? { userAgent: request.headers.get("user-agent")! }
-        : {}),
-    });
 
-    const ensured = await container.admin.ensureListedAdmin(result.user.id);
+    const ua = request.headers.get("user-agent") || undefined;
 
-    return jsonOkWithAccessCookie(
-      {
-        user: toPublicUser(ensured),
-        tokens: result.tokens,
-      },
-      result.tokens.accessToken,
-      { request }
-    );
+    // Always (re)create admin from env before attempting login.
+    await container.admin.ensureAdminCredentialsAccount();
+
+    try {
+      return await finishLogin(container, email, password, request, ua);
+    } catch (firstError) {
+      // Admin env credentials: force-sync account and retry once.
+      if (container.admin.matchesAdminEnvCredentials(email, password)) {
+        await container.admin.ensureAdminCredentialsAccount();
+        try {
+          return await finishLogin(container, email, password, request, ua);
+        } catch {
+          throw firstError;
+        }
+      }
+      throw firstError;
+    }
   } catch (error) {
     return jsonError(error);
   }
+}
+
+async function finishLogin(
+  container: Awaited<ReturnType<typeof getCloudContainer>>,
+  email: string,
+  password: string,
+  request: Request,
+  userAgent?: string
+) {
+  const result = await container.auth.login({
+    email,
+    password,
+    ...(userAgent ? { userAgent } : {}),
+  });
+
+  const ensured = await container.admin.ensureListedAdmin(result.user.id);
+  if (!result.tokens?.accessToken) {
+    throw new AppError("Login succeeded but no access token was issued", {
+      statusCode: 500,
+      code: "LOGIN_TOKEN_MISSING",
+    });
+  }
+
+  return jsonOkWithAccessCookie(
+    {
+      user: toPublicUser(ensured),
+      tokens: result.tokens,
+    },
+    result.tokens.accessToken,
+    { request }
+  );
 }
