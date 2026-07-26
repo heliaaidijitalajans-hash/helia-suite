@@ -37,7 +37,9 @@ export type Dictionary = {
   home: {
     heroTitle: string;
     heroSubtitle: string;
+    heroApiLine: string;
     heroCta: string;
+    heroDeveloperCta: string;
     heroTrustLine: string;
     socialProofTitle: string;
     socialProofSubtitle: string;

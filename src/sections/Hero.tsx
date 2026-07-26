@@ -52,6 +52,12 @@ export function Hero({
         >
           {dict.home.heroSubtitle}
         </motion.p>
+        <motion.p
+          variants={staggerChild}
+          className="mx-auto mt-4 max-w-xl text-sm font-medium leading-relaxed text-accent/85 md:text-[15px]"
+        >
+          {dict.home.heroApiLine}
+        </motion.p>
         <motion.div
           variants={staggerChild}
           className="mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row sm:gap-4"
@@ -72,9 +78,17 @@ export function Hero({
             {dict.nav.contact}
           </Button>
         </motion.div>
+        <motion.p variants={staggerChild} className="mt-6">
+          <a
+            href="#developer-platform"
+            className="text-sm font-medium text-white/50 underline-offset-4 transition-colors hover:text-accent hover:underline"
+          >
+            {dict.home.heroDeveloperCta}
+          </a>
+        </motion.p>
         <motion.p
           variants={staggerChild}
-          className="mt-10 text-sm font-medium tracking-wide text-white/45"
+          className="mt-8 text-sm font-medium tracking-wide text-white/45"
         >
           {dict.home.heroTrustLine}
         </motion.p>

@@ -41,8 +41,11 @@ export const tr: Dictionary = {
   home: {
     heroTitle: "İşletmenizi Gelir Makinesine Dönüştürün",
     heroSubtitle:
-      "Mobil uygulamalar, CRM ve otomasyon — büyüme için tasarlandı.",
+      "Mobil uygulamalar, CRM ve otomasyon — ayrıca modern SaaS için güvenli API platformu ve proje API anahtarları.",
+    heroApiLine:
+      "Güvenli API Anahtarları · JWT auth · 47+ REST uç noktası — Helia Cloud ile entegre edin.",
     heroCta: "Demo Talep Et",
+    heroDeveloperCta: "Geliştirici Platformunu Keşfet",
     heroTrustLine: "Büyüyen işletmeler tarafından tercih ediliyor",
     socialProofTitle: "Modern işletmeler için tasarlandı",
     socialProofSubtitle:

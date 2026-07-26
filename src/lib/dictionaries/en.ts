@@ -40,8 +40,11 @@ export const en: Dictionary = {
   home: {
     heroTitle: "Turn Your Business Into a Revenue Machine",
     heroSubtitle:
-      "Mobile apps, CRM, and automation — built for growth.",
+      "Mobile apps, CRM, and automation — plus a secure API platform with project API keys for modern SaaS.",
+    heroApiLine:
+      "Secure API Keys · JWT auth · 47+ REST endpoints — build and integrate with Helia Cloud.",
     heroCta: "Get Your App Demo",
+    heroDeveloperCta: "Explore Developer Platform",
     heroTrustLine: "Used by growing businesses",
     socialProofTitle: "Built for modern businesses",
     socialProofSubtitle:
