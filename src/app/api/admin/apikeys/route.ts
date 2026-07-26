@@ -65,8 +65,13 @@ export async function POST(request: Request) {
       ...(body.applicationType
         ? { applicationType: body.applicationType }
         : {}),
-      ...(body.capabilities ? { capabilities: [...body.capabilities] } : {}),
-      ...(body.permissions ? { permissions: [...body.permissions] } : {}),
+      // Defaults applied in AdminService when omitted; explicit body values win.
+      ...(body.capabilities
+        ? { capabilities: [...body.capabilities] }
+        : { capabilities: ["chat"] }),
+      ...(body.permissions
+        ? { permissions: [...body.permissions] }
+        : { permissions: ["read", "execute"] }),
     });
 
     return jsonOk(

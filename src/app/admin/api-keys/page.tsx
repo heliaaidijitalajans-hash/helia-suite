@@ -78,6 +78,8 @@ export default function AdminApiKeysPage() {
           name: name.trim() || "Admin Test Key",
           keyEnvironment,
           applicationType: "backend",
+          permissions: ["read", "execute"],
+          capabilities: ["chat"],
         }),
       });
       setInfo(

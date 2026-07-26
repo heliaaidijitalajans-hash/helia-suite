@@ -826,8 +826,9 @@ export class AdminService {
       (project.environment === "production" ? "live" : "test");
     const access = buildAccessPolicy({
       applicationType: input.applicationType,
-      capabilities: input.capabilities,
-      permissions: input.permissions,
+      // Admin Panel defaults: chat-ready keys. Explicit overrides still win.
+      capabilities: input.capabilities ?? ["chat"],
+      permissions: input.permissions ?? ["read", "execute"],
     });
     const material = generateApiKeyMaterial(env);
     const now = new Date().toISOString();
