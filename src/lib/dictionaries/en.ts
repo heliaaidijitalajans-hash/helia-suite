@@ -46,6 +46,8 @@ export const en: Dictionary = {
     socialProofTitle: "Built for modern businesses",
     socialProofSubtitle:
       "We design systems tailored for real business growth — from local companies to scaling brands.",
+    socialProofRights:
+      "We also develop our own product ideas in-house, bring them to production, and transfer them with full rights.",
     socialProofTagline: "Be one of our first success stories.",
     servicesTitle: "What we build",
     servicesSubtitle:

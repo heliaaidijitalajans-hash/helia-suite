@@ -30,6 +30,12 @@ export function SocialProof({ dict }: { dict: Dictionary }) {
         </motion.p>
         <motion.p
           variants={staggerChild}
+          className="mx-auto mt-5 max-w-xl text-base leading-relaxed text-white/50 md:text-lg md:leading-relaxed"
+        >
+          {h.socialProofRights}
+        </motion.p>
+        <motion.p
+          variants={staggerChild}
           className="mx-auto mt-8 max-w-md text-sm font-medium text-white/40 md:mt-10"
         >
           {h.socialProofTagline}

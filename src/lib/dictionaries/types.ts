@@ -41,6 +41,7 @@ export type Dictionary = {
     heroTrustLine: string;
     socialProofTitle: string;
     socialProofSubtitle: string;
+    socialProofRights: string;
     socialProofTagline: string;
     servicesTitle: string;
     servicesSubtitle: string;

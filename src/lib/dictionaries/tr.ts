@@ -47,6 +47,8 @@ export const tr: Dictionary = {
     socialProofTitle: "Modern işletmeler için tasarlandı",
     socialProofSubtitle:
       "Yerel şirketlerden ölçeklenen markalara kadar — gerçek iş büyümesi için size özel sistemler tasarlıyoruz.",
+    socialProofRights:
+      "Aynı zamanda kendi fikirlerimizi kendi bünyemizde geliştirip yayına alıyor; tüm haklarıyla birlikte devrediyoruz.",
     socialProofTagline: "İlk başarı hikayelerimizden biri olun.",
     servicesTitle: "Neler üretiyoruz",
     servicesSubtitle:

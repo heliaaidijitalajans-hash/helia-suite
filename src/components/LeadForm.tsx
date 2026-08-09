@@ -5,7 +5,6 @@ import { motion } from "framer-motion";
 import type { Dictionary } from "@/lib/dictionaries/types";
 import { cn } from "@/lib/cn";
 import { Button } from "@/components/ui/Button";
-import { supabase } from "@/lib/supabase";
 import { staggerChild, staggerParent } from "@/lib/motion";
 
 export function LeadForm({
@@ -37,29 +36,31 @@ export function LeadForm({
       return;
     }
 
-    if (!supabase) {
-      setErrorMessage("Supabase is not configured.");
-      return;
-    }
-
     setLoading(true);
+    try {
+      const res = await fetch("/api/leads", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, email, service, message }),
+      });
 
-    const { error } = await supabase.from("leads").insert({
-      name,
-      email,
-      service,
-      message,
-    });
+      const payload = (await res.json().catch(() => null)) as {
+        ok?: boolean;
+        error?: string;
+      } | null;
 
-    setLoading(false);
+      if (!res.ok || !payload?.ok) {
+        setErrorMessage(payload?.error || dict.form.error);
+        return;
+      }
 
-    if (error) {
-      setErrorMessage(error.message);
-      return;
+      setSuccess(true);
+      form.reset();
+    } catch {
+      setErrorMessage(dict.form.error);
+    } finally {
+      setLoading(false);
     }
-
-    setSuccess(true);
-    form.reset();
   }
 
   return (
@@ -153,7 +154,7 @@ export function LeadForm({
           className="min-h-14 w-full text-base"
           disabled={loading}
         >
-          {loading ? "Sending..." : dict.form.submit}
+          {loading ? dict.form.sending : dict.form.submit}
         </Button>
       </motion.form>
       {success ? (
