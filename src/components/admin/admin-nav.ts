@@ -1,16 +1,11 @@
 import {
   Building2,
   ChartNoAxesCombined,
-  FlaskConical,
   HeartPulse,
-  KeyRound,
   LayoutDashboard,
-  MessageSquare,
   ScrollText,
   Settings,
-  AppWindow,
   Users,
-  BookOpen,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import type { Locale } from "@/config/i18n";
@@ -18,13 +13,8 @@ import { getPlatformUi } from "@/lib/platform-ui-dict";
 
 export type AdminNavKey =
   | "dashboard"
-  | "chat"
   | "users"
   | "organizations"
-  | "applications"
-  | "apiKeys"
-  | "apiTester"
-  | "apiExplorer"
   | "logs"
   | "analytics"
   | "systemHealth"
@@ -43,13 +33,8 @@ const ADMIN_NAV_DEFS: Array<{
   icon: LucideIcon;
 }> = [
   { href: "/admin", key: "dashboard", icon: LayoutDashboard },
-  { href: "/admin/chat", key: "chat", icon: MessageSquare },
   { href: "/admin/users", key: "users", icon: Users },
   { href: "/admin/organizations", key: "organizations", icon: Building2 },
-  { href: "/admin/applications", key: "applications", icon: AppWindow },
-  { href: "/admin/api-keys", key: "apiKeys", icon: KeyRound },
-  { href: "/admin/api-tester", key: "apiTester", icon: FlaskConical },
-  { href: "/admin/api-explorer", key: "apiExplorer", icon: BookOpen },
   { href: "/admin/logs", key: "logs", icon: ScrollText },
   { href: "/admin/analytics", key: "analytics", icon: ChartNoAxesCombined },
   { href: "/admin/system-health", key: "systemHealth", icon: HeartPulse },

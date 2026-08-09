@@ -29,21 +29,21 @@ export default function DashboardSettingsPage() {
           <ul className="space-y-2">
             <li>
               <Link
-                href="/dashboard/api-keys"
-                className="text-accent hover:underline"
-              >
-                API Keys
-              </Link>{" "}
-              — issue and rotate credentials
-            </li>
-            <li>
-              <Link
                 href="/dashboard/usage"
                 className="text-accent hover:underline"
               >
                 Usage
               </Link>{" "}
               — monitor requests and quotas
+            </li>
+            <li>
+              <Link
+                href="/dashboard/profile"
+                className="text-accent hover:underline"
+              >
+                Profile
+              </Link>{" "}
+              — personal account details
             </li>
           </ul>
         </div>

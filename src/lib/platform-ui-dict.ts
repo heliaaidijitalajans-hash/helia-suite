@@ -3,22 +3,14 @@ import type { Locale } from "@/config/i18n";
 export type PlatformUiDict = {
   dashboardNav: {
     overview: string;
-    apiKeys: string;
     usage: string;
-    documentation: string;
-    integrations: string;
     profile: string;
     settings: string;
   };
   adminNav: {
     dashboard: string;
-    chat: string;
     users: string;
     organizations: string;
-    applications: string;
-    apiKeys: string;
-    apiTester: string;
-    apiExplorer: string;
     logs: string;
     analytics: string;
     systemHealth: string;
@@ -43,12 +35,6 @@ export type PlatformUiDict = {
     eyebrow: string;
     title: string;
     body: string;
-    pillarApiKeys: string;
-    pillarMonitoring: string;
-    pillarIntegrations: string;
-    pillarDocs: string;
-    ctaKeys: string;
-    ctaDocs: string;
     onboardingTitle: string;
     step1Title: string;
     step1Body: string;
@@ -56,8 +42,6 @@ export type PlatformUiDict = {
     step2Body: string;
     step3Title: string;
     step3Body: string;
-    step4Title: string;
-    step4Body: string;
   };
   adminHome: {
     title: string;
@@ -88,22 +72,14 @@ export type PlatformUiDict = {
 const en: PlatformUiDict = {
   dashboardNav: {
     overview: "Overview",
-    apiKeys: "API Keys",
     usage: "Usage",
-    documentation: "Documentation",
-    integrations: "Integrations",
     profile: "Profile",
     settings: "Settings",
   },
   adminNav: {
     dashboard: "Dashboard",
-    chat: "Helia Chat",
     users: "Users",
     organizations: "Organizations",
-    applications: "Applications",
-    apiKeys: "API Keys",
-    apiTester: "API Tester",
-    apiExplorer: "API Explorer",
     logs: "Logs",
     analytics: "Analytics",
     systemHealth: "System Health",
@@ -112,7 +88,7 @@ const en: PlatformUiDict = {
   shell: {
     platform: "Platform",
     adminConsole: "Admin Console",
-    heliaApiPlatform: "Helia API Platform",
+    heliaApiPlatform: "Helia Platform",
     heliaSuiteAdmin: "Helia Suite Admin",
     internalOnly: "Internal operators only",
     customerPlatform: "Customer Platform",
@@ -125,24 +101,16 @@ const en: PlatformUiDict = {
     language: "Language",
   },
   dashboardHome: {
-    eyebrow: "Helia API Platform",
+    eyebrow: "Helia Suite",
     title: "Welcome to Helia",
-    body: "Helia is an AI platform for your products. Manage API keys, monitor usage, and connect applications — from one customer portal.",
-    pillarApiKeys: "API Keys",
-    pillarMonitoring: "Monitoring",
-    pillarIntegrations: "Integrations",
-    pillarDocs: "Documentation",
-    ctaKeys: "Generate API Key",
-    ctaDocs: "Read Documentation",
+    body: "Manage your Helia Suite workspace — profile, settings, and account usage in one place.",
     onboardingTitle: "Get started",
-    step1Title: "Generate API Key",
-    step1Body: "Issue a capability-scoped key for your workspace.",
-    step2Title: "Read Documentation",
-    step2Body: "Learn auth, REST, SDK, webhooks, and rate limits.",
-    step3Title: "Integrate",
-    step3Body: "Connect Helia to Next.js, Node, Flutter, and more.",
-    step4Title: "Monitor Usage",
-    step4Body: "Track requests and usage for your workspace.",
+    step1Title: "Complete your profile",
+    step1Body: "Add your display details so your team knows who you are.",
+    step2Title: "Review settings",
+    step2Body: "Confirm preferences for your customer portal.",
+    step3Title: "Monitor usage",
+    step3Body: "Track workspace activity when metering is enabled.",
   },
   adminHome: {
     title: "Admin overview",
@@ -173,22 +141,14 @@ const en: PlatformUiDict = {
 const tr: PlatformUiDict = {
   dashboardNav: {
     overview: "Genel bakış",
-    apiKeys: "API Anahtarları",
     usage: "Kullanım",
-    documentation: "Dokümantasyon",
-    integrations: "Entegrasyonlar",
     profile: "Kişisel bilgiler",
     settings: "Ayarlar",
   },
   adminNav: {
     dashboard: "Panel",
-    chat: "Helia Chat",
     users: "Kullanıcılar",
     organizations: "Organizasyonlar",
-    applications: "Uygulamalar",
-    apiKeys: "API Anahtarları",
-    apiTester: "API Test Aracı",
-    apiExplorer: "API Gezgini",
     logs: "Kayıtlar",
     analytics: "Analitik",
     systemHealth: "Sistem sağlığı",
@@ -197,7 +157,7 @@ const tr: PlatformUiDict = {
   shell: {
     platform: "Platform",
     adminConsole: "Yönetim konsolu",
-    heliaApiPlatform: "Helia API Platformu",
+    heliaApiPlatform: "Helia Platformu",
     heliaSuiteAdmin: "Helia Suite Yönetim",
     internalOnly: "Yalnızca dahili operatörler",
     customerPlatform: "Müşteri platformu",
@@ -210,24 +170,16 @@ const tr: PlatformUiDict = {
     language: "Dil",
   },
   dashboardHome: {
-    eyebrow: "Helia API Platformu",
+    eyebrow: "Helia Suite",
     title: "Helia’ya hoş geldiniz",
-    body: "Helia, ürünleriniz için bir yapay zeka platformudur. API anahtarlarını yönetin, kullanımı izleyin ve uygulamaları tek müşteri portalından bağlayın.",
-    pillarApiKeys: "API Anahtarları",
-    pillarMonitoring: "İzleme",
-    pillarIntegrations: "Entegrasyonlar",
-    pillarDocs: "Dokümantasyon",
-    ctaKeys: "API anahtarı oluştur",
-    ctaDocs: "Dokümantasyonu oku",
+    body: "Helia Suite çalışma alanınızı yönetin — profil, ayarlar ve hesap kullanımı tek yerde.",
     onboardingTitle: "Başlangıç",
-    step1Title: "API anahtarı oluştur",
-    step1Body: "Çalışma alanınız için yetki kapsamlı bir anahtar yayınlayın.",
-    step2Title: "Dokümantasyonu okuyun",
-    step2Body: "Kimlik doğrulama, REST, SDK, webhook ve limitleri öğrenin.",
-    step3Title: "Entegre edin",
-    step3Body: "Helia’yı Next.js, Node, Flutter ve daha fazlasına bağlayın.",
-    step4Title: "Kullanımı izleyin",
-    step4Body: "Çalışma alanınızın istek ve kullanımını takip edin.",
+    step1Title: "Profilinizi tamamlayın",
+    step1Body: "Ekibinizin sizi tanıması için görünen bilgilerinizi ekleyin.",
+    step2Title: "Ayarları gözden geçirin",
+    step2Body: "Müşteri portalı tercihlerinizi doğrulayın.",
+    step3Title: "Kullanımı izleyin",
+    step3Body: "Ölçüm açıksa çalışma alanı aktivitesini takip edin.",
   },
   adminHome: {
     title: "Yönetim özeti",

@@ -2,13 +2,7 @@
 
 import Link from "next/link";
 import { motion } from "framer-motion";
-import {
-  ArrowRight,
-  BookOpen,
-  KeyRound,
-  Plug,
-  Radar,
-} from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/cn";
 import { usePlatformLocale } from "@/components/platform/PlatformLocaleProvider";
@@ -17,36 +11,23 @@ export default function DashboardOverviewPage() {
   const { ui, locale } = usePlatformLocale();
   const h = ui.dashboardHome;
 
-  const pillars = [
-    { label: h.pillarApiKeys, icon: KeyRound },
-    { label: h.pillarMonitoring, icon: Radar },
-    { label: h.pillarIntegrations, icon: Plug },
-    { label: h.pillarDocs, icon: BookOpen },
-  ] as const;
-
   const onboarding = [
     {
       step: "1",
       title: h.step1Title,
       body: h.step1Body,
-      href: "/dashboard/api-keys",
+      href: "/dashboard/profile",
     },
     {
       step: "2",
       title: h.step2Title,
       body: h.step2Body,
-      href: "/dashboard/documentation",
+      href: "/dashboard/settings",
     },
     {
       step: "3",
       title: h.step3Title,
       body: h.step3Body,
-      href: "/dashboard/integrations",
-    },
-    {
-      step: "4",
-      title: h.step4Title,
-      body: h.step4Body,
       href: "/dashboard/usage",
     },
   ] as const;
@@ -71,37 +52,19 @@ export default function DashboardOverviewPage() {
         <p className="mx-auto max-w-2xl text-sm leading-relaxed text-white/55 md:text-base">
           {h.body}
         </p>
-        <ul className="mx-auto flex max-w-2xl flex-wrap items-center justify-center gap-2 pt-1">
-          {pillars.map(({ label, icon: Icon }) => (
-            <li
-              key={label}
-              className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 text-xs text-white/70"
-            >
-              <Icon className="h-3.5 w-3.5 text-accent" strokeWidth={1.75} />
-              {label}
-            </li>
-          ))}
-        </ul>
         <div className="flex flex-col items-stretch justify-center gap-3 pt-2 sm:flex-row sm:items-center">
           <Button
-            href="/dashboard/api-keys"
+            href="/dashboard/profile"
             className="min-h-11 px-6 text-sm font-semibold"
           >
-            {h.ctaKeys}
+            {ui.dashboardNav.profile}
           </Button>
           <Button
-            href="/dashboard/documentation"
+            href="/dashboard/settings"
             variant="secondary"
             className="min-h-11 border-white/12 px-6 text-sm font-semibold"
           >
-            {ui.dashboardNav.documentation}
-          </Button>
-          <Button
-            href="/dashboard/integrations"
-            variant="ghost"
-            className="min-h-11 px-6 text-sm font-semibold"
-          >
-            {ui.dashboardNav.integrations}
+            {ui.dashboardNav.settings}
           </Button>
         </div>
       </motion.div>
@@ -113,69 +76,37 @@ export default function DashboardOverviewPage() {
               {h.onboardingTitle}
             </h3>
             <p className="mt-1 text-xs text-white/40">
-              {h.step1Title} → {h.step2Title} → {h.step3Title} → {h.step4Title}
+              {h.step1Title} → {h.step2Title} → {h.step3Title}
             </p>
           </div>
         </div>
-        <ol className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-          {onboarding.map((item, i) => (
-            <motion.li
-              key={item.step}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.05 * i, duration: 0.35 }}
-            >
+        <ol className="grid gap-3 md:grid-cols-3">
+          {onboarding.map((item) => (
+            <li key={item.step}>
               <Link
                 href={item.href}
                 className={cn(
-                  "group flex h-full flex-col rounded-xl border border-white/[0.08] bg-[#161618]/90 p-4",
-                  "transition-colors hover:border-accent/25 hover:bg-white/[0.03]"
+                  "group flex h-full flex-col rounded-2xl border border-white/[0.08] bg-white/[0.03] p-5",
+                  "transition hover:border-accent/35 hover:bg-white/[0.05]"
                 )}
               >
                 <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-accent/80">
                   {stepLabel} {item.step}
                 </span>
-                <span className="mt-2 text-sm font-medium text-white">
+                <span className="mt-2 text-sm font-semibold text-white">
                   {item.title}
                 </span>
-                <span className="mt-1.5 flex-1 text-xs leading-relaxed text-white/45">
+                <span className="mt-2 flex-1 text-xs leading-relaxed text-white/45">
                   {item.body}
                 </span>
-                <span className="mt-3 inline-flex items-center gap-1 text-[11px] font-medium text-white/50 group-hover:text-accent">
+                <span className="mt-4 inline-flex items-center gap-1 text-xs font-medium text-accent">
                   {openLabel}
-                  <ArrowRight className="h-3 w-3" strokeWidth={2} />
+                  <ArrowRight className="h-3.5 w-3.5 transition group-hover:translate-x-0.5" />
                 </span>
               </Link>
-            </motion.li>
+            </li>
           ))}
         </ol>
-      </section>
-
-      <section className="grid gap-3 sm:grid-cols-2">
-        <Link
-          href="/dashboard/documentation"
-          className="rounded-xl border border-white/[0.08] bg-[#161618]/90 p-5 transition-colors hover:border-accent/25"
-        >
-          <BookOpen className="h-5 w-5 text-accent" strokeWidth={1.5} />
-          <p className="mt-3 text-sm font-semibold text-white">
-            {ui.dashboardNav.documentation}
-          </p>
-          <p className="mt-1 text-xs leading-relaxed text-white/45">
-            {h.step2Body}
-          </p>
-        </Link>
-        <Link
-          href="/dashboard/integrations"
-          className="rounded-xl border border-white/[0.08] bg-[#161618]/90 p-5 transition-colors hover:border-accent/25"
-        >
-          <Plug className="h-5 w-5 text-accent" strokeWidth={1.5} />
-          <p className="mt-3 text-sm font-semibold text-white">
-            {ui.dashboardNav.integrations}
-          </p>
-          <p className="mt-1 text-xs leading-relaxed text-white/45">
-            {h.step3Body}
-          </p>
-        </Link>
       </section>
     </div>
   );

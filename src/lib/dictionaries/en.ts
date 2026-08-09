@@ -40,11 +40,8 @@ export const en: Dictionary = {
   home: {
     heroTitle: "Turn Your Business Into a Revenue Machine",
     heroSubtitle:
-      "Mobile apps, CRM, and automation — plus a secure API platform with project API keys for modern SaaS.",
-    heroApiLine:
-      "Secure API Keys · JWT auth · 47+ REST endpoints — build and integrate with Helia Cloud.",
+      "Mobile apps, CRM, and automation — built for growth.",
     heroCta: "Get Your App Demo",
-    heroDeveloperCta: "Explore Developer Platform",
     heroTrustLine: "Used by growing businesses",
     socialProofTitle: "Built for modern businesses",
     socialProofSubtitle:
@@ -101,143 +98,6 @@ export const en: Dictionary = {
     pricingEstimatorDisclaimer:
       "This is a tailored system built for your business. Final pricing depends on features, integrations, and scale.",
     pricingEstimatorCta: "Start Your Project",
-  },
-  developer: {
-    platformTitle: "Developer Platform",
-    platformSubtitle:
-      "Build on Helia using secure APIs, authentication and developer tooling designed for modern SaaS applications.",
-    features: [
-      {
-        title: "REST API",
-        meta: "47+ endpoints",
-        body: "Production App Router APIs for auth, orgs, projects, keys, and Brain.",
-      },
-      {
-        title: "API Keys",
-        meta: "Secure project keys",
-        body: "Hashed project secrets with live/test environments and scoped permissions.",
-      },
-      {
-        title: "JWT Authentication",
-        meta: "Session & Bearer",
-        body: "Access tokens, refresh rotation, and HttpOnly session cookies.",
-      },
-      {
-        title: "API Tester",
-        meta: "Built-in console",
-        body: "Run authenticated requests with headers, body, and response inspection.",
-      },
-      {
-        title: "API Explorer",
-        meta: "Live discovery",
-        body: "Browse discovered routes by method, auth type, and category.",
-      },
-      {
-        title: "Webhooks",
-        meta: "Ready for integrations",
-        body: "Designed for outbound event hooks as your product integrations grow.",
-      },
-      {
-        title: "Rate Limiting",
-        meta: "Secure API access",
-        body: "Protect tenants with request windows and plan-aware limits.",
-      },
-      {
-        title: "TypeScript SDK",
-        meta: "Coming Soon",
-        body: "Typed client helpers for Helia Cloud — shipping next.",
-      },
-    ],
-    experienceTitle: "Everything developers need",
-    experienceIntro:
-      "A Postman-class workflow inside Helia — explore endpoints, craft requests, and verify auth without leaving the platform.",
-    experiencePoints: [
-      {
-        title: "API Explorer",
-        body: "Discover live routes from the real App Router catalog.",
-      },
-      {
-        title: "Request Builder",
-        body: "Method, path params, query, headers, and JSON bodies.",
-      },
-      {
-        title: "Execution History",
-        body: "Replay recent calls with status and latency context.",
-      },
-      {
-        title: "JSON Responses",
-        body: "Readable, collapsible payloads with safe previews.",
-      },
-      {
-        title: "Authentication",
-        body: "Bearer, API Key, and session modes in one console.",
-      },
-      {
-        title: "Live Testing",
-        body: "Hit same-origin /api routes with real credentials.",
-      },
-    ],
-    codeLabel: "Response preview",
-    securityTitle: "Enterprise-grade Security",
-    securitySubtitle:
-      "Defense in depth for sessions, keys, and durable tenant data.",
-    securityCards: [
-      {
-        title: "JWT Authentication",
-        body: "Signed access tokens with explicit type and session binding.",
-      },
-      {
-        title: "API Keys",
-        body: "HMAC-hashed secrets — plaintext shown once at creation.",
-      },
-      {
-        title: "HttpOnly Cookies",
-        body: "Browser sessions via secure helia_access_token cookies.",
-      },
-      {
-        title: "Role Based Access",
-        body: "Platform admin vs customer roles enforced in middleware and APIs.",
-      },
-      {
-        title: "Audit Logs",
-        body: "Operational trails for admin and sensitive key actions.",
-      },
-      {
-        title: "Secure Headers",
-        body: "SameSite, Secure, and path-scoped cookie defaults.",
-      },
-      {
-        title: "Encrypted Passwords",
-        body: "scrypt password hashes — never store plaintext credentials.",
-      },
-      {
-        title: "Supabase-backed Persistence",
-        body: "Production identity and tenant data on durable Postgres.",
-      },
-    ],
-    architectureTitle: "Platform Architecture",
-    architectureSubtitle:
-      "A clear path from your product surface to durable infrastructure.",
-    architectureLayers: {
-      website: "Website",
-      platform: "Helia Platform",
-      modules: ["Authentication", "Organizations", "Projects", "Brain", "API"],
-      data: "Supabase",
-    },
-    statsTitle: "Built for modern stacks",
-    stats: [
-      { value: "47+", label: "API Endpoints" },
-      { value: "100%", label: "TypeScript" },
-      { value: "Node.js", label: "Runtime" },
-      { value: "Supabase", label: "Durable data" },
-      { value: "Vercel", label: "Edge-ready deploy" },
-      { value: "Enterprise", label: "Ready" },
-    ],
-    ctaTitle: "Ready to build on Helia?",
-    ctaSubtitle:
-      "Explore the API surface or open the tester with your account.",
-    ctaDocs: "View API Documentation",
-    ctaTester: "Open API Tester",
   },
   pricing: {
     title: "Custom Pricing for Your Business",

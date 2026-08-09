@@ -6,15 +6,11 @@ const AUTH_COOKIE = "helia_access_token";
 
 /** Segments that belong under /dashboard, not /{locale}/{segment}. */
 const DASHBOARD_SEGMENTS = new Set([
-  "api-keys",
   "profile",
   "usage",
-  "documentation",
-  "integrations",
   "settings",
   "organizations",
   "projects",
-  "helia-chat",
   "customers",
   "automation",
   "analytics",

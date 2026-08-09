@@ -1,48 +1,12 @@
 {
-  "generatedAt": "2026-07-25T20:15:30.941Z",
-  "endpointCount": 47,
+  "generatedAt": "2026-08-09T12:51:56.717Z",
+  "endpointCount": 27,
   "endpoints": [
     {
       "method": "GET",
       "path": "/api/admin/analytics",
       "authentication": "admin_session",
       "category": "Analytics"
-    },
-    {
-      "method": "GET",
-      "path": "/api/admin/apikeys",
-      "authentication": "admin_session",
-      "category": "API Keys"
-    },
-    {
-      "method": "POST",
-      "path": "/api/admin/apikeys",
-      "authentication": "admin_session",
-      "category": "API Keys"
-    },
-    {
-      "method": "GET",
-      "path": "/api/admin/applications",
-      "authentication": "admin_session",
-      "category": "Applications"
-    },
-    {
-      "method": "DELETE",
-      "path": "/api/admin/applications/:id",
-      "authentication": "admin_session",
-      "category": "Applications"
-    },
-    {
-      "method": "PATCH",
-      "path": "/api/admin/applications/:id",
-      "authentication": "admin_session",
-      "category": "Applications"
-    },
-    {
-      "method": "POST",
-      "path": "/api/admin/applications/:id/rotate",
-      "authentication": "admin_session",
-      "category": "Applications"
     },
     {
       "method": "POST",
@@ -106,24 +70,6 @@
     },
     {
       "method": "GET",
-      "path": "/api/admin/tester/catalog",
-      "authentication": "admin_session",
-      "category": "Admin"
-    },
-    {
-      "method": "POST",
-      "path": "/api/admin/tester/execute",
-      "authentication": "admin_session",
-      "category": "Admin"
-    },
-    {
-      "method": "POST",
-      "path": "/api/admin/tester/validate",
-      "authentication": "admin_session",
-      "category": "Admin"
-    },
-    {
-      "method": "GET",
       "path": "/api/admin/users",
       "authentication": "admin_session",
       "category": "Admin"
@@ -145,42 +91,6 @@
       "path": "/api/admin/users/:id/reset-password",
       "authentication": "admin_session",
       "category": "Admin"
-    },
-    {
-      "method": "GET",
-      "path": "/api/apikeys",
-      "authentication": "session",
-      "category": "API Keys"
-    },
-    {
-      "method": "POST",
-      "path": "/api/apikeys",
-      "authentication": "session",
-      "category": "API Keys"
-    },
-    {
-      "method": "DELETE",
-      "path": "/api/apikeys/:id",
-      "authentication": "session",
-      "category": "API Keys"
-    },
-    {
-      "method": "POST",
-      "path": "/api/apikeys/:id/disable",
-      "authentication": "session",
-      "category": "API Keys"
-    },
-    {
-      "method": "POST",
-      "path": "/api/apikeys/:id/rotate",
-      "authentication": "session",
-      "category": "API Keys"
-    },
-    {
-      "method": "GET",
-      "path": "/api/apikeys/whoami",
-      "authentication": "api_key",
-      "category": "API Keys"
     },
     {
       "method": "POST",
@@ -211,36 +121,6 @@
       "path": "/api/auth/register",
       "authentication": "public",
       "category": "Authentication"
-    },
-    {
-      "method": "POST",
-      "path": "/api/brain/ask",
-      "authentication": "admin_session",
-      "category": "Chat"
-    },
-    {
-      "method": "GET",
-      "path": "/api/brain/conversations",
-      "authentication": "admin_session",
-      "category": "Chat"
-    },
-    {
-      "method": "DELETE",
-      "path": "/api/brain/conversations/:id",
-      "authentication": "admin_session",
-      "category": "Chat"
-    },
-    {
-      "method": "GET",
-      "path": "/api/brain/conversations/:id",
-      "authentication": "admin_session",
-      "category": "Chat"
-    },
-    {
-      "method": "PATCH",
-      "path": "/api/brain/conversations/:id",
-      "authentication": "admin_session",
-      "category": "Chat"
     },
     {
       "method": "GET",

@@ -26,9 +26,8 @@ export function AdminForbiddenBanner() {
           <p className="font-medium">403 — Admin access required</p>
           <p className="mt-1 text-xs leading-relaxed text-amber-100/70">
             Your account does not have{" "}
-            <code className="text-amber-100">role=&quot;admin&quot;</code>. The
-            customer API Platform remains available. Ask an operator to add your
-            email to{" "}
+            <code className="text-amber-100">role=&quot;admin&quot;</code>. Ask
+            an operator to add your email to{" "}
             <code className="text-amber-100">HELIA_ADMIN_EMAILS</code>, or use
             bootstrap promote in development.
           </p>

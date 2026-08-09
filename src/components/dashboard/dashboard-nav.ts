@@ -1,9 +1,6 @@
 import {
-  BookOpen,
   ChartNoAxesCombined,
-  KeyRound,
   LayoutDashboard,
-  Plug,
   Settings,
   UserRound,
 } from "lucide-react";
@@ -13,10 +10,7 @@ import { getPlatformUi } from "@/lib/platform-ui-dict";
 
 export type DashboardNavKey =
   | "overview"
-  | "apiKeys"
   | "usage"
-  | "documentation"
-  | "integrations"
   | "profile"
   | "settings";
 
@@ -33,10 +27,7 @@ const DASHBOARD_NAV_DEFS: Array<{
   icon: LucideIcon;
 }> = [
   { href: "/dashboard", key: "overview", icon: LayoutDashboard },
-  { href: "/dashboard/api-keys", key: "apiKeys", icon: KeyRound },
   { href: "/dashboard/usage", key: "usage", icon: ChartNoAxesCombined },
-  { href: "/dashboard/documentation", key: "documentation", icon: BookOpen },
-  { href: "/dashboard/integrations", key: "integrations", icon: Plug },
   { href: "/dashboard/profile", key: "profile", icon: UserRound },
   { href: "/dashboard/settings", key: "settings", icon: Settings },
 ];
